@@ -8,7 +8,6 @@ import { env } from './config/env.js';
 import { httpLogger } from './utils/logger.js';
 import { auth } from './auth.js';
 import { apiRouter } from './routes/index.js';
-import { healthRouter } from './modules/health/health.router.js';
 import { notFoundHandler, errorHandler } from './middleware/error-handler.js';
 
 export const createApp = () => {
