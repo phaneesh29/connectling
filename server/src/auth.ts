@@ -21,6 +21,15 @@ export const auth = betterAuth({
       clientSecret: env.GOOGLE_CLIENT_SECRET,
     },
   },
+  session: {
+    expiresIn: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24,
+    cookieCache: {
+      enabled: true,
+      maxAge: 5 * 60,
+      strategy: 'compact',
+    },
+  },
   trustedOrigins,
   rateLimit: {
     enabled: true,
