@@ -9,6 +9,7 @@ const envSchema = z.object({
     .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
     .default('info'),
   CORS_ORIGIN: z.string().default('http://localhost:3001'),
+  DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
 });
 
 const parseEnv = () => {
