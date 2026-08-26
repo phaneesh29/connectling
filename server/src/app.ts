@@ -7,6 +7,7 @@ import { toNodeHandler } from 'better-auth/node';
 import { env } from './config/env.js';
 import { httpLogger } from './utils/logger.js';
 import { auth } from './auth.js';
+import { apiRouter } from './routes/index.js';
 import { healthRouter } from './modules/health/health.router.js';
 import { notFoundHandler, errorHandler } from './middleware/error-handler.js';
 
@@ -31,6 +32,7 @@ export const createApp = () => {
   app.use(compression());
   app.use(hpp());
 
+
   app.all('/api/auth/*splat', toNodeHandler(auth));
 
   app.use(express.json({ limit: '1mb' }));
@@ -38,8 +40,7 @@ export const createApp = () => {
 
   app.use(httpLogger);
 
-  app.use('/health', healthRouter);
-  app.use('/api/health', healthRouter);
+  app.use('/api/v1', apiRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

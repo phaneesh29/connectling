@@ -4,7 +4,6 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "dev": "vercel dev",
     "lint": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
