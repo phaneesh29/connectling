@@ -15,7 +15,10 @@ export const createApp = () => {
   app.disable('x-powered-by');
   app.use(helmet());
 
-  const corsOrigins = env.CORS_ORIGIN === '*' ? '*' : env.CORS_ORIGIN.split(',').map((origin) => origin.trim());
+  const corsOrigins =
+    env.CORS_ORIGIN === '*'
+      ? '*'
+      : env.CORS_ORIGIN.split(',').map((origin) => origin.trim());
 
   app.use(
     cors({
@@ -31,13 +34,10 @@ export const createApp = () => {
 
   app.use(httpLogger);
 
-
   app.use('/health', healthRouter);
   app.use('/api/health', healthRouter);
 
-
   app.use(notFoundHandler);
-
   app.use(errorHandler);
 
   return app;
