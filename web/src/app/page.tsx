@@ -20,7 +20,7 @@ export default function DashboardPage() {
   const checkApiHealth = async () => {
     setCheckingHealth(true);
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:3000';
       const res = await fetch(`${apiUrl}/api/v1/health`);
       const data = await res.json();
       setHealthStatus(data.success ? 'Operational (200 OK)' : 'Error');

@@ -4,9 +4,19 @@ import { db } from './db/index.js';
 import * as schema from './db/schema.js';
 import { env } from './config/env.js';
 
-const trustedOrigins = env.CORS_ORIGIN.includes(',')
+const parsedOrigins = env.CORS_ORIGIN.includes(',')
   ? env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
   : [env.CORS_ORIGIN];
+
+const trustedOrigins = Array.from(
+  new Set([
+    ...parsedOrigins,
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+  ])
+);
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
