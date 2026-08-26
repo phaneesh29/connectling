@@ -15,14 +15,13 @@ export const createApp = () => {
   app.disable('x-powered-by');
   app.use(helmet());
 
-  const corsOrigins =
-    env.CORS_ORIGIN === '*'
-      ? '*'
-      : env.CORS_ORIGIN.split(',').map((origin) => origin.trim());
+  const corsOrigin = env.CORS_ORIGIN.includes(',')
+    ? env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
+    : env.CORS_ORIGIN;
 
   app.use(
     cors({
-      origin: corsOrigins,
+      origin: corsOrigin,
       credentials: true,
     })
   );
