@@ -19,6 +19,7 @@ export const presenceService = {
     try {
       await redis.set(`${USER_PRESENCE_PREFIX}${userId}`, roomId, { ex: ttl });
       await redis.sadd(`${ROOM_USERS_PREFIX}${roomId}`, userId);
+      await redis.expire(`${ROOM_USERS_PREFIX}${roomId}`, ttl + 60);
     } catch (error) {
       logger.error({ err: error, userId, roomId }, 'Failed to set user active room in Redis');
     }
@@ -28,6 +29,7 @@ export const presenceService = {
     try {
       await redis.set(`${USER_PRESENCE_PREFIX}${userId}`, roomId, { ex: ttl });
       await redis.sadd(`${ROOM_USERS_PREFIX}${roomId}`, userId);
+      await redis.expire(`${ROOM_USERS_PREFIX}${roomId}`, ttl + 60);
     } catch (error) {
       logger.error({ err: error, userId, roomId }, 'Failed to refresh room heartbeat in Redis');
     }

@@ -19,8 +19,9 @@ export const createRoomHandler = async (req: Request, res: Response): Promise<vo
 };
 
 export const getRoomHandler = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user?.id;
   const { code } = req.params as RoomCodeParam;
-  const result = await roomService.getRoomByCode(code);
+  const result = await roomService.getRoomByCode(code, userId);
 
   res.status(200).json({
     success: true,

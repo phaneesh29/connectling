@@ -59,39 +59,49 @@ export const roomService = {
       ...input.settings,
     };
 
-    const [createdRoom] = await db
-      .insert(room)
-      .values({
-        id: roomId,
-        code,
-        title: input.title,
-        description: input.description,
-        type: input.type,
-        status: 'active',
-        hostId: userId,
-        expiresAt,
-      })
-      .returning();
+    let createdRoom: Room;
+    let createdSettings: RoomSettings;
 
-    const [createdSettings] = await db
-      .insert(roomSettings)
-      .values({
-        id: settingsId,
+    try {
+      const [newRoom] = await db
+        .insert(room)
+        .values({
+          id: roomId,
+          code,
+          title: input.title,
+          description: input.description,
+          type: input.type,
+          status: 'active',
+          hostId: userId,
+          expiresAt,
+        })
+        .returning();
+      createdRoom = newRoom;
+
+      const [newSettings] = await db
+        .insert(roomSettings)
+        .values({
+          id: settingsId,
+          roomId,
+          ...mergedSettings,
+        })
+        .returning();
+      createdSettings = newSettings;
+
+      await db.insert(roomUser).values({
+        id: roomUserId,
         roomId,
-        ...mergedSettings,
-      })
-      .returning();
-
-    await db.insert(roomUser).values({
-      id: roomUserId,
-      roomId,
-      userId,
-      role: 'host',
-      status: 'active',
-      isMuted: false,
-      isVideoOn: false,
-      isHandRaised: false,
-    });
+        userId,
+        role: 'host',
+        status: 'active',
+        isMuted: false,
+        isVideoOn: false,
+        isHandRaised: false,
+      });
+    } catch (error) {
+      await db.delete(room).where(eq(room.id, roomId)).catch(() => {});
+      throw error;
+    }
 
     await presenceService.setUserActiveRoom(userId, roomId, PRESENCE_HEARTBEAT_TTL);
 
@@ -101,7 +111,7 @@ export const roomService = {
     };
   },
 
-  getRoomByCode: async (code: string) => {
+  getRoomByCode: async (code: string, userId?: string) => {
     const normalized = normalizeRoomCode(code);
     const foundRoom = await db.query.room.findFirst({
       where: eq(room.code, normalized),
@@ -133,8 +143,19 @@ export const roomService = {
       .from(roomUser)
       .where(and(eq(roomUser.roomId, foundRoom.id), eq(roomUser.status, 'active')));
 
+    const isHost = foundRoom.hostId === userId;
+    const settings = foundRoom.settings
+      ? isHost
+        ? foundRoom.settings
+        : (({ passcode: _passcode, ...rest }) => ({
+            ...rest,
+            hasPasscode: Boolean(_passcode),
+          }))(foundRoom.settings)
+      : null;
+
     return {
       ...foundRoom,
+      settings,
       activeParticipantsCount: activeCountResult?.count ?? 0,
     };
   },
@@ -227,9 +248,19 @@ export const roomService = {
 
     await presenceService.setUserActiveRoom(userId, foundRoom.id, PRESENCE_HEARTBEAT_TTL);
 
+    const isHost = foundRoom.hostId === userId;
+    const sanitizedSettings = foundRoom.settings
+      ? isHost
+        ? foundRoom.settings
+        : (({ passcode: _passcode, ...rest }) => ({
+            ...rest,
+            hasPasscode: Boolean(_passcode),
+          }))(foundRoom.settings)
+      : null;
+
     return {
       room: foundRoom,
-      settings: foundRoom.settings,
+      settings: sanitizedSettings,
       participant,
     };
   },
