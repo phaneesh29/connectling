@@ -9,6 +9,7 @@ import { httpLogger } from './utils/logger.js';
 import { auth } from './auth.js';
 import { apiRouter } from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middleware/error-handler.js';
+import { globalRateLimitMiddleware } from './middleware/rate-limiter.js';
 
 export const createApp = () => {
   const app = express();
@@ -31,6 +32,7 @@ export const createApp = () => {
   app.use(compression());
   app.use(hpp());
 
+  app.use(globalRateLimitMiddleware);
 
   app.all('/api/auth/*splat', toNodeHandler(auth));
 
