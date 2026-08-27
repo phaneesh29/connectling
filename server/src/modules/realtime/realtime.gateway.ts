@@ -79,6 +79,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         };
 
         socket.to(roomChannel).emit('user:joined', newPeerState);
+        void realtimeService.publishEvent(roomCode, { type: 'user:joined', ...newPeerState });
 
         const socketsInRoom = await io.in(roomChannel).fetchSockets();
         const activePeers = buildActivePeers(socketsInRoom, socket.id, data.participants, data.room.hostId);
@@ -118,11 +119,25 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         isVideoOn,
         isScreenSharing,
       });
+
+      void realtimeService.publishEvent(roomCode, {
+        type: 'media:state-updated',
+        userId: user.id,
+        isMuted,
+        isVideoOn,
+        isScreenSharing,
+      });
     });
 
     socket.on('stage:raise-hand', ({ roomCode, isHandRaised }) => {
       socket.data.isHandRaised = isHandRaised;
       socket.to(`room:${roomCode}`).emit('stage:hand-updated', {
+        userId: user.id,
+        isHandRaised,
+      });
+
+      void realtimeService.publishEvent(roomCode, {
+        type: 'stage:hand-updated',
         userId: user.id,
         isHandRaised,
       });
@@ -150,6 +165,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       if (!text || !text.trim()) return;
       const message = buildChatMessage(user.id, user.name, user.image, text);
       io.in(`room:${roomCode}`).emit('chat:new-message', message);
+      void realtimeService.publishEvent(roomCode, { type: 'chat:new-message', ...message });
     });
 
     const handleLeave = async (roomCode: string) => {
