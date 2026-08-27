@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { eq, and, count } from 'drizzle-orm';
+import { eq, and, ne, count, asc } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { room, roomSettings, roomUser, type Room, type RoomSettings } from '../../db/room-schema.js';
 import { user } from '../../db/auth-schema.js';
@@ -147,6 +147,45 @@ export const roomService = {
       .from(roomUser)
       .where(and(eq(roomUser.roomId, foundRoom.id), eq(roomUser.status, 'active')));
 
+    // Self-healing check: If the registered host has left or gone inactive, auto-promote the earliest active participant
+    const hostUserEntry = await db.query.roomUser.findFirst({
+      where: and(eq(roomUser.roomId, foundRoom.id), eq(roomUser.userId, foundRoom.hostId)),
+    });
+
+    if (!hostUserEntry || hostUserEntry.status !== 'active') {
+      const nextActiveHost = await db.query.roomUser.findFirst({
+        where: and(eq(roomUser.roomId, foundRoom.id), eq(roomUser.status, 'active')),
+        orderBy: [asc(roomUser.joinedAt)],
+      });
+
+      if (nextActiveHost) {
+        await db
+          .update(room)
+          .set({ hostId: nextActiveHost.userId })
+          .where(eq(room.id, foundRoom.id));
+
+        await db
+          .update(roomUser)
+          .set({ role: 'host' })
+          .where(eq(roomUser.id, nextActiveHost.id));
+
+        foundRoom.hostId = nextActiveHost.userId;
+
+        const newHostRecord = await db.query.user.findFirst({
+          where: eq(user.id, nextActiveHost.userId),
+          columns: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        });
+        if (newHostRecord) {
+          foundRoom.host = newHostRecord;
+        }
+      }
+    }
+
     const isHost = foundRoom.hostId === userId;
     const settings = foundRoom.settings
       ? isHost
@@ -282,6 +321,7 @@ export const roomService = {
       throw new NotFoundError('Room not found');
     }
 
+    // 1. Mark this user as left in roomUser
     await db
       .update(roomUser)
       .set({
@@ -291,6 +331,66 @@ export const roomService = {
       .where(and(eq(roomUser.roomId, foundRoom.id), eq(roomUser.userId, userId)));
 
     await presenceService.clearUserActiveRoom(userId, foundRoom.id);
+
+    // 2. Host Succession Logic: if the departing user is the host
+    const isHostLeaving = foundRoom.hostId === userId;
+
+    if (isHostLeaving) {
+      // Find the next active participant who joined earliest (First-In, Next-Host)
+      const nextHostUser = await db.query.roomUser.findFirst({
+        where: and(
+          eq(roomUser.roomId, foundRoom.id),
+          eq(roomUser.status, 'active'),
+          ne(roomUser.userId, userId)
+        ),
+        orderBy: [asc(roomUser.joinedAt)],
+      });
+
+      if (nextHostUser) {
+        // Transfer host privileges to the successor
+        await db
+          .update(room)
+          .set({ hostId: nextHostUser.userId })
+          .where(eq(room.id, foundRoom.id));
+
+        await db
+          .update(roomUser)
+          .set({ role: 'host' })
+          .where(eq(roomUser.id, nextHostUser.id));
+
+        return {
+          success: true,
+          transferredHost: true,
+          newHostId: nextHostUser.userId,
+        };
+      } else {
+        // No remaining active participants -> delete the room immediately
+        await db.delete(room).where(eq(room.id, foundRoom.id));
+        await presenceService.clearRoomPresence(foundRoom.id);
+
+        return {
+          success: true,
+          roomDeleted: true,
+        };
+      }
+    } else {
+      // Non-host leaving: Check if any active participants remain
+      const [remainingActive] = await db
+        .select({ count: count() })
+        .from(roomUser)
+        .where(and(eq(roomUser.roomId, foundRoom.id), eq(roomUser.status, 'active')));
+
+      if ((remainingActive?.count ?? 0) === 0) {
+        // No participants left -> delete empty room
+        await db.delete(room).where(eq(room.id, foundRoom.id));
+        await presenceService.clearRoomPresence(foundRoom.id);
+
+        return {
+          success: true,
+          roomDeleted: true,
+        };
+      }
+    }
 
     return { success: true };
   },
