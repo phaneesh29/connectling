@@ -10,11 +10,8 @@ import type {
   SocketData,
   PeerState,
 } from './realtime.types.js';
-import { roomService } from '../rooms/room.service.js';
-import { db } from '../../db/index.js';
-import { room, roomUser } from '../../db/room-schema.js';
-import { eq, and } from 'drizzle-orm';
-import crypto from 'node:crypto';
+import { realtimeService } from './realtime.service.js';
+import { buildChatMessage, forwardSignal, buildActivePeers } from './realtime.utils.js';
 
 export type RealtimeServer = Server<
   ClientToServerEvents,
@@ -55,44 +52,26 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
 
     socket.on('room:join', async ({ roomCode, isMuted = false, isVideoOn = false }) => {
       try {
-        const foundRoom = await db.query.room.findFirst({
-          where: eq(room.code, roomCode),
-        });
-
-        if (!foundRoom) {
+        const data = await realtimeService.getRoomAndParticipants(roomCode, user.id);
+        if (!data) {
           socket.emit('error:message', { message: 'Room not found' });
           return;
         }
 
         const roomChannel = `room:${roomCode}`;
         await socket.join(roomChannel);
+
         socket.data.currentRoomCode = roomCode;
         socket.data.isMuted = isMuted;
         socket.data.isVideoOn = isVideoOn;
         socket.data.isScreenSharing = false;
         socket.data.isHandRaised = false;
 
-        const participants = await db.query.roomUser.findMany({
-          where: and(eq(roomUser.roomId, foundRoom.id), eq(roomUser.status, 'active')),
-          with: {
-            user: {
-              columns: {
-                id: true,
-                name: true,
-                image: true,
-              },
-            },
-          },
-        });
-
-        const myParticipant = participants.find((p) => p.userId === user.id);
-        const myRole = (myParticipant?.role as PeerState['role']) || (foundRoom.hostId === user.id ? 'host' : 'participant');
-
         const newPeerState: PeerState = {
           userId: user.id,
           name: user.name,
           image: user.image,
-          role: myRole,
+          role: data.myRole,
           isMuted,
           isVideoOn,
           isScreenSharing: false,
@@ -102,28 +81,11 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         socket.to(roomChannel).emit('user:joined', newPeerState);
 
         const socketsInRoom = await io.in(roomChannel).fetchSockets();
-        const activePeers: PeerState[] = [];
-
-        for (const peerSocket of socketsInRoom) {
-          if (peerSocket.id !== socket.id && peerSocket.data.user) {
-            const peerUserId = peerSocket.data.user.id;
-            const peerDbData = participants.find((p) => p.userId === peerUserId);
-            activePeers.push({
-              userId: peerUserId,
-              name: peerSocket.data.user.name,
-              image: peerSocket.data.user.image,
-              role: (peerDbData?.role as PeerState['role']) || (foundRoom.hostId === peerUserId ? 'host' : 'participant'),
-              isMuted: peerSocket.data.isMuted ?? false,
-              isVideoOn: peerSocket.data.isVideoOn ?? false,
-              isScreenSharing: peerSocket.data.isScreenSharing ?? false,
-              isHandRaised: peerSocket.data.isHandRaised ?? false,
-            });
-          }
-        }
+        const activePeers = buildActivePeers(socketsInRoom, socket.id, data.participants, data.room.hostId);
 
         socket.emit('room:peers', {
           peers: activePeers,
-          hostId: foundRoom.hostId,
+          hostId: data.room.hostId,
         });
 
         logger.info({ userId: user.id, roomCode }, 'User joined realtime room');
@@ -134,39 +96,15 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
     });
 
     socket.on('signal:offer', ({ roomCode, toUserId, offer }) => {
-      io.in(`room:${roomCode}`).fetchSockets().then((sockets) => {
-        const targetSocket = sockets.find((s) => s.data.user?.id === toUserId);
-        if (targetSocket) {
-          targetSocket.emit('signal:offer', {
-            fromUserId: user.id,
-            offer,
-          });
-        }
-      });
+      void forwardSignal(io, roomCode, toUserId, 'signal:offer', { fromUserId: user.id, offer });
     });
 
     socket.on('signal:answer', ({ roomCode, toUserId, answer }) => {
-      io.in(`room:${roomCode}`).fetchSockets().then((sockets) => {
-        const targetSocket = sockets.find((s) => s.data.user?.id === toUserId);
-        if (targetSocket) {
-          targetSocket.emit('signal:answer', {
-            fromUserId: user.id,
-            answer,
-          });
-        }
-      });
+      void forwardSignal(io, roomCode, toUserId, 'signal:answer', { fromUserId: user.id, answer });
     });
 
     socket.on('signal:ice-candidate', ({ roomCode, toUserId, candidate }) => {
-      io.in(`room:${roomCode}`).fetchSockets().then((sockets) => {
-        const targetSocket = sockets.find((s) => s.data.user?.id === toUserId);
-        if (targetSocket) {
-          targetSocket.emit('signal:ice-candidate', {
-            fromUserId: user.id,
-            candidate,
-          });
-        }
-      });
+      void forwardSignal(io, roomCode, toUserId, 'signal:ice-candidate', { fromUserId: user.id, candidate });
     });
 
     socket.on('media:state', ({ roomCode, isMuted, isVideoOn, isScreenSharing }) => {
@@ -191,80 +129,33 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
     });
 
     socket.on('stage:promote', async ({ roomCode, targetUserId }) => {
-      try {
-        const foundRoom = await db.query.room.findFirst({
-          where: eq(room.code, roomCode),
-        });
-
-        if (!foundRoom || foundRoom.hostId !== user.id) {
-          socket.emit('error:message', { message: 'Only the host can promote speakers.' });
-          return;
-        }
-
-        await db
-          .update(roomUser)
-          .set({ role: 'speaker' })
-          .where(and(eq(roomUser.roomId, foundRoom.id), eq(roomUser.userId, targetUserId)));
-
-        io.in(`room:${roomCode}`).emit('stage:role-updated', {
-          userId: targetUserId,
-          role: 'speaker',
-        });
-      } catch (err) {
-        logger.error({ err }, 'Error promoting speaker');
+      const res = await realtimeService.updateStageRole(roomCode, user.id, targetUserId, 'speaker');
+      if (!res.success) {
+        socket.emit('error:message', { message: res.error || 'Failed to promote' });
+        return;
       }
+      io.in(`room:${roomCode}`).emit('stage:role-updated', { userId: targetUserId, role: 'speaker' });
     });
 
     socket.on('stage:demote', async ({ roomCode, targetUserId }) => {
-      try {
-        const foundRoom = await db.query.room.findFirst({
-          where: eq(room.code, roomCode),
-        });
-
-        if (!foundRoom || foundRoom.hostId !== user.id) {
-          socket.emit('error:message', { message: 'Only the host can demote speakers.' });
-          return;
-        }
-
-        await db
-          .update(roomUser)
-          .set({ role: 'listener' })
-          .where(and(eq(roomUser.roomId, foundRoom.id), eq(roomUser.userId, targetUserId)));
-
-        io.in(`room:${roomCode}`).emit('stage:role-updated', {
-          userId: targetUserId,
-          role: 'listener',
-        });
-      } catch (err) {
-        logger.error({ err }, 'Error demoting speaker');
+      const res = await realtimeService.updateStageRole(roomCode, user.id, targetUserId, 'listener');
+      if (!res.success) {
+        socket.emit('error:message', { message: res.error || 'Failed to demote' });
+        return;
       }
+      io.in(`room:${roomCode}`).emit('stage:role-updated', { userId: targetUserId, role: 'listener' });
     });
 
     socket.on('chat:message', ({ roomCode, text }) => {
       if (!text || !text.trim()) return;
-
-      const messagePayload = {
-        id: crypto.randomUUID(),
-        userId: user.id,
-        name: user.name,
-        image: user.image,
-        text: text.trim().slice(0, 1000),
-        timestamp: Date.now(),
-      };
-
-      io.in(`room:${roomCode}`).emit('chat:new-message', messagePayload);
+      const message = buildChatMessage(user.id, user.name, user.image, text);
+      io.in(`room:${roomCode}`).emit('chat:new-message', message);
     });
 
     const handleLeave = async (roomCode: string) => {
       try {
-        const result = await roomService.leaveRoom(user.id, roomCode);
-        const newHostId = result.transferredHost ? result.newHostId : undefined;
-
-        socket.to(`room:${roomCode}`).emit('user:left', {
-          userId: user.id,
-          newHostId,
-        });
-
+        const { newHostId } = await realtimeService.processLeave(roomCode, user.id);
+        socket.to(`room:${roomCode}`).emit('user:left', { userId: user.id, newHostId });
         await socket.leave(`room:${roomCode}`);
         socket.data.currentRoomCode = undefined;
         logger.info({ userId: user.id, roomCode, newHostId }, 'User departed room');
