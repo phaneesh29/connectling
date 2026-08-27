@@ -42,7 +42,7 @@ export const auth = betterAuth({
   },
   trustedOrigins,
   rateLimit: {
-    enabled: true,
+    enabled: false,
   },
   account: {
     encryptOAuthTokens: true,
