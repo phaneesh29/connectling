@@ -46,22 +46,21 @@ export default function MeetPage({ params }: MeetPageProps) {
   const [settings, setSettings] = useState<RoomSettingsData | null>(null);
   const [participant, setParticipant] = useState<ParticipantData | null>(null);
 
-  // Local Media states
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [updatingSettings, setUpdatingSettings] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [ending, setEnding] = useState(false);
 
-  // Redirect unauthenticated users
   useEffect(() => {
     if (!sessionPending && !session) {
       router.replace(`/login?callbackURL=/meet/${code}`);
     }
   }, [session, sessionPending, router, code]);
 
-  // Initial Room Join Flow
   const joinMeeting = useCallback(
     async (codeToJoin: string, enteredPasscode?: string) => {
       setJoining(true);
@@ -122,7 +121,6 @@ export default function MeetPage({ params }: MeetPageProps) {
     };
   }, [session, code]);
 
-  // 15-Second Heartbeat Loop to Maintain Redis Active Presence
   useEffect(() => {
     if (!room || !participant) return;
 
@@ -136,9 +134,6 @@ export default function MeetPage({ params }: MeetPageProps) {
 
     return () => clearInterval(interval);
   }, [room, participant]);
-
-  const [leaving, setLeaving] = useState(false);
-  const [ending, setEnding] = useState(false);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -204,7 +199,6 @@ export default function MeetPage({ params }: MeetPageProps) {
     );
   }
 
-  // Passcode Prompt Screen
   if (passcodeRequired) {
     return (
       <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4 bg-black">
@@ -263,7 +257,6 @@ export default function MeetPage({ params }: MeetPageProps) {
     );
   }
 
-  // Error Screen
   if (error || !room) {
     return (
       <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4 bg-black">
@@ -290,7 +283,6 @@ export default function MeetPage({ params }: MeetPageProps) {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] bg-black text-[#fcfdff] select-none ambient-glow-meet">
-      {/* Top Header Bar */}
       <header className="h-14 border-b border-white/[0.06] px-4 sm:px-6 flex items-center justify-between bg-black/60 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <span className="h-2 w-2 rounded-full bg-[#11ff99] shadow-[0_0_8px_#11ff99]" />
@@ -303,7 +295,6 @@ export default function MeetPage({ params }: MeetPageProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Copy Link */}
           <button
             onClick={handleCopyLink}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08]"
@@ -312,7 +303,6 @@ export default function MeetPage({ params }: MeetPageProps) {
             <span className="hidden sm:inline font-mono text-[11px]">{copied ? 'Copied' : 'Share Space'}</span>
           </button>
 
-          {/* Host Settings Button */}
           {isHost && (
             <button
               onClick={() => setSettingsOpen(true)}
@@ -325,10 +315,8 @@ export default function MeetPage({ params }: MeetPageProps) {
         </div>
       </header>
 
-      {/* Main Video Grid Area */}
       <main className="flex-1 p-4 sm:p-6 overflow-y-auto flex items-center justify-center">
         <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-4 h-full max-h-[72vh]">
-          {/* User's Own Video Tile */}
           <div className="relative bg-[#0a0a0c] border border-white/[0.12] rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl group">
             {isVideoOn ? (
               <div className="w-full h-full bg-gradient-to-b from-[#0e0e12] to-[#06060a] flex flex-col items-center justify-center p-6 text-center space-y-3">
@@ -357,7 +345,6 @@ export default function MeetPage({ params }: MeetPageProps) {
               </div>
             )}
 
-            {/* In-Tile Badges */}
             <div className="absolute bottom-3 left-3 bg-[#0a0a0c]/80 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 text-[#fcfdff] border border-white/[0.10]">
               {isMicOn ? <MicIcon size={13} className="text-[#11ff99]" /> : <MicOffIcon size={13} className="text-[#ff2047]" />}
               <span className="text-xs">{session?.user.name}</span>
@@ -369,7 +356,6 @@ export default function MeetPage({ params }: MeetPageProps) {
             </div>
           </div>
 
-          {/* Waiting for Peers Placeholder Tile */}
           <div className="relative bg-[#0a0a0c] border border-white/[0.08] rounded-2xl overflow-hidden flex flex-col items-center justify-center p-6 text-center space-y-4 shadow-2xl">
             <div className="h-16 w-16 rounded-full bg-[#101012] border border-white/[0.10] flex items-center justify-center text-[#888e90]">
               <UsersIcon size={24} />
@@ -391,10 +377,8 @@ export default function MeetPage({ params }: MeetPageProps) {
         </div>
       </main>
 
-      {/* Floating Bottom Media Toolbar */}
       <footer className="h-20 border-t border-white/[0.06] px-4 sm:px-6 flex items-center justify-center bg-black/75 backdrop-blur-xl">
         <div className="flex items-center gap-3 sm:gap-4 p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-xl shadow-2xl">
-          {/* Mic Toggle */}
           <button
             onClick={() => setIsMicOn(!isMicOn)}
             className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
@@ -407,7 +391,6 @@ export default function MeetPage({ params }: MeetPageProps) {
             {isMicOn ? <MicIcon size={17} /> : <MicOffIcon size={17} />}
           </button>
 
-          {/* Camera Toggle */}
           <button
             onClick={() => setIsVideoOn(!isVideoOn)}
             className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
@@ -420,7 +403,6 @@ export default function MeetPage({ params }: MeetPageProps) {
             {isVideoOn ? <VideoIcon size={17} /> : <CameraIcon size={17} />}
           </button>
 
-          {/* Screen Share Toggle */}
           <button
             onClick={() => setIsScreenSharing(!isScreenSharing)}
             className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
@@ -435,7 +417,6 @@ export default function MeetPage({ params }: MeetPageProps) {
 
           <div className="h-6 w-px bg-white/[0.08] mx-1" />
 
-          {/* Leave Button */}
           <button
             onClick={handleLeave}
             disabled={leaving || ending}
@@ -454,7 +435,6 @@ export default function MeetPage({ params }: MeetPageProps) {
             )}
           </button>
 
-          {/* End Room Button (Host Only) */}
           {isHost && (
             <button
               onClick={handleEndRoom}
@@ -477,7 +457,6 @@ export default function MeetPage({ params }: MeetPageProps) {
         </div>
       </footer>
 
-      {/* Host Settings Modal */}
       {settingsOpen && settings && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
           <div className="w-full max-w-md bg-[#0a0a0c] border border-white/[0.12] rounded-2xl p-6 space-y-5 shadow-2xl text-[#fcfdff]">

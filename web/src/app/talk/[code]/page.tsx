@@ -44,19 +44,18 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [settings, setSettings] = useState<RoomSettingsData | null>(null);
   const [participant, setParticipant] = useState<ParticipantData | null>(null);
 
-  // Audio Stage states
   const [isMuted, setIsMuted] = useState(false);
   const [handRaised, setHandRaised] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [leaving, setLeaving] = useState(false);
+  const [ending, setEnding] = useState(false);
 
-  // Redirect unauthenticated users
   useEffect(() => {
     if (!sessionPending && !session) {
       router.replace(`/login?callbackURL=/talk/${code}`);
     }
   }, [session, sessionPending, router, code]);
 
-  // Initial Join Flow
   const joinAudioRoom = useCallback(
     async (codeToJoin: string, enteredPasscode?: string) => {
       setJoining(true);
@@ -117,7 +116,6 @@ export default function TalkPage({ params }: TalkPageProps) {
     };
   }, [session, code]);
 
-  // 15-Second Heartbeat Loop to Maintain Redis Active Presence
   useEffect(() => {
     if (!room || !participant) return;
 
@@ -145,9 +143,6 @@ export default function TalkPage({ params }: TalkPageProps) {
       window.removeEventListener('beforeunload', onBeforeUnload);
     };
   }, [room, participant]);
-
-  const [leaving, setLeaving] = useState(false);
-  const [ending, setEnding] = useState(false);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -190,7 +185,6 @@ export default function TalkPage({ params }: TalkPageProps) {
     );
   }
 
-  // Passcode Prompt Screen
   if (passcodeRequired) {
     return (
       <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4 bg-black">
@@ -249,7 +243,6 @@ export default function TalkPage({ params }: TalkPageProps) {
     );
   }
 
-  // Error Screen
   if (error || !room) {
     return (
       <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4 bg-black">
@@ -277,7 +270,6 @@ export default function TalkPage({ params }: TalkPageProps) {
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] bg-black text-[#fcfdff] select-none ambient-glow-audio">
-      {/* Top Header Bar */}
       <header className="h-14 border-b border-white/[0.06] px-4 sm:px-6 flex items-center justify-between bg-black/60 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <div className="h-7 w-7 rounded-lg bg-[#101012] border border-white/[0.08] text-[#a855f7] flex items-center justify-center">
@@ -307,9 +299,7 @@ export default function TalkPage({ params }: TalkPageProps) {
         </div>
       </header>
 
-      {/* Main Stage Content */}
       <main className="flex-1 p-6 overflow-y-auto max-w-5xl mx-auto w-full space-y-8">
-        {/* SECTION 1: THE SPEAKERS STAGE */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono text-[#888e90] uppercase tracking-wider">
@@ -321,7 +311,6 @@ export default function TalkPage({ params }: TalkPageProps) {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            {/* Host Speaker Card */}
             <div className="relative p-6 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl flex flex-col items-center justify-center text-center space-y-3 shadow-2xl group glow-card">
               <div className="relative">
                 <div className="h-18 w-18 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
@@ -331,11 +320,9 @@ export default function TalkPage({ params }: TalkPageProps) {
                     <span className="font-serif text-2xl text-[#fcfdff]">{room.host?.name?.charAt(0) || 'H'}</span>
                   )}
                 </div>
-                {/* Host Star Badge */}
                 <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#ffc53d] text-black flex items-center justify-center shadow-md">
                   <StarIcon size={11} />
                 </span>
-                {/* Mic Status */}
                 <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center">
                   {!isMuted && isHost ? (
                     <MicIcon size={10} className="text-[#11ff99]" />
@@ -352,7 +339,6 @@ export default function TalkPage({ params }: TalkPageProps) {
               </div>
             </div>
 
-            {/* Current User Card if on Stage and NOT Host */}
             {!isHost && isSpeaker && (
               <div className="relative p-6 bg-[#0a0a0c] border border-white/[0.10] rounded-2xl flex flex-col items-center justify-center text-center space-y-3 shadow-2xl group glow-card">
                 <div className="relative">
@@ -378,7 +364,6 @@ export default function TalkPage({ params }: TalkPageProps) {
           </div>
         </section>
 
-        {/* SECTION 2: AUDIENCE / LISTENERS */}
         <section className="space-y-4 pt-6 border-t border-white/[0.06]">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-[#888e90] uppercase tracking-wider">
@@ -387,7 +372,6 @@ export default function TalkPage({ params }: TalkPageProps) {
           </div>
 
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-            {/* Current User in Audience if not Speaker */}
             {!isSpeaker && (
               <div className="p-4 bg-[#0a0a0c] border border-white/[0.08] rounded-xl flex flex-col items-center justify-center text-center space-y-2">
                 <div className="relative">
@@ -409,7 +393,6 @@ export default function TalkPage({ params }: TalkPageProps) {
               </div>
             )}
 
-            {/* Waiting Audience Placeholder */}
             <div className="p-4 border border-dashed border-white/[0.08] rounded-xl flex flex-col items-center justify-center text-center space-y-1.5 opacity-60">
               <HeadphonesIcon size={18} className="text-[#888e90]" />
               <p className="text-[10px] font-mono text-[#888e90]">Listening Lounge</p>
@@ -418,10 +401,8 @@ export default function TalkPage({ params }: TalkPageProps) {
         </section>
       </main>
 
-      {/* Bottom Floating Stage Control Bar */}
       <footer className="h-20 border-t border-white/[0.06] px-4 sm:px-6 flex items-center justify-center bg-black/75 backdrop-blur-xl">
         <div className="flex items-center gap-3 sm:gap-4 p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-xl shadow-2xl">
-          {/* Mute/Unmute Mic Button (for Speakers) */}
           {isSpeaker ? (
             <button
               onClick={() => setIsMuted(!isMuted)}
@@ -435,7 +416,6 @@ export default function TalkPage({ params }: TalkPageProps) {
               <span>{!isMuted ? 'Mic Live' : 'Unmute'}</span>
             </button>
           ) : (
-            /* Raise Hand Button for Audience */
             <button
               onClick={() => setHandRaised(!handRaised)}
               className={`h-10 px-4 rounded-lg flex items-center gap-2 font-medium text-xs transition-all ${
@@ -451,7 +431,6 @@ export default function TalkPage({ params }: TalkPageProps) {
 
           <div className="h-6 w-px bg-white/[0.08] mx-1" />
 
-          {/* Leave Quietly Button */}
           <button
             onClick={handleLeave}
             disabled={leaving || ending}
@@ -470,7 +449,6 @@ export default function TalkPage({ params }: TalkPageProps) {
             )}
           </button>
 
-          {/* End Room Button (Host Only) */}
           {isHost && (
             <button
               onClick={handleEndRoom}
