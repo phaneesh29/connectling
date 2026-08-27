@@ -15,6 +15,7 @@ import {
   updateSettingsHandler,
   endRoomHandler,
   getUserPresenceHandler,
+  heartbeatHandler,
 } from './room.controller.js';
 
 export const roomRouter = Router();
@@ -42,6 +43,12 @@ roomRouter.post(
 );
 
 roomRouter.post(
+  '/:code/heartbeat',
+  validateRequest({ params: roomCodeParamSchema }),
+  heartbeatHandler
+);
+
+roomRouter.post(
   '/:code/leave',
   validateRequest({ params: roomCodeParamSchema }),
   leaveRoomHandler
@@ -58,3 +65,4 @@ roomRouter.post(
   validateRequest({ params: roomCodeParamSchema }),
   endRoomHandler
 );
+

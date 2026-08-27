@@ -83,3 +83,15 @@ export const getUserPresenceHandler = async (req: Request, res: Response): Promi
     data: result,
   });
 };
+
+export const heartbeatHandler = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.id;
+  const { code } = req.params as RoomCodeParam;
+  const result = await roomService.heartbeat(userId, code);
+
+  res.status(200).json({
+    success: true,
+    data: result,
+  });
+};
+

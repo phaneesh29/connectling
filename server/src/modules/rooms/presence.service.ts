@@ -3,7 +3,7 @@ import { logger } from '../../utils/logger.js';
 
 const USER_PRESENCE_PREFIX = 'user:presence:';
 const ROOM_USERS_PREFIX = 'room:active_users:';
-const DEFAULT_PRESENCE_TTL = 3600 * 6;
+export const PRESENCE_HEARTBEAT_TTL = 45;
 
 export const presenceService = {
   getUserActiveRoom: async (userId: string): Promise<string | null> => {
@@ -15,12 +15,21 @@ export const presenceService = {
     }
   },
 
-  setUserActiveRoom: async (userId: string, roomId: string, ttl = DEFAULT_PRESENCE_TTL): Promise<void> => {
+  setUserActiveRoom: async (userId: string, roomId: string, ttl = PRESENCE_HEARTBEAT_TTL): Promise<void> => {
     try {
       await redis.set(`${USER_PRESENCE_PREFIX}${userId}`, roomId, { ex: ttl });
       await redis.sadd(`${ROOM_USERS_PREFIX}${roomId}`, userId);
     } catch (error) {
       logger.error({ err: error, userId, roomId }, 'Failed to set user active room in Redis');
+    }
+  },
+
+  refreshHeartbeat: async (userId: string, roomId: string, ttl = PRESENCE_HEARTBEAT_TTL): Promise<void> => {
+    try {
+      await redis.set(`${USER_PRESENCE_PREFIX}${userId}`, roomId, { ex: ttl });
+      await redis.sadd(`${ROOM_USERS_PREFIX}${roomId}`, userId);
+    } catch (error) {
+      logger.error({ err: error, userId, roomId }, 'Failed to refresh room heartbeat in Redis');
     }
   },
 

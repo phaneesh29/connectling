@@ -3,7 +3,7 @@ import { eq, and, count } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { room, roomSettings, roomUser, type Room, type RoomSettings } from '../../db/room-schema.js';
 import { user } from '../../db/auth-schema.js';
-import { presenceService } from './presence.service.js';
+import { presenceService, PRESENCE_HEARTBEAT_TTL } from './presence.service.js';
 import { generateRoomCode, normalizeRoomCode } from './room.utils.js';
 import {
   BadRequestError,
@@ -93,8 +93,7 @@ export const roomService = {
       isHandRaised: false,
     });
 
-    const ttlSeconds = Math.max(60, Math.ceil((expiresAt.getTime() - Date.now()) / 1000));
-    await presenceService.setUserActiveRoom(userId, roomId, ttlSeconds);
+    await presenceService.setUserActiveRoom(userId, roomId, PRESENCE_HEARTBEAT_TTL);
 
     return {
       room: createdRoom,
@@ -229,8 +228,7 @@ export const roomService = {
       participant = created;
     }
 
-    const ttlSeconds = Math.max(60, Math.ceil((foundRoom.expiresAt.getTime() - Date.now()) / 1000));
-    await presenceService.setUserActiveRoom(userId, foundRoom.id, ttlSeconds);
+    await presenceService.setUserActiveRoom(userId, foundRoom.id, PRESENCE_HEARTBEAT_TTL);
 
     return {
       room: foundRoom,
@@ -354,6 +352,34 @@ export const roomService = {
     return {
       isActive: true,
       activeRoom: foundRoom,
+    };
+  },
+
+  heartbeat: async (userId: string, code: string) => {
+    const normalized = normalizeRoomCode(code);
+    const foundRoom = await db.query.room.findFirst({
+      where: eq(room.code, normalized),
+      columns: {
+        id: true,
+        status: true,
+        expiresAt: true,
+      },
+    });
+
+    if (!foundRoom) {
+      throw new NotFoundError('Room not found');
+    }
+
+    if (foundRoom.status !== 'active' || foundRoom.expiresAt < new Date()) {
+      await presenceService.clearUserActiveRoom(userId, foundRoom.id);
+      throw new BadRequestError('This room has ended or expired.');
+    }
+
+    await presenceService.refreshHeartbeat(userId, foundRoom.id, PRESENCE_HEARTBEAT_TTL);
+
+    return {
+      success: true,
+      ttl: PRESENCE_HEARTBEAT_TTL,
     };
   },
 };
