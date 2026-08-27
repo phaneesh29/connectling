@@ -52,10 +52,24 @@ export default function ProfilePage() {
   }, [session]);
 
   useEffect(() => {
+    let ignore = false;
     if (session) {
-      fetchSessions();
+      listSessions()
+        .then((res) => {
+          if (!ignore && res.data) {
+            setSessions(res.data as unknown as SessionItem[]);
+          }
+        })
+        .catch(() => {
+          if (!ignore) {
+            setMessage({ type: 'error', text: 'Failed to load sessions' });
+          }
+        });
     }
-  }, [session, fetchSessions]);
+    return () => {
+      ignore = true;
+    };
+  }, [session]);
 
   const handleRevokeSession = async (token: string) => {
     setActionLoading(token);
