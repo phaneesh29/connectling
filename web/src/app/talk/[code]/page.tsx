@@ -10,6 +10,19 @@ import {
   type RoomSettingsData,
   type ParticipantData,
 } from '@/lib/rooms-api';
+import {
+  MicIcon,
+  MicOffIcon,
+  AudioWaveformIcon,
+  HeadphonesIcon,
+  HandCoinsIcon,
+  CopyIcon,
+  CheckIcon,
+  LockIcon,
+  LogOutIcon,
+  PhoneCallIcon,
+  StarIcon,
+} from '@animateicons/react/lucide';
 
 interface TalkPageProps {
   params: Promise<{ code: string }>;
@@ -32,7 +45,7 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [participant, setParticipant] = useState<ParticipantData | null>(null);
 
   // Audio Stage states
-  const [isMuted, setIsMuted] = useState(true);
+  const [isMuted, setIsMuted] = useState(false);
   const [handRaised, setHandRaised] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -148,10 +161,10 @@ export default function TalkPage({ params }: TalkPageProps) {
 
   if (sessionPending || loading) {
     return (
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-black">
         <div className="text-center space-y-3">
-          <div className="animate-spin h-8 w-8 border-2 border-purple-600 border-t-transparent rounded-full mx-auto" />
-          <p className="text-xs text-zinc-500 font-medium">Entering Audio Stage...</p>
+          <div className="animate-spin h-6 w-6 border border-white/20 border-t-[#fcfdff] rounded-full mx-auto" />
+          <p className="text-xs font-mono text-[#888e90]">Connecting to Live Audio Stage...</p>
         </div>
       </div>
     );
@@ -160,14 +173,15 @@ export default function TalkPage({ params }: TalkPageProps) {
   // Passcode Prompt Screen
   if (passcodeRequired) {
     return (
-      <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-        <div className="w-full max-w-md p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl space-y-5 text-center">
-          <div className="h-14 w-14 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto text-2xl">
-            🔒
+      <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4 bg-black">
+        <div className="w-full max-w-md p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl space-y-6 text-center shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-[#a855f7] opacity-10 blur-3xl pointer-events-none" />
+          <div className="h-12 w-12 rounded-xl bg-[#101012] border border-white/[0.10] text-[#ffc53d] flex items-center justify-center mx-auto">
+            <LockIcon size={22} />
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">Private Audio Lounge</h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+          <div className="space-y-1">
+            <h2 className="font-serif-headline text-xl font-normal text-[#fcfdff]">Private Audio Lounge</h2>
+            <p className="text-xs text-[#888e90]">
               Enter the passcode provided by the stage host.
             </p>
           </div>
@@ -177,7 +191,7 @@ export default function TalkPage({ params }: TalkPageProps) {
               e.preventDefault();
               void joinAudioRoom(code, passcode);
             }}
-            className="space-y-4 pt-2"
+            className="space-y-4"
           >
             <input
               type="text"
@@ -185,21 +199,21 @@ export default function TalkPage({ params }: TalkPageProps) {
               placeholder="Enter passcode"
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-950 text-center font-mono tracking-widest text-sm focus:outline-none focus:ring-2 focus:ring-purple-600"
+              className="w-full px-4 py-3 rounded-lg border border-white/[0.12] bg-[#06060a] text-center font-mono tracking-widest text-sm text-[#fcfdff] focus:outline-none focus:border-white/40"
             />
             <div className="flex gap-2">
               <Link
                 href="/"
-                className="flex-1 py-2.5 px-4 text-xs font-semibold border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-colors text-zinc-700 dark:text-zinc-300"
+                className="flex-1 py-2.5 px-4 text-xs font-medium bg-[#101012] border border-white/[0.08] hover:bg-[#18181c] rounded-lg transition-colors text-[#888e90] hover:text-[#fcfdff]"
               >
                 Back
               </Link>
               <button
                 type="submit"
                 disabled={joining || !passcode.trim()}
-                className="flex-1 py-2.5 px-4 text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-colors disabled:opacity-50"
+                className="flex-1 py-2.5 px-4 text-xs font-medium bg-[#fcfdff] hover:bg-[#f1f7fe] text-black rounded-lg transition-all shadow-[0_0_20px_rgba(252,253,255,0.15)] disabled:opacity-50"
               >
-                {joining ? 'Checking...' : 'Enter Lounge'}
+                {joining ? 'Authenticating...' : 'Enter Lounge'}
               </button>
             </div>
           </form>
@@ -211,17 +225,17 @@ export default function TalkPage({ params }: TalkPageProps) {
   // Error Screen
   if (error || !room) {
     return (
-      <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4">
-        <div className="w-full max-w-md p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl shadow-xl space-y-4 text-center">
-          <div className="h-14 w-14 rounded-2xl bg-red-500/10 text-red-600 flex items-center justify-center mx-auto text-2xl">
-            🎙️ 🚫
+      <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4 bg-black">
+        <div className="w-full max-w-md p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl space-y-4 text-center">
+          <div className="h-12 w-12 rounded-xl bg-[#ff2047]/10 border border-[#ff2047]/20 text-[#ff2047] flex items-center justify-center mx-auto">
+            <MicOffIcon size={22} />
           </div>
-          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">Lounge Unavailable</h2>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">{error || 'This audio room has ended or expired.'}</p>
+          <h2 className="font-serif-headline text-xl font-normal text-[#fcfdff]">Lounge Unavailable</h2>
+          <p className="text-xs text-[#888e90]">{error || 'This audio room has ended or expired.'}</p>
           <div className="pt-2">
             <Link
               href="/"
-              className="inline-block py-2.5 px-6 text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 rounded-xl transition-colors shadow-sm"
+              className="inline-block py-2 px-5 text-xs font-medium bg-[#fcfdff] hover:bg-[#f1f7fe] text-black rounded-lg transition-all shadow-[0_0_20px_rgba(252,253,255,0.15)]"
             >
               Return to Dashboard
             </Link>
@@ -235,33 +249,33 @@ export default function TalkPage({ params }: TalkPageProps) {
   const isSpeaker = isHost || participant?.role === 'speaker' || settings?.micForAll;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-zinc-950 text-zinc-100 select-none">
+    <div className="flex flex-col h-[calc(100vh-4rem)] bg-black text-[#fcfdff] select-none ambient-glow-audio">
       {/* Top Header Bar */}
-      <header className="h-16 border-b border-zinc-800/80 px-4 sm:px-6 flex items-center justify-between bg-zinc-900/60 backdrop-blur-md">
+      <header className="h-14 border-b border-white/[0.06] px-4 sm:px-6 flex items-center justify-between bg-black/60 backdrop-blur-xl">
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center text-base">
-            🎙️
+          <div className="h-7 w-7 rounded-lg bg-[#101012] border border-white/[0.08] text-[#a855f7] flex items-center justify-center">
+            <AudioWaveformIcon size={14} />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-sm font-bold tracking-tight text-zinc-100 truncate max-w-[200px] sm:max-w-md">
+              <h1 className="font-serif-headline text-sm font-normal text-[#fcfdff] truncate max-w-[200px] sm:max-w-md tracking-tight">
                 {room.title}
               </h1>
-              <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded-full uppercase tracking-wider">
-                LIVE STAGE
+              <span className="text-[9px] font-mono px-2 py-0.5 bg-[#101012] text-[#a855f7] border border-white/[0.08] rounded-full uppercase tracking-wider font-semibold">
+                STAGE LIVE
               </span>
             </div>
-            <p className="text-[11px] text-zinc-400 font-mono">Code: {room.code}</p>
+            <p className="text-[11px] text-[#888e90] font-mono">ID: {room.code}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-750 text-xs font-medium text-zinc-200 transition-colors border border-zinc-700/60"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08]"
           >
-            <span>{copied ? '✓' : '🔗'}</span>
-            <span className="hidden sm:inline">{copied ? 'Copied' : 'Share Stage'}</span>
+            {copied ? <CheckIcon size={13} className="text-[#11ff99]" /> : <CopyIcon size={13} />}
+            <span className="hidden sm:inline font-mono text-[11px]">{copied ? 'Copied' : 'Share Stage'}</span>
           </button>
         </div>
       </header>
@@ -270,36 +284,42 @@ export default function TalkPage({ params }: TalkPageProps) {
       <main className="flex-1 p-6 overflow-y-auto max-w-5xl mx-auto w-full space-y-8">
         {/* SECTION 1: THE SPEAKERS STAGE */}
         <section className="space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-              Speakers & Stage
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-mono text-[#888e90] uppercase tracking-wider">
+              Podium & Active Speakers
             </span>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 font-semibold">
-              {isHost ? '1 on stage' : 'Stage Active'}
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#101012] border border-white/[0.06] text-[#888e90]">
+              {isHost ? '1 on podium' : 'Active Stage'}
             </span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {/* Host Speaker Card */}
-            <div className="relative p-5 bg-gradient-to-b from-zinc-900 to-zinc-925 border-2 border-purple-500/40 rounded-3xl flex flex-col items-center justify-center text-center space-y-3 shadow-lg shadow-purple-900/10 group">
+            <div className="relative p-6 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl flex flex-col items-center justify-center text-center space-y-3 shadow-2xl group glow-card">
               <div className="relative">
-                <div className="h-20 w-20 rounded-full bg-purple-600/20 border-2 border-purple-500 flex items-center justify-center text-3xl overflow-hidden shadow-inner">
+                <div className="h-18 w-18 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
                   {room.host?.image ? (
                     <img src={room.host.image} alt={room.host.name} className="h-full w-full object-cover" />
                   ) : (
-                    <span>{room.host?.name?.charAt(0) || 'H'}</span>
+                    <span className="font-serif text-2xl text-[#fcfdff]">{room.host?.name?.charAt(0) || 'H'}</span>
                   )}
                 </div>
-                {/* Host Crown */}
-                <span className="absolute -top-1 -right-1 text-sm">👑</span>
+                {/* Host Star Badge */}
+                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#ffc53d] text-black flex items-center justify-center shadow-md">
+                  <StarIcon size={11} />
+                </span>
                 {/* Mic Status */}
-                <span className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center text-xs">
-                  {!isMuted && isHost ? '🎙️' : '🔇'}
+                <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center">
+                  {!isMuted && isHost ? (
+                    <MicIcon size={10} className="text-[#11ff99]" />
+                  ) : (
+                    <MicOffIcon size={10} className="text-[#888e90]" />
+                  )}
                 </span>
               </div>
               <div className="space-y-0.5">
-                <p className="text-xs font-bold text-zinc-100 truncate max-w-[120px]">{room.host?.name}</p>
-                <span className="text-[10px] text-purple-400 font-semibold uppercase tracking-wider block">
+                <p className="text-xs font-medium text-[#fcfdff] truncate max-w-[120px]">{room.host?.name}</p>
+                <span className="text-[10px] font-mono text-[#a855f7] uppercase tracking-wider block">
                   Stage Host
                 </span>
               </div>
@@ -307,22 +327,22 @@ export default function TalkPage({ params }: TalkPageProps) {
 
             {/* Current User Card if on Stage and NOT Host */}
             {!isHost && isSpeaker && (
-              <div className="relative p-5 bg-gradient-to-b from-zinc-900 to-zinc-925 border-2 border-zinc-700 rounded-3xl flex flex-col items-center justify-center text-center space-y-3 shadow-lg group">
+              <div className="relative p-6 bg-[#0a0a0c] border border-white/[0.10] rounded-2xl flex flex-col items-center justify-center text-center space-y-3 shadow-2xl group glow-card">
                 <div className="relative">
-                  <div className="h-20 w-20 rounded-full bg-blue-600/20 border-2 border-blue-500 flex items-center justify-center text-3xl overflow-hidden">
+                  <div className="h-18 w-18 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden">
                     {session?.user.image ? (
                       <img src={session.user.image} alt={session.user.name} className="h-full w-full object-cover" />
                     ) : (
-                      <span>{session?.user.name?.charAt(0) || 'U'}</span>
+                      <span className="font-serif text-2xl text-[#fcfdff]">{session?.user.name?.charAt(0) || 'U'}</span>
                     )}
                   </div>
-                  <span className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center text-xs">
-                    {!isMuted ? '🎙️' : '🔇'}
+                  <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center">
+                    {!isMuted ? <MicIcon size={10} className="text-[#11ff99]" /> : <MicOffIcon size={10} className="text-[#888e90]" />}
                   </span>
                 </div>
                 <div className="space-y-0.5">
-                  <p className="text-xs font-bold text-zinc-100 truncate max-w-[120px]">{session?.user.name} (You)</p>
-                  <span className="text-[10px] text-blue-400 font-semibold uppercase tracking-wider block">
+                  <p className="text-xs font-medium text-[#fcfdff] truncate max-w-[120px]">{session?.user.name} (You)</p>
+                  <span className="text-[10px] font-mono text-[#3b9eff] uppercase tracking-wider block">
                     Speaker
                   </span>
                 </div>
@@ -332,9 +352,9 @@ export default function TalkPage({ params }: TalkPageProps) {
         </section>
 
         {/* SECTION 2: AUDIENCE / LISTENERS */}
-        <section className="space-y-4 pt-4 border-t border-zinc-900">
+        <section className="space-y-4 pt-6 border-t border-white/[0.06]">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-bold text-zinc-500 uppercase tracking-wider">
+            <span className="text-xs font-mono text-[#888e90] uppercase tracking-wider">
               Audience & Listeners
             </span>
           </div>
@@ -342,81 +362,85 @@ export default function TalkPage({ params }: TalkPageProps) {
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
             {/* Current User in Audience if not Speaker */}
             {!isSpeaker && (
-              <div className="p-4 bg-zinc-900/60 border border-zinc-800 rounded-2xl flex flex-col items-center justify-center text-center space-y-2">
+              <div className="p-4 bg-[#0a0a0c] border border-white/[0.08] rounded-xl flex flex-col items-center justify-center text-center space-y-2">
                 <div className="relative">
-                  <div className="h-12 w-12 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xl overflow-hidden">
+                  <div className="h-12 w-12 rounded-full bg-[#101012] border border-white/10 flex items-center justify-center overflow-hidden">
                     {session?.user.image ? (
                       <img src={session.user.image} alt={session.user.name} className="h-full w-full object-cover" />
                     ) : (
-                      <span>{session?.user.name?.charAt(0) || 'U'}</span>
+                      <span className="font-serif text-sm text-[#fcfdff]">{session?.user.name?.charAt(0) || 'U'}</span>
                     )}
                   </div>
                   {handRaised && (
-                    <span className="absolute -top-1 -right-1 text-xs animate-bounce">✋</span>
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#ffc53d] text-black flex items-center justify-center animate-bounce shadow-md">
+                      <HandCoinsIcon size={9} />
+                    </span>
                   )}
                 </div>
-                <p className="text-[11px] font-medium text-zinc-300 truncate max-w-[90px]">{session?.user.name}</p>
-                <span className="text-[9px] text-zinc-500">Listener</span>
+                <p className="text-[11px] font-medium text-[#fcfdff] truncate max-w-[90px]">{session?.user.name}</p>
+                <span className="text-[9px] font-mono text-[#888e90]">Listener</span>
               </div>
             )}
 
             {/* Waiting Audience Placeholder */}
-            <div className="p-4 border border-dashed border-zinc-800 rounded-2xl flex flex-col items-center justify-center text-center space-y-1.5 opacity-60">
-              <span className="text-xl">🎧</span>
-              <p className="text-[11px] text-zinc-400 font-medium">Listening Room</p>
+            <div className="p-4 border border-dashed border-white/[0.08] rounded-xl flex flex-col items-center justify-center text-center space-y-1.5 opacity-60">
+              <HeadphonesIcon size={18} className="text-[#888e90]" />
+              <p className="text-[10px] font-mono text-[#888e90]">Listening Lounge</p>
             </div>
           </div>
         </section>
       </main>
 
       {/* Bottom Floating Stage Control Bar */}
-      <footer className="h-20 border-t border-zinc-800/80 px-4 sm:px-6 flex items-center justify-center bg-zinc-900/90 backdrop-blur-lg">
-        <div className="flex items-center gap-3 sm:gap-4">
+      <footer className="h-20 border-t border-white/[0.06] px-4 sm:px-6 flex items-center justify-center bg-black/75 backdrop-blur-xl">
+        <div className="flex items-center gap-3 sm:gap-4 p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-xl shadow-2xl">
           {/* Mute/Unmute Mic Button (for Speakers) */}
           {isSpeaker ? (
             <button
               onClick={() => setIsMuted(!isMuted)}
-              className={`h-12 px-5 rounded-2xl flex items-center gap-2 font-semibold text-xs transition-all shadow-md active:scale-95 ${
+              className={`h-10 px-4 rounded-lg flex items-center gap-2 font-medium text-xs transition-all ${
                 !isMuted
-                  ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                  : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700'
+                  ? 'bg-[#a855f7] text-white shadow-[0_0_16px_rgba(168,85,247,0.4)]'
+                  : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
               }`}
             >
-              <span>{!isMuted ? '🎙️' : '🔇'}</span>
+              {!isMuted ? <MicIcon size={14} /> : <MicOffIcon size={14} />}
               <span>{!isMuted ? 'Mic Live' : 'Unmute'}</span>
             </button>
           ) : (
             /* Raise Hand Button for Audience */
             <button
               onClick={() => setHandRaised(!handRaised)}
-              className={`h-12 px-5 rounded-2xl flex items-center gap-2 font-semibold text-xs transition-all shadow-md active:scale-95 ${
+              className={`h-10 px-4 rounded-lg flex items-center gap-2 font-medium text-xs transition-all ${
                 handRaised
-                  ? 'bg-amber-600 hover:bg-amber-700 text-white'
-                  : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700'
+                  ? 'bg-[#ffc53d] text-black shadow-[0_0_16px_rgba(255,197,61,0.4)]'
+                  : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
               }`}
             >
-              <span>✋</span>
-              <span>{handRaised ? 'Hand Raised' : 'Request to Speak'}</span>
+              <HandCoinsIcon size={14} />
+              <span>{handRaised ? 'Hand Raised' : 'Request Mic'}</span>
             </button>
           )}
 
-          <div className="h-8 w-px bg-zinc-800 mx-1" />
+          <div className="h-6 w-px bg-white/[0.08] mx-1" />
 
           {/* Leave Quietly Button */}
           <button
             onClick={handleLeave}
-            className="px-5 py-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold text-xs transition-all border border-zinc-700 active:scale-95"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#101012] hover:bg-[#18181c] text-[#888e90] hover:text-[#fcfdff] font-medium text-xs transition-all border border-white/[0.08]"
           >
-            ✌️ Leave Quietly
+            <LogOutIcon size={13} />
+            <span>Leave Quietly</span>
           </button>
 
           {/* End Room Button (Host Only) */}
           {isHost && (
             <button
               onClick={handleEndRoom}
-              className="px-5 py-3 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-semibold text-xs transition-all shadow-md shadow-red-600/20 active:scale-95"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#ff2047] hover:bg-[#ff2047]/90 text-white font-medium text-xs transition-all shadow-[0_0_16px_rgba(255,32,71,0.3)]"
             >
-              End Stage
+              <PhoneCallIcon size={13} />
+              <span>End Stage</span>
             </button>
           )}
         </div>

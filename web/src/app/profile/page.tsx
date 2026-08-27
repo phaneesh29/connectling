@@ -10,6 +10,7 @@ import {
   revokeSessions,
   revokeOtherSessions,
 } from '@/lib/auth-client';
+import { UsersIcon, ShieldCheckIcon, LogOutIcon } from '@animateicons/react/lucide';
 
 interface SessionItem {
   id: string;
@@ -133,8 +134,8 @@ export default function ProfilePage() {
 
   if (isPending || !session) {
     return (
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
-        <div className="animate-spin h-6 w-6 border-2 border-zinc-900 dark:border-zinc-100 border-t-transparent rounded-full" />
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-black">
+        <div className="animate-spin h-5 w-5 border border-white/20 border-t-[#fcfdff] rounded-full" />
       </div>
     );
   }
@@ -143,22 +144,26 @@ export default function ProfilePage() {
   const currentSessionToken = session.session?.token;
 
   return (
-    <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-8">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Profile & Security
+    <main className="max-w-4xl mx-auto px-4 sm:px-6 py-12 space-y-8 bg-black text-[#fcfdff] ambient-glow-meet">
+      <div className="space-y-1">
+        <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#101012] border border-white/[0.08] text-[11px] text-[#888e90] mb-2 font-mono">
+          <ShieldCheckIcon size={13} className="text-[#11ff99]" />
+          <span>Account & Security</span>
+        </div>
+        <h1 className="font-serif-headline text-3xl sm:text-4xl font-normal text-[#fcfdff] tracking-tight">
+          User Settings
         </h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-          Manage your account profile, credentials, and active device sessions
+        <p className="text-xs text-[#888e90]">
+          Manage your credentials, OAuth authentications, and active multi-device sessions.
         </p>
       </div>
 
       {message && (
         <div
-          className={`p-4 rounded-xl text-sm font-medium border ${
+          className={`p-3.5 rounded-xl text-xs font-mono border ${
             message.type === 'success'
-              ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900'
-              : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900'
+              ? 'bg-[#11ff99]/10 text-[#11ff99] border-[#11ff99]/30'
+              : 'bg-[#ff2047]/10 text-[#ff2047] border-[#ff2047]/30'
           }`}
         >
           {message.text}
@@ -166,53 +171,53 @@ export default function ProfilePage() {
       )}
 
       {/* Profile Card */}
-      <div className="p-6 sm:p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-6">
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 pb-6 border-b border-zinc-200 dark:border-zinc-800">
+      <div className="glow-card p-6 sm:p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-xl space-y-6">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 pb-6 border-b border-white/[0.06]">
           {user.image ? (
             <img
               src={user.image}
               alt={user.name || 'User avatar'}
-              className="w-20 h-20 rounded-full border-2 border-zinc-200 dark:border-zinc-700 object-cover shadow-sm"
+              className="w-16 h-16 rounded-full border border-white/20 object-cover shadow-2xl"
             />
           ) : (
-            <div className="w-20 h-20 rounded-full bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center text-2xl font-bold text-zinc-600 dark:text-zinc-300">
+            <div className="w-16 h-16 rounded-full bg-[#101012] border border-white/10 flex items-center justify-center font-serif text-2xl text-[#fcfdff]">
               {user.name?.charAt(0) || 'U'}
             </div>
           )}
 
           <div className="space-y-1 text-center sm:text-left">
-            <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">{user.name}</h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">{user.email}</p>
-            <div className="pt-1">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300">
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            <h2 className="font-serif-headline text-xl font-normal text-[#fcfdff]">{user.name}</h2>
+            <p className="text-xs text-[#888e90] font-mono">{user.email}</p>
+            <div className="pt-1.5">
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-[#101012] border border-white/[0.08] text-[#11ff99]">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#11ff99] shadow-[0_0_6px_#11ff99]" />
                 Google OAuth Verified
               </span>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          <div className="p-3.5 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl space-y-1">
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">User ID</span>
-            <p className="font-mono text-xs text-zinc-900 dark:text-zinc-200 truncate">{user.id}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+          <div className="p-3.5 bg-[#06060a] border border-white/[0.08] rounded-lg space-y-1">
+            <span className="text-[10px] font-mono text-[#888e90] uppercase tracking-wider">User ID</span>
+            <p className="font-mono text-xs text-[#fcfdff] truncate">{user.id}</p>
           </div>
 
-          <div className="p-3.5 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl space-y-1">
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">Auth Provider</span>
-            <p className="font-medium text-xs text-zinc-900 dark:text-zinc-200">Google OAuth</p>
+          <div className="p-3.5 bg-[#06060a] border border-white/[0.08] rounded-lg space-y-1">
+            <span className="text-[10px] font-mono text-[#888e90] uppercase tracking-wider">Auth Provider</span>
+            <p className="font-medium text-xs text-[#fcfdff]">Google OAuth</p>
           </div>
 
-          <div className="p-3.5 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl space-y-1">
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">Email Status</span>
-            <p className="font-medium text-xs text-emerald-600 dark:text-emerald-400">
+          <div className="p-3.5 bg-[#06060a] border border-white/[0.08] rounded-lg space-y-1">
+            <span className="text-[10px] font-mono text-[#888e90] uppercase tracking-wider">Email Verified</span>
+            <p className="font-medium text-xs text-[#11ff99]">
               {user.emailVerified ? 'Verified' : 'Unverified'}
             </p>
           </div>
 
-          <div className="p-3.5 bg-zinc-50 dark:bg-zinc-800/60 rounded-xl space-y-1">
-            <span className="text-xs text-zinc-500 dark:text-zinc-400">Account Created</span>
-            <p className="text-xs text-zinc-900 dark:text-zinc-200">
+          <div className="p-3.5 bg-[#06060a] border border-white/[0.08] rounded-lg space-y-1">
+            <span className="text-[10px] font-mono text-[#888e90] uppercase tracking-wider">Member Since</span>
+            <p className="text-xs text-[#fcfdff] font-mono">
               {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
             </p>
           </div>
@@ -220,13 +225,18 @@ export default function ProfilePage() {
       </div>
 
       {/* Active Sessions Management Card */}
-      <div className="p-6 sm:p-8 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-200 dark:border-zinc-800">
-          <div>
-            <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">Active Sessions</h2>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Devices and browsers currently logged into your account
-            </p>
+      <div className="glow-card p-6 sm:p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-white/[0.06]">
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-lg bg-[#101012] border border-white/[0.08] text-[#fcfdff] flex items-center justify-center">
+              <UsersIcon size={16} />
+            </div>
+            <div>
+              <h2 className="font-serif-headline text-base font-normal text-[#fcfdff]">Active Sessions</h2>
+              <p className="text-xs text-[#888e90]">
+                Devices and browsers authenticated to your account
+              </p>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -234,7 +244,7 @@ export default function ProfilePage() {
               <button
                 onClick={handleRevokeOtherSessions}
                 disabled={actionLoading !== null}
-                className="px-3 py-1.5 text-xs font-medium border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50"
+                className="px-3 py-1.5 text-xs font-medium bg-[#101012] hover:bg-[#18181c] border border-white/[0.08] text-[#888e90] hover:text-[#fcfdff] rounded-lg transition-colors disabled:opacity-50"
               >
                 {actionLoading === 'other' ? 'Revoking...' : 'Revoke Other Devices'}
               </button>
@@ -242,47 +252,46 @@ export default function ProfilePage() {
             <button
               onClick={handleRevokeAllSessions}
               disabled={actionLoading !== null}
-              className="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors disabled:opacity-50"
+              className="px-3 py-1.5 text-xs font-medium text-[#ff2047] bg-[#ff2047]/10 border border-[#ff2047]/20 hover:bg-[#ff2047]/20 rounded-lg transition-colors disabled:opacity-50"
             >
-              {actionLoading === 'all' ? 'Revoking All...' : 'Revoke All Sessions'}
+              {actionLoading === 'all' ? 'Revoking...' : 'Revoke All'}
             </button>
           </div>
         </div>
 
         {loadingSessions ? (
           <div className="flex justify-center py-8">
-            <div className="animate-spin h-5 w-5 border-2 border-zinc-900 dark:border-zinc-100 border-t-transparent rounded-full" />
+            <div className="animate-spin h-5 w-5 border border-white/20 border-t-[#fcfdff] rounded-full" />
           </div>
         ) : sessions.length === 0 ? (
-          <p className="text-sm text-zinc-500 py-4 text-center">No active sessions found.</p>
+          <p className="text-xs text-[#888e90] py-4 text-center font-mono">No active sessions found.</p>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {sessions.map((item) => {
               const isCurrent = item.token === currentSessionToken;
               return (
                 <div
                   key={item.id}
-                  className={`p-4 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${
+                  className={`p-3.5 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-colors ${
                     isCurrent
-                      ? 'bg-zinc-50/80 dark:bg-zinc-800/40 border-zinc-300 dark:border-zinc-700'
-                      : 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'
+                      ? 'bg-[#101012] border-white/[0.16]'
+                      : 'bg-[#06060a] border-white/[0.06]'
                   }`}
                 >
-                  <div className="space-y-1">
+                  <div className="space-y-0.5">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                      <p className="text-xs font-medium text-[#fcfdff]">
                         {item.userAgent ? item.userAgent.split(' ')[0] : 'Web Browser'}
                       </p>
                       {isCurrent && (
-                        <span className="px-2 py-0.5 text-[10px] font-semibold bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-full">
+                        <span className="px-2 py-0.5 text-[9px] font-mono uppercase bg-[#11ff99]/10 text-[#11ff99] border border-[#11ff99]/30 rounded-full font-semibold">
                           Current Device
                         </span>
                       )}
                     </div>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    <p className="text-[11px] font-mono text-[#888e90]">
                       IP: {item.ipAddress || '127.0.0.1'} &bull; Created:{' '}
-                      {new Date(item.createdAt).toLocaleDateString()} at{' '}
-                      {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(item.createdAt).toLocaleDateString()}
                     </p>
                   </div>
 
@@ -290,7 +299,7 @@ export default function ProfilePage() {
                     <button
                       onClick={() => handleRevokeSession(item.token)}
                       disabled={actionLoading === item.token}
-                      className="text-xs font-medium px-3 py-1.5 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 border border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-colors self-start sm:self-auto disabled:opacity-50"
+                      className="text-xs font-medium px-2.5 py-1 text-[#ff2047] hover:bg-[#ff2047]/10 border border-[#ff2047]/20 rounded-lg transition-colors self-start sm:self-auto disabled:opacity-50"
                     >
                       {actionLoading === item.token ? 'Revoking...' : 'Revoke'}
                     </button>
@@ -301,13 +310,14 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className="pt-4 border-t border-zinc-200 dark:border-zinc-800 flex justify-end">
+        <div className="pt-4 border-t border-white/[0.06] flex justify-end">
           <button
             onClick={handleSignOut}
             disabled={actionLoading === 'signout'}
-            className="px-5 py-2.5 text-sm font-medium bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 text-white rounded-lg transition-colors shadow-sm disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium bg-[#101012] hover:bg-[#18181c] border border-white/[0.08] hover:border-white/[0.2] text-[#fcfdff] rounded-lg transition-colors disabled:opacity-50"
           >
-            {actionLoading === 'signout' ? 'Signing Out...' : 'Sign Out Current Session'}
+            <LogOutIcon size={13} />
+            <span>{actionLoading === 'signout' ? 'Signing Out...' : 'Sign Out Current Session'}</span>
           </button>
         </div>
       </div>

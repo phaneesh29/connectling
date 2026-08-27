@@ -6,6 +6,20 @@ import Link from 'next/link';
 import { useSession } from '@/lib/auth-client';
 import { roomsApi, type RoomData } from '@/lib/rooms-api';
 import { CreateRoomModal } from '@/components/create-room-modal';
+import {
+  VideoIcon,
+  AudioWaveformIcon,
+  MonitorIcon,
+  UsersIcon,
+  LockIcon,
+  MicIcon,
+  SparklesIcon,
+  ArrowRightIcon,
+  ZapIcon,
+  HandCoinsIcon,
+  CheckIcon,
+  CopyIcon,
+} from '@animateicons/react/lucide';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -18,10 +32,13 @@ export default function DashboardPage() {
   const [modalType, setModalType] = useState<'meet' | 'audio'>('meet');
 
   const [codeInput, setCodeInput] = useState('');
-
   const [activeRoom, setActiveRoom] = useState<RoomData | null>(null);
   const [checkingPresence, setCheckingPresence] = useState(true);
   const [leavingActive, setLeavingActive] = useState(false);
+
+  // Code window tabs state
+  const [activeCodeTab, setActiveCodeTab] = useState<'quickstart' | 'webrtc' | 'presence'>('quickstart');
+  const [copiedCode, setCopiedCode] = useState(false);
 
   useEffect(() => {
     if (!isPending && !session) {
@@ -110,261 +127,374 @@ export default function DashboardPage() {
     setModalOpen(true);
   };
 
+  const codeSnippets = {
+    quickstart: `// 1. Create a secure space via Connectling API
+const space = await connectling.rooms.create({
+  type: "${activeMode}",
+  title: "${activeMode === 'meet' ? 'Product Design Review' : 'Weekly Podcast Lounge'}",
+  settings: {
+    micForAll: true,
+    maxCapacity: ${activeMode === 'meet' ? 4 : 10},
+    durationHours: 24,
+  }
+});
+
+// 2. Direct browser routing
+window.location.href = \`/\${space.type === 'meet' ? 'meet' : 'talk'}/\${space.code}\`;`,
+    webrtc: `// Zero-lag WebRTC peer mesh with adaptive bitrate
+const mediaSession = await connectling.media.connect({
+  roomCode: "${activeMode === 'meet' ? '7au-qn5t-p8e' : 'tlk-92fa-10b'}",
+  tracks: {
+    audio: true,
+    video: ${activeMode === 'meet' ? 'true' : 'false'},
+    screenShare: ${activeMode === 'meet' ? 'true' : 'false'}
+  }
+});`,
+    presence: `// Real-time Upstash Redis heartbeats (15s ping / 45s TTL)
+setInterval(async () => {
+  await fetch('/api/v1/rooms/active-call/heartbeat', {
+    method: 'POST',
+    credentials: 'include'
+  });
+}, 15000);`,
+  };
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(codeSnippets[activeCodeTab]);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2000);
+  };
+
   if (isPending || !session) {
     return (
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center">
-        <div className="animate-spin h-6 w-6 border-2 border-zinc-900 dark:border-zinc-100 border-t-transparent rounded-full" />
+      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-black">
+        <div className="animate-spin h-5 w-5 border border-white/20 border-t-[#fcfdff] rounded-full" />
       </div>
     );
   }
 
   return (
-    <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-      {/* Active Presence Banner */}
-      {!checkingPresence && activeRoom && (
-        <div className="p-4 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-300 dark:border-amber-700/50 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm animate-in fade-in">
-          <div className="flex items-center gap-3">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-            </span>
-            <div>
-              <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">
-                You are in an Active Call
-              </p>
-              <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                {activeRoom.title}{' '}
-                <span className="text-zinc-500 font-normal">
-                  ({activeRoom.type === 'meet' ? 'Video Meeting' : 'Audio Room'})
-                </span>
-              </h3>
+    <div className={`min-h-[calc(100vh-4rem)] bg-black text-[#fcfdff] transition-all duration-700 ${
+      activeMode === 'meet' ? 'ambient-glow-meet' : 'ambient-glow-audio'
+    }`}>
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-12 sm:py-16 space-y-12">
+        {/* Active Presence Banner */}
+        {!checkingPresence && activeRoom && (
+          <div className="p-4 sm:p-5 bg-[#0a0a0c] border border-amber-500/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden animate-in fade-in">
+            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/[0.04] to-transparent pointer-events-none" />
+            <div className="flex items-center gap-3.5 relative z-10">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#11ff99] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#11ff99]"></span>
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-medium text-amber-400 uppercase tracking-widest">
+                    Active Space Session
+                  </span>
+                  <span className="text-[10px] font-mono text-[#888e90]">({activeRoom.code})</span>
+                </div>
+                <h3 className="text-sm font-semibold text-[#fcfdff] mt-0.5">
+                  {activeRoom.title}
+                </h3>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto relative z-10">
+              <Link
+                href={activeRoom.type === 'meet' ? `/meet/${activeRoom.code}` : `/talk/${activeRoom.code}`}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-medium bg-[#fcfdff] hover:bg-[#f1f7fe] text-black rounded-lg transition-all active:scale-[0.98] shadow-[0_0_20px_rgba(252,253,255,0.15)]"
+              >
+                <span>Rejoin Space</span>
+                <ArrowRightIcon size={12} />
+              </Link>
+              <button
+                onClick={handleLeaveActiveRoom}
+                disabled={leavingActive}
+                className="px-3.5 py-2 text-xs font-medium bg-[#101012] hover:bg-[#18181c] border border-white/[0.08] text-[#888e90] hover:text-[#fcfdff] rounded-lg transition-all disabled:opacity-50"
+              >
+                {leavingActive ? 'Leaving...' : 'Leave'}
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Link
-              href={activeRoom.type === 'meet' ? `/meet/${activeRoom.code}` : `/talk/${activeRoom.code}`}
-              className="flex-1 sm:flex-none text-center px-4 py-2 text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 rounded-xl transition-all shadow-sm"
-            >
-              Rejoin Call &rarr;
-            </Link>
+        )}
+
+        {/* Hero Section with Editorial Serif Headline */}
+        <section className="space-y-6 pt-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            {/* Spec Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#101012] border border-white/[0.08] text-xs text-[#888e90] w-fit">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#11ff99]" />
+              <span className="font-mono text-[11px] text-[#fcfdff]/80">Connectling v1.0 • WebRTC & Audio Stages</span>
+            </div>
+
+            {/* Sub-Nav Pill Mode Switcher from DESIGN.md */}
+            <div className="inline-flex p-1 bg-[#101012] border border-white/[0.08] rounded-full self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveMode('meet');
+                  setCodeInput('');
+                }}
+                className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  activeMode === 'meet'
+                    ? 'bg-[#1e1e24] text-[#fcfdff] border border-white/[0.14] shadow-sm'
+                    : 'text-[#888e90] hover:text-[#fcfdff]'
+                }`}
+              >
+                <VideoIcon size={14} className={activeMode === 'meet' ? 'text-[#3b9eff]' : ''} />
+                <span>Video Meetings</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveMode('audio');
+                  setCodeInput('');
+                }}
+                className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                  activeMode === 'audio'
+                    ? 'bg-[#1e1e24] text-[#fcfdff] border border-white/[0.14] shadow-sm'
+                    : 'text-[#888e90] hover:text-[#fcfdff]'
+                }`}
+              >
+                <AudioWaveformIcon size={14} className={activeMode === 'audio' ? 'text-[#a855f7]' : ''} />
+                <span>Audio Rooms</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Headline and Editorial Statement */}
+          <div className="space-y-4 max-w-3xl">
+            <h1 className="font-serif-headline text-4xl sm:text-6xl md:text-7xl font-normal text-[#fcfdff] tracking-tight leading-[1.0]">
+              {activeMode === 'meet' ? (
+                <>
+                  Video meetings <br />
+                  <span className="text-[#888e90] italic font-serif">built for precision.</span>
+                </>
+              ) : (
+                <>
+                  Drop-in voice stages <br />
+                  <span className="text-[#888e90] italic font-serif">reimagined for teams.</span>
+                </>
+              )}
+            </h1>
+            <p className="text-[#888e90] text-sm sm:text-base leading-relaxed max-w-xl font-normal">
+              {activeMode === 'meet'
+                ? 'High-density video conferences with crystal-clear screen sharing, grid autofocus, and single-click invites up to 4 participants.'
+                : 'Moderated Clubhouse-style audio lounges and casual team voice stages with open mic modes up to 10 participants.'}
+            </p>
+          </div>
+        </section>
+
+        {/* Primary Interactive Workspace Card with Chrome Traffic Lights */}
+        <section className="relative glow-card rounded-xl border border-white/[0.12] bg-[#0a0a0c] overflow-hidden p-6 sm:p-8 space-y-6">
+          {/* Subtle Accent Glow Wash inside Card */}
+          <div
+            className={`absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-20 -mr-20 -mt-20 ${
+              activeMode === 'meet' ? 'bg-blue-600' : 'bg-purple-600'
+            }`}
+          />
+
+          {/* Top Chrome Row */}
+          <div className="flex items-center justify-between border-b border-white/[0.06] pb-4">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#ff2047]/80" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#ffc53d]/80" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#11ff99]/80" />
+              <span className="font-mono text-[11px] text-[#888e90] ml-2">
+                connectling.com/{activeMode === 'meet' ? 'meet' : 'talk'}/[code]
+              </span>
+            </div>
+
+            <span className="font-mono text-[11px] text-[#888e90] px-2.5 py-0.5 rounded bg-[#101012] border border-white/[0.06]">
+              {activeMode === 'meet' ? 'Max 4 Seats • 24h' : 'Max 10 Seats • 24h'}
+            </span>
+          </div>
+
+          {/* Action Launcher Row */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-2">
+            <div className="space-y-1">
+              <h2 className="text-lg sm:text-xl font-medium text-[#fcfdff]">
+                {activeMode === 'meet' ? 'Instant Video Meeting' : 'Instant Voice Stage'}
+              </h2>
+              <p className="text-xs text-[#888e90]">
+                {activeMode === 'meet'
+                  ? 'Launch an encrypted session and share the link with your collaborators.'
+                  : 'Start a drop-in voice stage with optional open mic and audience hand-raising.'}
+              </p>
+            </div>
+
             <button
-              onClick={handleLeaveActiveRoom}
-              disabled={leavingActive}
-              className="px-3 py-2 text-xs font-medium border border-zinc-300 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-xl transition-colors text-zinc-700 dark:text-zinc-300 disabled:opacity-50"
+              onClick={() => openCreateModal(activeMode)}
+              className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-medium text-xs rounded-lg transition-all active:scale-[0.98] shadow-[0_0_24px_rgba(252,253,255,0.18)]"
             >
-              {leavingActive ? 'Leaving...' : 'Leave'}
+              <SparklesIcon size={14} />
+              <span>Launch {activeMode === 'meet' ? 'Video Meeting' : 'Audio Stage'}</span>
             </button>
           </div>
-        </div>
-      )}
 
-      {/* Header with Title and Mode Switcher */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-2">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50">
-            Connectling Spaces
-          </h1>
-          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 mt-1">
-            Toggle between Video Meetings and Drop-in Audio Rooms below.
-          </p>
-        </div>
-
-        {/* CLICK TO SWITCH BETWEEN TWO MODES */}
-        <div className="inline-flex p-1 bg-zinc-100 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-750 rounded-2xl shadow-inner">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveMode('meet');
-              setCodeInput('');
-            }}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-xs transition-all ${
-              activeMode === 'meet'
-                ? 'bg-white dark:bg-zinc-900 text-blue-600 dark:text-blue-400 shadow-md scale-[1.02]'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-            }`}
-          >
-            <span>📹</span>
-            <span>Video Meetings</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setActiveMode('audio');
-              setCodeInput('');
-            }}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-xs transition-all ${
-              activeMode === 'audio'
-                ? 'bg-white dark:bg-zinc-900 text-purple-600 dark:text-purple-400 shadow-md scale-[1.02]'
-                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100'
-            }`}
-          >
-            <span>🎙️</span>
-            <span>Audio Rooms</span>
-          </button>
-        </div>
-      </div>
-
-      {/* DYNAMIC MODE SECTION CONTENT */}
-      {activeMode === 'meet' ? (
-        /* ================= MODE 1: MEET SECTION ================= */
-        <div className="space-y-6 animate-in fade-in duration-200">
-          {/* Main Hero Action Card */}
-          <div className="p-8 bg-gradient-to-br from-blue-600/5 via-white to-blue-600/10 dark:from-blue-950/20 dark:via-zinc-900 dark:to-blue-900/10 border border-blue-200/80 dark:border-blue-900/40 rounded-3xl shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="h-12 w-12 rounded-2xl bg-blue-600 text-white flex items-center justify-center text-2xl shadow-lg shadow-blue-600/20">
-                  📹
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">Video Meetings</h2>
-                    <span className="text-[10px] font-bold px-2 py-0.5 bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 rounded-md uppercase tracking-wider">
-                      Up to 4 Participants
-                    </span>
-                  </div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Start a face-to-face video conference with screen sharing, participant grid, and private codes.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => openCreateModal('meet')}
-                className="py-3 px-6 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-xl transition-all shadow-md shadow-blue-600/20 active:scale-95 flex items-center justify-center gap-2"
-              >
-                <span>✨ Start Instant Meeting</span>
-              </button>
-            </div>
-
-            {/* Quick Join Input Box */}
-            <div className="pt-4 border-t border-blue-100 dark:border-blue-900/30">
-              <form onSubmit={handleJoin} className="flex flex-col sm:flex-row gap-2.5 max-w-xl">
+          {/* Fast Join Form */}
+          <div className="pt-4 border-t border-white/[0.06]">
+            <form onSubmit={handleJoin} className="flex flex-col sm:flex-row items-center gap-3">
+              <div className="relative flex-1 w-full">
                 <input
                   type="text"
-                  placeholder="Enter meeting code (e.g. 7au-qn5t-p8e) or meeting URL"
+                  placeholder={
+                    activeMode === 'meet'
+                      ? 'Enter meeting code (e.g. 7au-qn5t-p8e) or URL'
+                      : 'Enter audio room code (e.g. tlk-92fa-10b) or URL'
+                  }
                   value={codeInput}
                   onChange={(e) => setCodeInput(e.target.value)}
-                  className="flex-1 px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 text-xs focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all font-mono"
+                  className="w-full px-4 py-2.5 rounded-lg border border-white/[0.10] bg-[#06060a] text-[#fcfdff] placeholder-[#464a4d] text-xs font-mono focus:outline-none focus:border-white/40 transition-all"
                 />
-                <button
-                  type="submit"
-                  disabled={!codeInput.trim()}
-                  className="px-6 py-3 text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 rounded-xl transition-colors disabled:opacity-50"
-                >
-                  Join Meeting &rarr;
-                </button>
-              </form>
-            </div>
+              </div>
+              <button
+                type="submit"
+                disabled={!codeInput.trim()}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#101012] hover:bg-[#18181c] border border-white/[0.12] hover:border-white/25 text-[#fcfdff] font-medium text-xs rounded-lg transition-all disabled:opacity-40"
+              >
+                <span>Join Space</span>
+                <ArrowRightIcon size={13} />
+              </button>
+            </form>
           </div>
+        </section>
 
-          {/* Feature Grid for Meetings */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-1.5 shadow-sm">
-              <div className="text-xl">🖥️</div>
-              <h3 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Screen Sharing</h3>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                Present slides, documents, or entire displays in crisp HD.
-              </p>
-            </div>
-
-            <div className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-1.5 shadow-sm">
-              <div className="text-xl">👥</div>
-              <h3 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Smart Video Grid</h3>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                Dynamic active speaker focus and multi-participant camera tiles.
-              </p>
-            </div>
-
-            <div className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-1.5 shadow-sm">
-              <div className="text-xl">🔒</div>
-              <h3 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Private Passcodes</h3>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                Protect sensitive team meetings with optional room entry passcodes.
-              </p>
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* ================= MODE 2: AUDIO SECTION ================= */
-        <div className="space-y-6 animate-in fade-in duration-200">
-          {/* Main Hero Action Card */}
-          <div className="p-8 bg-gradient-to-br from-purple-600/5 via-white to-purple-600/10 dark:from-purple-950/20 dark:via-zinc-900 dark:to-purple-900/10 border border-purple-200/80 dark:border-purple-900/40 rounded-3xl shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="h-12 w-12 rounded-2xl bg-purple-600 text-white flex items-center justify-center text-2xl shadow-lg shadow-purple-600/20">
-                  🎙️
+        {/* 3-Up Feature Grid with Hairline Borders */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {activeMode === 'meet' ? (
+            <>
+              <div className="glow-card rounded-xl p-6 space-y-3 bg-[#0a0a0c]">
+                <div className="h-8 w-8 rounded-lg bg-[#101012] border border-white/[0.08] text-[#3b9eff] flex items-center justify-center">
+                  <MonitorIcon size={16} />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">Audio Rooms</h2>
-                    <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-100 dark:bg-purple-900/60 text-purple-700 dark:text-purple-300 rounded-md uppercase tracking-wider">
-                      Up to 10 Participants
-                    </span>
-                  </div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Host Clubhouse-style voice stages, podcast discussions, or chill drop-in study rooms.
-                  </p>
-                </div>
+                <h3 className="text-sm font-medium text-[#fcfdff]">Crisp Screen Share</h3>
+                <p className="text-xs text-[#888e90] leading-relaxed">
+                  Stream high-framerate displays, browser tabs, or code windows without artifacts or compression lag.
+                </p>
               </div>
 
-              <button
-                onClick={() => openCreateModal('audio')}
-                className="py-3 px-6 bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs rounded-xl transition-all shadow-md shadow-purple-600/20 active:scale-95 flex items-center justify-center gap-2"
-              >
-                <span>🎙️ Launch Audio Stage</span>
-              </button>
-            </div>
+              <div className="glow-card rounded-xl p-6 space-y-3 bg-[#0a0a0c]">
+                <div className="h-8 w-8 rounded-lg bg-[#101012] border border-white/[0.08] text-[#3b9eff] flex items-center justify-center">
+                  <UsersIcon size={16} />
+                </div>
+                <h3 className="text-sm font-medium text-[#fcfdff]">Strict 4-Seat Grid</h3>
+                <p className="text-xs text-[#888e90] leading-relaxed">
+                  Engineered for tight 2-4 person pairing, technical syncs, and high-focus engineering reviews.
+                </p>
+              </div>
 
-            {/* Quick Join Input Box */}
-            <div className="pt-4 border-t border-purple-100 dark:border-purple-900/30">
-              <form onSubmit={handleJoin} className="flex flex-col sm:flex-row gap-2.5 max-w-xl">
-                <input
-                  type="text"
-                  placeholder="Enter audio room code (e.g. xxx-xxxx-xxx) or talk URL"
-                  value={codeInput}
-                  onChange={(e) => setCodeInput(e.target.value)}
-                  className="flex-1 px-4 py-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 text-xs focus:outline-none focus:ring-2 focus:ring-purple-600 transition-all font-mono"
-                />
+              <div className="glow-card rounded-xl p-6 space-y-3 bg-[#0a0a0c]">
+                <div className="h-8 w-8 rounded-lg bg-[#101012] border border-white/[0.08] text-[#3b9eff] flex items-center justify-center">
+                  <LockIcon size={16} />
+                </div>
+                <h3 className="text-sm font-medium text-[#fcfdff]">Passcode Privacy</h3>
+                <p className="text-xs text-[#888e90] leading-relaxed">
+                  Optional 4+ character passcodes prevent unwanted intrusion into sensitive architecture calls.
+                </p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="glow-card rounded-xl p-6 space-y-3 bg-[#0a0a0c]">
+                <div className="h-8 w-8 rounded-lg bg-[#101012] border border-white/[0.08] text-[#a855f7] flex items-center justify-center">
+                  <MicIcon size={16} />
+                </div>
+                <h3 className="text-sm font-medium text-[#fcfdff]">Speaker Podium</h3>
+                <p className="text-xs text-[#888e90] leading-relaxed">
+                  Designated host and speaker hierarchy with live audio visualization and open mic flexibility.
+                </p>
+              </div>
+
+              <div className="glow-card rounded-xl p-6 space-y-3 bg-[#0a0a0c]">
+                <div className="h-8 w-8 rounded-lg bg-[#101012] border border-white/[0.08] text-[#a855f7] flex items-center justify-center">
+                  <HandCoinsIcon size={16} />
+                </div>
+                <h3 className="text-sm font-medium text-[#fcfdff]">Audience Hand-Raising</h3>
+                <p className="text-xs text-[#888e90] leading-relaxed">
+                  Listeners signal participation with fluid animated hand requests for organized stage Q&A.
+                </p>
+              </div>
+
+              <div className="glow-card rounded-xl p-6 space-y-3 bg-[#0a0a0c]">
+                <div className="h-8 w-8 rounded-lg bg-[#101012] border border-white/[0.08] text-[#a855f7] flex items-center justify-center">
+                  <ZapIcon size={16} />
+                </div>
+                <h3 className="text-sm font-medium text-[#fcfdff]">10-Participant Lounge</h3>
+                <p className="text-xs text-[#888e90] leading-relaxed">
+                  Optimal capacity for drop-in podcasts, Twitter/X Space style lounges, and office hours.
+                </p>
+              </div>
+            </>
+          )}
+        </section>
+
+        {/* Technical Architecture / Code Window Component from DESIGN.md */}
+        <section className="glow-card rounded-xl border border-white/[0.12] bg-[#06060a] overflow-hidden">
+          {/* Window Header with Traffic Lights and Tabs */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06] bg-[#0a0a0c]">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#ff2047]/80" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#ffc53d]/80" />
+                <span className="h-2.5 w-2.5 rounded-full bg-[#11ff99]/80" />
+              </div>
+              <div className="flex items-center gap-1 ml-3">
                 <button
-                  type="submit"
-                  disabled={!codeInput.trim()}
-                  className="px-6 py-3 text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 rounded-xl transition-colors disabled:opacity-50"
+                  type="button"
+                  onClick={() => setActiveCodeTab('quickstart')}
+                  className={`px-2.5 py-1 rounded text-[11px] font-mono transition-all ${
+                    activeCodeTab === 'quickstart'
+                      ? 'bg-[#101012] text-[#fcfdff] border border-white/[0.10]'
+                      : 'text-[#888e90] hover:text-[#fcfdff]'
+                  }`}
                 >
-                  Join Stage &rarr;
+                  Quickstart.ts
                 </button>
-              </form>
+                <button
+                  type="button"
+                  onClick={() => setActiveCodeTab('webrtc')}
+                  className={`px-2.5 py-1 rounded text-[11px] font-mono transition-all ${
+                    activeCodeTab === 'webrtc'
+                      ? 'bg-[#101012] text-[#fcfdff] border border-white/[0.10]'
+                      : 'text-[#888e90] hover:text-[#fcfdff]'
+                  }`}
+                >
+                  MediaStream.ts
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveCodeTab('presence')}
+                  className={`px-2.5 py-1 rounded text-[11px] font-mono transition-all ${
+                    activeCodeTab === 'presence'
+                      ? 'bg-[#101012] text-[#fcfdff] border border-white/[0.10]'
+                      : 'text-[#888e90] hover:text-[#fcfdff]'
+                  }`}
+                >
+                  RedisPresence.ts
+                </button>
+              </div>
             </div>
+
+            <button
+              onClick={handleCopyCode}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#101012] border border-white/[0.08] hover:border-white/20 text-[11px] font-mono text-[#888e90] hover:text-[#fcfdff] transition-all"
+            >
+              {copiedCode ? <CheckIcon size={12} className="text-[#11ff99]" /> : <CopyIcon size={12} />}
+              <span>{copiedCode ? 'Copied' : 'Copy'}</span>
+            </button>
           </div>
 
-          {/* Feature Grid for Audio Rooms */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-1.5 shadow-sm">
-              <div className="text-xl">🎤</div>
-              <h3 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Speaker Podium</h3>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                Moderated stage where designated speakers take the mic with visual audio indicators.
-              </p>
-            </div>
-
-            <div className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-1.5 shadow-sm">
-              <div className="text-xl">✋</div>
-              <h3 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Raise Hand to Speak</h3>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                Audience listeners can raise hands to be invited up to stage.
-              </p>
-            </div>
-
-            <div className="p-5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl space-y-1.5 shadow-sm">
-              <div className="text-xl">⚡</div>
-              <h3 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">Zero-Lag Drop-In</h3>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                Instant audio connection with 1-click &apos;Leave Quietly&apos; exit.
-              </p>
-            </div>
+          {/* Syntax Code Body */}
+          <div className="p-5 font-mono text-xs text-[#888e90] overflow-x-auto leading-relaxed">
+            <pre className="text-[#fcfdff]/90">
+              <code>{codeSnippets[activeCodeTab]}</code>
+            </pre>
           </div>
-        </div>
-      )}
+        </section>
+      </main>
 
       {/* Create Room Modal */}
       <CreateRoomModal
@@ -376,6 +506,6 @@ export default function DashboardPage() {
           void checkPresence();
         }}
       />
-    </main>
+    </div>
   );
 }
