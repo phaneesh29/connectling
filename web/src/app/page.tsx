@@ -26,16 +26,14 @@ export default function DashboardPage() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
 
-  // Mode state: 'meet' (Video Meetings) vs 'audio' (Audio Rooms)
   const [activeMode, setActiveMode] = useState<'meet' | 'audio'>('meet');
-
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'meet' | 'audio'>('meet');
-
   const [codeInput, setCodeInput] = useState('');
   const [activeRoom, setActiveRoom] = useState<RoomData | null>(null);
   const [checkingPresence, setCheckingPresence] = useState(true);
   const [leavingActive, setLeavingActive] = useState(false);
+  const [joining, setJoining] = useState(false);
 
   useEffect(() => {
     if (!isPending && !session) {
@@ -94,8 +92,6 @@ export default function DashboardPage() {
     return clean.replace(/[^a-z0-9-]/gi, '').toLowerCase();
   };
 
-  const [joining, setJoining] = useState(false);
-
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
     const code = cleanRoomCode(codeInput);
@@ -142,7 +138,6 @@ export default function DashboardPage() {
       }`}
     >
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-14 space-y-12">
-        {/* Active Presence Banner */}
         {!checkingPresence && activeRoom && (
           <div className="p-4 sm:p-5 bg-[#0a0a0c] border border-amber-500/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden animate-in fade-in">
             <div className="absolute inset-0 bg-gradient-to-r from-amber-500/[0.04] to-transparent pointer-events-none" />
@@ -183,10 +178,8 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Hero Section */}
         <section className="space-y-6 pt-2">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            {/* Version & Status Badge */}
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#101012] border border-white/[0.08] text-xs text-[#888e90] w-fit">
               <span className="h-1.5 w-1.5 rounded-full bg-[#11ff99] shadow-[0_0_8px_#11ff99]" />
               <span className="font-mono text-[11px] text-[#fcfdff]/90">
@@ -194,7 +187,6 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            {/* Sub-Nav Pill Mode Switcher */}
             <div className="inline-flex p-1 bg-[#101012] border border-white/[0.08] rounded-full self-start sm:self-auto shadow-inner">
               <button
                 type="button"
@@ -230,7 +222,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Headline & Editorial Subtitle */}
           <div className="space-y-4 max-w-3xl">
             <h1 className="font-serif-headline text-4xl sm:text-6xl md:text-7xl font-normal text-[#fcfdff] tracking-tight leading-[1.0]">
               {activeMode === 'meet' ? (
@@ -253,16 +244,13 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Primary Interactive Workspace Card with Chrome Traffic Lights */}
         <section className="relative glow-card rounded-2xl border border-white/[0.12] bg-[#0a0a0c] overflow-hidden p-6 sm:p-8 space-y-6">
-          {/* Subtle Ambient Glow Wash inside Card */}
           <div
             className={`absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl pointer-events-none opacity-20 -mr-24 -mt-24 ${
               activeMode === 'meet' ? 'bg-[#3b9eff]' : 'bg-[#a855f7]'
             }`}
           />
 
-          {/* Top Chrome Row */}
           <div className="flex items-center justify-between border-b border-white/[0.06] pb-4 relative z-10">
             <div className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-[#ff2047]/80" />
@@ -283,7 +271,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Action Launcher Row */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-1 relative z-10">
             <div className="space-y-1">
               <h2 className="text-lg sm:text-xl font-medium text-[#fcfdff]">
@@ -305,7 +292,6 @@ export default function DashboardPage() {
             </button>
           </div>
 
-          {/* Fast Join Form */}
           <div className="pt-4 border-t border-white/[0.06] relative z-10">
             <form onSubmit={handleJoin} className="flex flex-col sm:flex-row items-center gap-3">
               <div className="relative flex-1 w-full">
@@ -342,7 +328,6 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Interactive Live Space Visualizer Experience Card */}
         <section className="glow-card rounded-2xl border border-white/[0.12] bg-[#06060a] p-6 sm:p-8 space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/[0.06] pb-4">
             <div>
@@ -362,11 +347,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Visual Showcase Render */}
           {activeMode === 'meet' ? (
-            /* MEET VISUAL GRID */
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {/* Tile 1: Host Video Preview */}
               <div className="p-5 rounded-xl bg-[#0a0a0c] border border-white/[0.10] flex flex-col justify-between h-44 relative overflow-hidden group">
                 <div className="flex items-center justify-between">
                   <span className="px-2 py-0.5 rounded bg-[#101012] border border-white/[0.08] text-[10px] font-mono text-[#3b9eff]">
@@ -390,7 +372,6 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Tile 2: Screen Sharing Simulation */}
               <div className="p-5 rounded-xl bg-[#0a0a0c] border border-blue-500/20 flex flex-col justify-between h-44 relative overflow-hidden">
                 <div className="flex items-center justify-between">
                   <span className="px-2 py-0.5 rounded bg-blue-500/10 border border-blue-500/30 text-[10px] font-mono text-[#3b9eff]">
@@ -410,11 +391,8 @@ export default function DashboardPage() {
               </div>
             </div>
           ) : (
-            /* AUDIO STAGE VISUAL */
             <div className="p-6 rounded-xl bg-[#0a0a0c] border border-white/[0.10] space-y-6">
-              {/* Podium Mockup */}
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4">
-                {/* Host Stage Card */}
                 <div className="p-4 rounded-xl bg-[#101012] border border-purple-500/30 flex flex-col items-center text-center space-y-2 relative w-36">
                   <div className="relative">
                     <div className="h-12 w-12 rounded-full bg-[#18181c] border border-purple-500/50 flex items-center justify-center font-serif text-base text-[#fcfdff]">
@@ -428,7 +406,6 @@ export default function DashboardPage() {
                     <p className="text-xs font-medium text-[#fcfdff] truncate max-w-[100px]">{session.user.name}</p>
                     <span className="text-[10px] font-mono text-[#a855f7]">Stage Host</span>
                   </div>
-                  {/* Waveform indicator */}
                   <div className="flex items-center gap-0.5 h-3">
                     <span className="w-0.5 h-2 bg-[#11ff99] animate-pulse" />
                     <span className="w-0.5 h-3 bg-[#11ff99]" />
@@ -437,7 +414,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Speaker 2 */}
                 <div className="p-4 rounded-xl bg-[#101012] border border-white/[0.08] flex flex-col items-center text-center space-y-2 w-36 opacity-75">
                   <div className="h-12 w-12 rounded-full bg-[#18181c] border border-white/10 flex items-center justify-center font-serif text-base text-[#fcfdff]">
                     A
@@ -449,7 +425,6 @@ export default function DashboardPage() {
                   <MicIcon size={12} className="text-[#11ff99]" />
                 </div>
 
-                {/* Audience Listener Tile */}
                 <div className="p-4 rounded-xl bg-[#06060a] border border-dashed border-white/[0.10] flex flex-col items-center text-center space-y-2 w-36">
                   <div className="relative">
                     <div className="h-12 w-12 rounded-full bg-[#101012] border border-white/[0.08] flex items-center justify-center font-serif text-base text-[#888e90]">
@@ -468,7 +443,6 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* System Highlights Row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
             <div className="p-3 bg-[#0a0a0c] border border-white/[0.06] rounded-xl flex items-center gap-2.5">
               <ZapIcon size={16} className="text-[#11ff99]" />
@@ -506,7 +480,6 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* 3-Up Feature Grid with Hairline Borders */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {activeMode === 'meet' ? (
             <>
@@ -576,7 +549,6 @@ export default function DashboardPage() {
         </section>
       </main>
 
-      {/* Create Room Modal */}
       <CreateRoomModal
         key={`${modalType}-${modalOpen}`}
         isOpen={modalOpen}

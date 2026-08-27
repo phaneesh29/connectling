@@ -7,7 +7,10 @@ let socketInstance: AppSocket | null = null;
 
 export const getSocket = (): AppSocket => {
   if (!socketInstance) {
-    const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000';
+    const serverUrl =
+      process.env.NEXT_PUBLIC_SERVER_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      'http://localhost:3000';
 
     socketInstance = io(serverUrl, {
       withCredentials: true,
@@ -16,7 +19,7 @@ export const getSocket = (): AppSocket => {
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
     });
   }
 

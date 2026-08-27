@@ -14,7 +14,7 @@ const ICE_SERVERS: RTCConfiguration = {
 interface UseWebRTCOptions {
   roomCode: string;
   currentUserId?: string;
-  isMeetMode?: boolean; // true for Video Meet, false for Audio Stage
+  isMeetMode?: boolean;
   initialMuted?: boolean;
   initialVideo?: boolean;
 }
@@ -33,13 +33,11 @@ export function useWebRTC({
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isConnected, setIsConnected] = useState(false);
 
-  // Local media state
   const [isMicOn, setIsMicOn] = useState(!initialMuted);
   const [isVideoOn, setIsVideoOn] = useState(isMeetMode && initialVideo);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [isHandRaised, setIsHandRaised] = useState(false);
 
-  // Media streams
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [peerStreams, setPeerStreams] = useState<Record<string, MediaStream>>({});
 
@@ -47,7 +45,6 @@ export function useWebRTC({
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenTrackRef = useRef<MediaStreamTrack | null>(null);
 
-  // 1. Initialize Local Media Stream
   const initLocalStream = useCallback(async () => {
     try {
       const constraints: MediaStreamConstraints = {
@@ -69,7 +66,6 @@ export function useWebRTC({
       localStreamRef.current = stream;
       setLocalStream(stream);
 
-      // Apply initial track states
       stream.getAudioTracks().forEach((t) => (t.enabled = !initialMuted));
       if (isMeetMode) {
         stream.getVideoTracks().forEach((t) => (t.enabled = initialVideo));
@@ -77,12 +73,11 @@ export function useWebRTC({
 
       return stream;
     } catch (err) {
-      console.warn('Could not access microphone/camera:', err);
+      console.warn('Could not access media devices:', err);
       return null;
     }
   }, [isMeetMode, initialMuted, initialVideo]);
 
-  // 2. Create and Configure a Peer Connection
   const createPeerConnection = useCallback(
     (targetUserId: string) => {
       if (peerConnections.current.has(targetUserId)) {
@@ -92,14 +87,12 @@ export function useWebRTC({
       const pc = new RTCPeerConnection(ICE_SERVERS);
       peerConnections.current.set(targetUserId, pc);
 
-      // Add local tracks to this connection
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => {
           pc.addTrack(track, localStreamRef.current!);
         });
       }
 
-      // Handle ICE Candidates
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           socket.emit('signal:ice-candidate', {
@@ -110,7 +103,6 @@ export function useWebRTC({
         }
       };
 
-      // Handle incoming remote media tracks
       pc.ontrack = (event) => {
         const [remoteStream] = event.streams;
         if (remoteStream) {
@@ -138,7 +130,6 @@ export function useWebRTC({
     [roomCode, socket]
   );
 
-  // 3. Setup Socket Connection & WebRTC Signal Listeners
   useEffect(() => {
     if (!roomCode || !currentUserId) return;
 
@@ -158,12 +149,10 @@ export function useWebRTC({
       setIsConnected(true);
     })();
 
-    // EVENT: Received list of existing peers in the room
     const handleRoomPeers = async ({ peers: currentPeers, hostId: currentHostId }: { peers: PeerState[]; hostId: string }) => {
       setPeers(currentPeers);
       setHostId(currentHostId);
 
-      // Create offers to all existing peers (as the newly joined client)
       for (const peer of currentPeers) {
         if (peer.userId === currentUserId) continue;
         const pc = createPeerConnection(peer.userId);
@@ -176,12 +165,11 @@ export function useWebRTC({
             offer,
           });
         } catch (err) {
-          console.error('Error creating SDP offer to peer:', peer.userId, err);
+          console.error('Error creating SDP offer:', peer.userId, err);
         }
       }
     };
 
-    // EVENT: New user joined
     const handleUserJoined = (newPeer: PeerState) => {
       setPeers((prev) => {
         if (prev.some((p) => p.userId === newPeer.userId)) return prev;
@@ -189,7 +177,6 @@ export function useWebRTC({
       });
     };
 
-    // EVENT: User left
     const handleUserLeft = ({ userId, newHostId }: { userId: string; newHostId?: string }) => {
       setPeers((prev) => prev.filter((p) => p.userId !== userId));
       if (newHostId) {
@@ -209,7 +196,6 @@ export function useWebRTC({
       });
     };
 
-    // EVENT: Received SDP Offer
     const handleSignalOffer = async ({ fromUserId, offer }: { fromUserId: string; offer: RTCSessionDescriptionInit }) => {
       const pc = createPeerConnection(fromUserId);
       try {
@@ -222,11 +208,10 @@ export function useWebRTC({
           answer,
         });
       } catch (err) {
-        console.error('Error handling SDP offer from:', fromUserId, err);
+        console.error('Error handling SDP offer:', fromUserId, err);
       }
     };
 
-    // EVENT: Received SDP Answer
     const handleSignalAnswer = async ({ fromUserId, answer }: { fromUserId: string; answer: RTCSessionDescriptionInit }) => {
       const pc = peerConnections.current.get(fromUserId);
       if (pc) {
@@ -238,7 +223,6 @@ export function useWebRTC({
       }
     };
 
-    // EVENT: Received ICE Candidate
     const handleSignalIceCandidate = async ({ fromUserId, candidate }: { fromUserId: string; candidate: RTCIceCandidateInit }) => {
       const pc = peerConnections.current.get(fromUserId);
       if (pc) {
@@ -250,7 +234,6 @@ export function useWebRTC({
       }
     };
 
-    // EVENT: Media State Updated
     const handleMediaStateUpdated = ({
       userId,
       isMuted,
@@ -271,21 +254,18 @@ export function useWebRTC({
       );
     };
 
-    // EVENT: Hand-raising update
     const handleStageHandUpdated = ({ userId, isHandRaised: raised }: { userId: string; isHandRaised: boolean }) => {
       setPeers((prev) =>
         prev.map((p) => (p.userId === userId ? { ...p, isHandRaised: raised } : p))
       );
     };
 
-    // EVENT: Role update (speaker/listener)
     const handleStageRoleUpdated = ({ userId, role }: { userId: string; role: 'host' | 'speaker' | 'listener' }) => {
       setPeers((prev) =>
         prev.map((p) => (p.userId === userId ? { ...p, role } : p))
       );
     };
 
-    // EVENT: In-room chat message
     const handleNewChatMessage = (message: ChatMessage) => {
       setMessages((prev) => [...prev, message]);
     };
@@ -315,11 +295,9 @@ export function useWebRTC({
       socket.off('stage:role-updated', handleStageRoleUpdated);
       socket.off('chat:new-message', handleNewChatMessage);
 
-      // Clean up peer connections
       pcs.forEach((pc) => pc.close());
       pcs.clear();
 
-      // Stop local tracks
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
       }
@@ -331,7 +309,6 @@ export function useWebRTC({
     };
   }, [roomCode, currentUserId, initLocalStream, createPeerConnection, socket, isMicOn, isVideoOn]);
 
-  // 4. Toggle Local Microphone
   const toggleMic = useCallback(() => {
     if (!localStreamRef.current) return;
     const newMicState = !isMicOn;
@@ -346,7 +323,6 @@ export function useWebRTC({
     });
   }, [isMicOn, isVideoOn, isScreenSharing, roomCode, socket]);
 
-  // 5. Toggle Local Camera
   const toggleVideo = useCallback(() => {
     if (!localStreamRef.current || !isMeetMode) return;
     const newVideoState = !isVideoOn;
@@ -361,7 +337,6 @@ export function useWebRTC({
     });
   }, [isMeetMode, isVideoOn, isMicOn, isScreenSharing, roomCode, socket]);
 
-  // 6. Toggle Screen Share
   const toggleScreenShare = useCallback(async () => {
     if (isScreenSharing) {
       if (screenTrackRef.current) {
@@ -388,7 +363,6 @@ export function useWebRTC({
         screenTrackRef.current = screenVideoTrack;
         setIsScreenSharing(true);
 
-        // Replace video track in all peer connections
         peerConnections.current.forEach((pc) => {
           const sender = pc.getSenders().find((s) => s.track?.kind === 'video');
           if (sender) {
@@ -416,12 +390,11 @@ export function useWebRTC({
           isScreenSharing: true,
         });
       } catch (err) {
-        console.warn('Screen share cancelled or failed:', err);
+        console.warn('Screen share failed:', err);
       }
     }
   }, [isScreenSharing, isMicOn, isVideoOn, roomCode, socket]);
 
-  // 7. Toggle Hand Raise (Audio Stage)
   const toggleHandRaise = useCallback(() => {
     const nextState = !isHandRaised;
     setIsHandRaised(nextState);
@@ -431,7 +404,6 @@ export function useWebRTC({
     });
   }, [isHandRaised, roomCode, socket]);
 
-  // 8. Promote Speaker (Host only)
   const promoteSpeaker = useCallback(
     (targetUserId: string) => {
       socket.emit('stage:promote', {
@@ -442,7 +414,6 @@ export function useWebRTC({
     [roomCode, socket]
   );
 
-  // 9. Demote Speaker (Host only)
   const demoteSpeaker = useCallback(
     (targetUserId: string) => {
       socket.emit('stage:demote', {
@@ -453,7 +424,6 @@ export function useWebRTC({
     [roomCode, socket]
   );
 
-  // 10. Send Chat Message
   const sendMessage = useCallback(
     (text: string) => {
       if (!text.trim()) return;

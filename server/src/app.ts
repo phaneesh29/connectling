@@ -1,3 +1,4 @@
+import { createServer } from 'node:http';
 import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
@@ -10,6 +11,7 @@ import { auth } from './auth.js';
 import { apiRouter } from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middleware/error-handler.js';
 import { rateLimiter } from './middleware/rate-limiter.js';
+import { initRealtimeGateway } from './modules/realtime/realtime.gateway.js';
 
 export const createApp = () => {
   const app = express();
@@ -49,5 +51,9 @@ export const createApp = () => {
   return app;
 };
 
-export const app = createApp();
-export default app;
+const app = createApp();
+const server = createServer(app);
+
+export const io = initRealtimeGateway(server);
+
+export default server;
