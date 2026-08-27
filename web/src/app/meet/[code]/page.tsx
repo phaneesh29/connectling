@@ -137,6 +137,9 @@ export default function MeetPage({ params }: MeetPageProps) {
     return () => clearInterval(interval);
   }, [room, participant]);
 
+  const [leaving, setLeaving] = useState(false);
+  const [ending, setEnding] = useState(false);
+
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
@@ -144,6 +147,7 @@ export default function MeetPage({ params }: MeetPageProps) {
   };
 
   const handleLeave = async () => {
+    setLeaving(true);
     if (room) {
       try {
         await roomsApi.leaveRoom(room.code);
@@ -156,11 +160,13 @@ export default function MeetPage({ params }: MeetPageProps) {
 
   const handleEndRoom = async () => {
     if (!room || !confirm('Are you sure you want to end this meeting for all participants?')) return;
+    setEnding(true);
     try {
       await roomsApi.endRoom(room.code);
       router.push('/');
     } catch (err) {
       console.error('End room error:', err);
+      setEnding(false);
     }
   };
 
@@ -239,9 +245,16 @@ export default function MeetPage({ params }: MeetPageProps) {
               <button
                 type="submit"
                 disabled={joining || !passcode.trim()}
-                className="flex-1 py-2.5 px-4 text-xs font-medium bg-[#fcfdff] hover:bg-[#f1f7fe] text-black rounded-lg transition-all shadow-[0_0_20px_rgba(252,253,255,0.15)] disabled:opacity-50"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-4 text-xs font-medium bg-[#fcfdff] hover:bg-[#f1f7fe] text-black rounded-lg transition-all shadow-[0_0_20px_rgba(252,253,255,0.15)] disabled:opacity-50"
               >
-                {joining ? 'Authenticating...' : 'Enter Space'}
+                {joining ? (
+                  <>
+                    <div className="animate-spin h-3.5 w-3.5 border border-black/30 border-t-black rounded-full" />
+                    <span>Authenticating...</span>
+                  </>
+                ) : (
+                  <span>Enter Space</span>
+                )}
               </button>
             </div>
           </form>
@@ -425,20 +438,40 @@ export default function MeetPage({ params }: MeetPageProps) {
           {/* Leave Button */}
           <button
             onClick={handleLeave}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#101012] hover:bg-[#18181c] text-[#888e90] hover:text-[#fcfdff] font-medium text-xs transition-all border border-white/[0.08]"
+            disabled={leaving || ending}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#101012] hover:bg-[#18181c] text-[#888e90] hover:text-[#fcfdff] font-medium text-xs transition-all border border-white/[0.08] disabled:opacity-50"
           >
-            <LogOutIcon size={13} />
-            <span>Leave</span>
+            {leaving ? (
+              <>
+                <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
+                <span>Leaving...</span>
+              </>
+            ) : (
+              <>
+                <LogOutIcon size={13} />
+                <span>Leave</span>
+              </>
+            )}
           </button>
 
           {/* End Room Button (Host Only) */}
           {isHost && (
             <button
               onClick={handleEndRoom}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#ff2047] hover:bg-[#ff2047]/90 text-white font-medium text-xs transition-all shadow-[0_0_16px_rgba(255,32,71,0.3)]"
+              disabled={leaving || ending}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#ff2047] hover:bg-[#ff2047]/90 text-white font-medium text-xs transition-all shadow-[0_0_16px_rgba(255,32,71,0.3)] disabled:opacity-50"
             >
-              <PhoneCallIcon size={13} />
-              <span>End Space</span>
+              {ending ? (
+                <>
+                  <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
+                  <span>Ending Space...</span>
+                </>
+              ) : (
+                <>
+                  <PhoneCallIcon size={13} />
+                  <span>End Space</span>
+                </>
+              )}
             </button>
           )}
         </div>
@@ -507,9 +540,16 @@ export default function MeetPage({ params }: MeetPageProps) {
                 <button
                   type="submit"
                   disabled={updatingSettings}
-                  className="px-4 py-1.5 rounded-lg bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-medium text-xs transition-colors shadow-[0_0_16px_rgba(252,253,255,0.12)]"
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-medium text-xs transition-colors shadow-[0_0_16px_rgba(252,253,255,0.12)] disabled:opacity-50"
                 >
-                  {updatingSettings ? 'Saving...' : 'Save Settings'}
+                  {updatingSettings ? (
+                    <>
+                      <div className="animate-spin h-3 w-3 border border-black/30 border-t-black rounded-full" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Settings</span>
+                  )}
                 </button>
               </div>
             </form>

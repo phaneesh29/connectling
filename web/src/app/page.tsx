@@ -94,11 +94,14 @@ export default function DashboardPage() {
     return clean.replace(/[^a-z0-9-]/gi, '').toLowerCase();
   };
 
+  const [joining, setJoining] = useState(false);
+
   const handleJoin = (e: React.FormEvent) => {
     e.preventDefault();
     const code = cleanRoomCode(codeInput);
     if (!code) return;
 
+    setJoining(true);
     if (activeMode === 'meet') {
       router.push(`/meet/${code}`);
     } else {
@@ -320,11 +323,20 @@ export default function DashboardPage() {
               </div>
               <button
                 type="submit"
-                disabled={!codeInput.trim()}
+                disabled={!codeInput.trim() || joining}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#101012] hover:bg-[#18181c] border border-white/[0.12] hover:border-white/25 text-[#fcfdff] font-medium text-xs rounded-lg transition-all disabled:opacity-40 shrink-0"
               >
-                <span>Join Space</span>
-                <ArrowRightIcon size={13} />
+                {joining ? (
+                  <>
+                    <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
+                    <span>Connecting...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Join Space</span>
+                    <ArrowRightIcon size={13} />
+                  </>
+                )}
               </button>
             </form>
           </div>

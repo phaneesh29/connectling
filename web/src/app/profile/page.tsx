@@ -244,17 +244,31 @@ export default function ProfilePage() {
               <button
                 onClick={handleRevokeOtherSessions}
                 disabled={actionLoading !== null}
-                className="px-3 py-1.5 text-xs font-medium bg-[#101012] hover:bg-[#18181c] border border-white/[0.08] text-[#888e90] hover:text-[#fcfdff] rounded-lg transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-[#101012] hover:bg-[#18181c] border border-white/[0.08] text-[#888e90] hover:text-[#fcfdff] rounded-lg transition-colors disabled:opacity-50"
               >
-                {actionLoading === 'other' ? 'Revoking...' : 'Revoke Other Devices'}
+                {actionLoading === 'other' ? (
+                  <>
+                    <div className="animate-spin h-3 w-3 border border-white/30 border-t-white rounded-full" />
+                    <span>Revoking...</span>
+                  </>
+                ) : (
+                  <span>Revoke Other Devices</span>
+                )}
               </button>
             )}
             <button
               onClick={handleRevokeAllSessions}
               disabled={actionLoading !== null}
-              className="px-3 py-1.5 text-xs font-medium text-[#ff2047] bg-[#ff2047]/10 border border-[#ff2047]/20 hover:bg-[#ff2047]/20 rounded-lg transition-colors disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#ff2047] bg-[#ff2047]/10 border border-[#ff2047]/20 hover:bg-[#ff2047]/20 rounded-lg transition-colors disabled:opacity-50"
             >
-              {actionLoading === 'all' ? 'Revoking...' : 'Revoke All'}
+              {actionLoading === 'all' ? (
+                <>
+                  <div className="animate-spin h-3 w-3 border border-[#ff2047]/30 border-t-[#ff2047] rounded-full" />
+                  <span>Revoking All...</span>
+                </>
+              ) : (
+                <span>Revoke All</span>
+              )}
             </button>
           </div>
         </div>
@@ -298,10 +312,17 @@ export default function ProfilePage() {
                   {!isCurrent && (
                     <button
                       onClick={() => handleRevokeSession(item.token)}
-                      disabled={actionLoading === item.token}
-                      className="text-xs font-medium px-2.5 py-1 text-[#ff2047] hover:bg-[#ff2047]/10 border border-[#ff2047]/20 rounded-lg transition-colors self-start sm:self-auto disabled:opacity-50"
+                      disabled={actionLoading !== null}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 text-[#ff2047] hover:bg-[#ff2047]/10 border border-[#ff2047]/20 rounded-lg transition-colors self-start sm:self-auto disabled:opacity-50"
                     >
-                      {actionLoading === item.token ? 'Revoking...' : 'Revoke'}
+                      {actionLoading === item.token ? (
+                        <>
+                          <div className="animate-spin h-3 w-3 border border-[#ff2047]/30 border-t-[#ff2047] rounded-full" />
+                          <span>Revoking...</span>
+                        </>
+                      ) : (
+                        <span>Revoke</span>
+                      )}
                     </button>
                   )}
                 </div>
@@ -316,8 +337,17 @@ export default function ProfilePage() {
             disabled={actionLoading === 'signout'}
             className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-medium bg-[#101012] hover:bg-[#18181c] border border-white/[0.08] hover:border-white/[0.2] text-[#fcfdff] rounded-lg transition-colors disabled:opacity-50"
           >
-            <LogOutIcon size={13} />
-            <span>{actionLoading === 'signout' ? 'Signing Out...' : 'Sign Out Current Session'}</span>
+            {actionLoading === 'signout' ? (
+              <>
+                <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
+                <span>Signing Out...</span>
+              </>
+            ) : (
+              <>
+                <LogOutIcon size={13} />
+                <span>Sign Out Current Session</span>
+              </>
+            )}
           </button>
         </div>
       </div>

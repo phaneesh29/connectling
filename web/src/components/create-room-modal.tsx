@@ -317,7 +317,8 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-xs font-medium text-[#888e90] hover:text-[#fcfdff] rounded-lg hover:bg-[#101012] transition-colors"
+              disabled={loading}
+              className="px-4 py-2 text-xs font-medium text-[#888e90] hover:text-[#fcfdff] rounded-lg hover:bg-[#101012] transition-colors disabled:opacity-40"
             >
               Cancel
             </button>

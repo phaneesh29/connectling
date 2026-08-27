@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut, useSession } from '@/lib/auth-client';
@@ -9,8 +10,24 @@ export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = useSession();
+  const [signingOut, setSigningOut] = useState(false);
 
   const isActive = (path: string) => pathname === path;
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await signOut({
+        fetchOptions: {
+          onSuccess: () => {
+            router.push('/login');
+          },
+        },
+      });
+    } catch {
+      setSigningOut(false);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-black/75 backdrop-blur-xl">
@@ -85,19 +102,16 @@ export function Navbar() {
               </Link>
 
               <button
-                onClick={() =>
-                  signOut({
-                    fetchOptions: {
-                      onSuccess: () => {
-                        router.push('/login');
-                      },
-                    },
-                  })
-                }
+                onClick={handleSignOut}
+                disabled={signingOut}
                 title="Sign out"
-                className="h-8 w-8 rounded-lg bg-[#101012] border border-white/[0.08] hover:bg-[#18181c] hover:border-white/[0.2] flex items-center justify-center text-[#888e90] hover:text-[#fcfdff] transition-all"
+                className="h-8 w-8 rounded-lg bg-[#101012] border border-white/[0.08] hover:bg-[#18181c] hover:border-white/[0.2] flex items-center justify-center text-[#888e90] hover:text-[#fcfdff] transition-all disabled:opacity-50"
               >
-                <LogOutIcon size={13} />
+                {signingOut ? (
+                  <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
+                ) : (
+                  <LogOutIcon size={13} />
+                )}
               </button>
             </div>
           ) : (
