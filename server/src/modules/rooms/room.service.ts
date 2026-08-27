@@ -5,6 +5,7 @@ import { room, roomSettings, roomUser, type Room, type RoomSettings } from '../.
 import { user } from '../../db/auth-schema.js';
 import { presenceService, PRESENCE_HEARTBEAT_TTL } from './presence.service.js';
 import { generateRoomCode, normalizeRoomCode } from './room.utils.js';
+import { ROOM_CAPACITY } from './rooms.constants.js';
 import {
   BadRequestError,
   NotFoundError,
@@ -44,19 +45,22 @@ export const roomService = {
     const expiresAt = new Date(Date.now() + input.expiresInMinutes * 60 * 1000);
 
     const isAudio = input.type === 'audio';
+    const maxCapacity = ROOM_CAPACITY[input.type];
+
     const defaultSettings = {
       micForAll: isAudio ? false : true,
       videoForAll: isAudio ? false : true,
       screenShareForAll: isAudio ? false : true,
       allowChat: true,
       allowRaiseHand: true,
-      maxParticipants: 50,
+      maxParticipants: maxCapacity,
       isPrivate: false,
     };
 
     const mergedSettings = {
       ...defaultSettings,
       ...input.settings,
+      maxParticipants: maxCapacity,
     };
 
     let createdRoom: Room;
@@ -200,8 +204,11 @@ export const roomService = {
       .where(and(eq(roomUser.roomId, foundRoom.id), eq(roomUser.status, 'active')));
 
     const activeCount = activeCountResult?.count ?? 0;
-    if (settings?.maxParticipants && activeCount >= settings.maxParticipants && foundRoom.hostId !== userId) {
-      throw new ForbiddenError('This room has reached maximum capacity.');
+    const maxCapacity = settings?.maxParticipants || ROOM_CAPACITY[foundRoom.type];
+    if (activeCount >= maxCapacity && foundRoom.hostId !== userId) {
+      throw new ForbiddenError(
+        `This ${foundRoom.type === 'meet' ? 'video meeting' : 'audio room'} has reached its maximum capacity (${maxCapacity} participants).`
+      );
     }
 
     const role =

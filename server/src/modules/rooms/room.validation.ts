@@ -25,9 +25,8 @@ export const createRoomSchema = z.object({
       screenShareForAll: z.boolean().optional(),
       allowChat: z.boolean().optional(),
       allowRaiseHand: z.boolean().optional(),
-      maxParticipants: z.number().int().min(2).max(500).optional(),
       isPrivate: z.boolean().optional(),
-      passcode: z.string().min(4).max(32).optional(),
+      passcode: z.string().min(4, 'Passcode must be at least 4 characters').max(32).optional(),
     })
     .optional(),
 });
@@ -42,9 +41,8 @@ export const updateRoomSettingsSchema = z.object({
   screenShareForAll: z.boolean().optional(),
   allowChat: z.boolean().optional(),
   allowRaiseHand: z.boolean().optional(),
-  maxParticipants: z.number().int().min(2).max(500).optional(),
   isPrivate: z.boolean().optional(),
-  passcode: z.string().min(4).max(32).nullable().optional(),
+  passcode: z.string().min(4, 'Passcode must be at least 4 characters').max(32).nullable().optional(),
 });
 
 export const roomCodeParamSchema = z.object({
