@@ -5,7 +5,7 @@ import { room, roomSettings, roomUser, type Room, type RoomSettings } from '../.
 import { user } from '../../db/auth-schema.js';
 import { presenceService, PRESENCE_HEARTBEAT_TTL } from './presence.service.js';
 import { generateRoomCode, normalizeRoomCode } from './room.utils.js';
-import { ROOM_CAPACITY } from './rooms.constants.js';
+import { ROOM_CAPACITY, ROOM_CONSTANTS } from './rooms.constants.js';
 import {
   BadRequestError,
   NotFoundError,
@@ -42,7 +42,7 @@ export const roomService = {
     const roomId = crypto.randomUUID();
     const settingsId = crypto.randomUUID();
     const roomUserId = crypto.randomUUID();
-    const expiresAt = new Date(Date.now() + input.expiresInMinutes * 60 * 1000);
+    const expiresAt = new Date(Date.now() + ROOM_CONSTANTS.ROOM_DURATION_MINUTES * 60 * 1000);
 
     const isAudio = input.type === 'audio';
     const maxCapacity = ROOM_CAPACITY[input.type];

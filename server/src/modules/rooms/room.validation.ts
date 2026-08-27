@@ -12,12 +12,6 @@ export const createRoomSchema = z.object({
     .trim()
     .optional(),
   type: z.enum(['meet', 'audio']).default('meet'),
-  expiresInMinutes: z
-    .number()
-    .int()
-    .min(15, 'Minimum room duration is 15 minutes')
-    .max(1440, 'Maximum room duration is 24 hours (1440 minutes)')
-    .default(120),
   settings: z
     .object({
       micForAll: z.boolean().optional(),
