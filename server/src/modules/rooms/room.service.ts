@@ -122,15 +122,10 @@ export const roomService = {
       throw new NotFoundError('Room not found');
     }
 
-    if (foundRoom.status === 'active' && foundRoom.expiresAt < new Date()) {
-      await db
-        .update(room)
-        .set({ status: 'ended', endedAt: new Date() })
-        .where(eq(room.id, foundRoom.id));
-
+    if (foundRoom.expiresAt < new Date()) {
+      await db.delete(room).where(eq(room.id, foundRoom.id));
       await presenceService.clearRoomPresence(foundRoom.id);
-      foundRoom.status = 'ended';
-      foundRoom.endedAt = new Date();
+      throw new NotFoundError('Room has expired and is no longer available.');
     }
 
     const [activeCountResult] = await db
@@ -157,8 +152,10 @@ export const roomService = {
       throw new NotFoundError('Room not found');
     }
 
-    if (foundRoom.status !== 'active' || foundRoom.expiresAt < new Date()) {
-      throw new BadRequestError('This room has ended or expired.');
+    if (foundRoom.expiresAt < new Date()) {
+      await db.delete(room).where(eq(room.id, foundRoom.id));
+      await presenceService.clearRoomPresence(foundRoom.id);
+      throw new BadRequestError('This room has expired and has been closed.');
     }
 
     const settings = foundRoom.settings;
@@ -302,27 +299,10 @@ export const roomService = {
       throw new ForbiddenError('Only the room host can end this room.');
     }
 
-    const now = new Date();
-
-    await db
-      .update(room)
-      .set({
-        status: 'ended',
-        endedAt: now,
-      })
-      .where(eq(room.id, foundRoom.id));
-
-    await db
-      .update(roomUser)
-      .set({
-        status: 'left',
-        leftAt: now,
-      })
-      .where(and(eq(roomUser.roomId, foundRoom.id), eq(roomUser.status, 'active')));
-
+    await db.delete(room).where(eq(room.id, foundRoom.id));
     await presenceService.clearRoomPresence(foundRoom.id);
 
-    return { success: true };
+    return { success: true, message: 'Room ended and deleted successfully' };
   },
 
   getUserPresence: async (userId: string) => {
@@ -341,7 +321,11 @@ export const roomService = {
       },
     });
 
-    if (!foundRoom || foundRoom.status !== 'active' || foundRoom.expiresAt < new Date()) {
+    if (!foundRoom || foundRoom.expiresAt < new Date()) {
+      if (foundRoom) {
+        await db.delete(room).where(eq(room.id, foundRoom.id));
+        await presenceService.clearRoomPresence(foundRoom.id);
+      }
       await presenceService.clearUserActiveRoom(userId, activeRoomId);
       return {
         isActive: false,
@@ -361,18 +345,20 @@ export const roomService = {
       where: eq(room.code, normalized),
       columns: {
         id: true,
-        status: true,
         expiresAt: true,
       },
     });
 
     if (!foundRoom) {
+      await presenceService.clearUserActiveRoom(userId);
       throw new NotFoundError('Room not found');
     }
 
-    if (foundRoom.status !== 'active' || foundRoom.expiresAt < new Date()) {
+    if (foundRoom.expiresAt < new Date()) {
+      await db.delete(room).where(eq(room.id, foundRoom.id));
+      await presenceService.clearRoomPresence(foundRoom.id);
       await presenceService.clearUserActiveRoom(userId, foundRoom.id);
-      throw new BadRequestError('This room has ended or expired.');
+      throw new BadRequestError('This room has expired and has been closed.');
     }
 
     await presenceService.refreshHeartbeat(userId, foundRoom.id, PRESENCE_HEARTBEAT_TTL);
