@@ -14,9 +14,8 @@ import {
   LaptopIcon,
   SmartphoneIcon,
   LogOutIcon,
-  CircleCheckIcon,
-  GlobeIcon,
 } from '@animateicons/react/lucide';
+import { GoogleIcon } from '@/components/google-icon';
 
 interface SessionItem {
   id: string;
@@ -238,73 +237,74 @@ export default function ProfilePage() {
         )}
 
         {/* Profile Card */}
-        <section className="p-6 bg-[#0a0a0c] border border-white/[0.10] rounded-2xl space-y-5">
-          <div className="flex items-center gap-4">
-            {user.image && !imageError ? (
-              <Image
-                src={user.image}
-                alt={user.name || 'User avatar'}
-                width={56}
-                height={56}
-                unoptimized
-                referrerPolicy="no-referrer"
-                onError={() => setImageError(true)}
-                className="w-14 h-14 rounded-full border border-white/20 object-cover shadow-lg shrink-0"
-              />
-            ) : (
-              <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-white/10 to-white/20 border border-white/20 flex items-center justify-center font-medium text-xl text-[#fcfdff] shrink-0">
-                {userInitial}
-              </div>
-            )}
+        <section className="p-6 bg-[#0a0a0c] border border-white/[0.10] rounded-2xl">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              {user.image && !imageError ? (
+                <Image
+                  src={user.image}
+                  alt={user.name || 'User avatar'}
+                  width={56}
+                  height={56}
+                  unoptimized
+                  referrerPolicy="no-referrer"
+                  onError={() => setImageError(true)}
+                  className="w-14 h-14 rounded-full border border-white/20 object-cover shadow-lg shrink-0"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-white/10 to-white/20 border border-white/20 flex items-center justify-center font-medium text-xl text-[#fcfdff] shrink-0">
+                  {userInitial}
+                </div>
+              )}
 
-            <div className="space-y-0.5 overflow-hidden">
-              <h2 className="text-base font-medium text-[#fcfdff] truncate">{user.name}</h2>
-              <p className="text-xs text-[#888e90] truncate">{user.email}</p>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t border-white/[0.06] space-y-3">
-            <div className="flex items-center justify-between text-xs py-1">
-              <span className="text-[#888e90]">Authentication</span>
-              <div className="flex items-center gap-1.5 text-[#fcfdff] font-medium">
-                <GlobeIcon size={13} className="text-[#3b9eff]" />
-                <span>Google Account</span>
-                <span className="inline-flex items-center gap-1 ml-1 px-2 py-0.5 rounded-full text-[10px] font-mono bg-[#11ff99]/10 text-[#11ff99] border border-[#11ff99]/20">
-                  <CircleCheckIcon size={10} />
-                  <span>Connected</span>
-                </span>
+              <div className="space-y-0.5 overflow-hidden">
+                <h2 className="text-base font-medium text-[#fcfdff] truncate">{user.name}</h2>
+                <p className="text-xs text-[#888e90] truncate">{user.email}</p>
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs py-1">
-              <span className="text-[#888e90]">Email Status</span>
-              <span className="text-xs text-[#11ff99] font-medium flex items-center gap-1">
-                <CircleCheckIcon size={12} />
-                <span>Verified</span>
-              </span>
+            {/* Opposite side: Google Icon with tooltip "Verified via Google" */}
+            <div className="relative group shrink-0">
+              <div
+                className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.12] hover:border-white/[0.25] flex items-center justify-center transition-all cursor-pointer shadow-sm"
+                title="Verified via Google"
+              >
+                <GoogleIcon className="w-4 h-4" />
+              </div>
+
+              {/* Floating Tooltip */}
+              <div className="absolute right-0 bottom-full mb-2 hidden group-hover:flex items-center gap-1.5 px-2.5 py-1 bg-[#141418] border border-white/[0.15] text-[#fcfdff] text-[11px] font-sans rounded-lg shadow-2xl whitespace-nowrap pointer-events-none z-20 animate-in fade-in zoom-in-95 duration-150">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#11ff99]" />
+                <span>Verified via Google</span>
+              </div>
             </div>
           </div>
         </section>
 
         {/* Active Sessions Card */}
         <section className="p-6 bg-[#0a0a0c] border border-white/[0.10] rounded-2xl space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/[0.06]">
             <div className="space-y-0.5">
               <h3 className="text-sm font-medium text-[#fcfdff]">Connected Devices</h3>
               <p className="text-xs text-[#888e90]">
-                Devices currently signed in to your account.
+                Devices and browsers authorized to access your account.
               </p>
             </div>
 
-            {sessions.length > 1 && (
-              <button
-                onClick={handleRevokeAllSessions}
-                disabled={actionLoading !== null}
-                className="text-xs text-[#ff2047] hover:underline disabled:opacity-50"
-              >
-                Sign out all
-              </button>
-            )}
+            <button
+              onClick={handleRevokeAllSessions}
+              disabled={actionLoading !== null}
+              className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#ff2047] bg-[#ff2047]/10 hover:bg-[#ff2047]/20 border border-[#ff2047]/20 rounded-xl transition-all disabled:opacity-50"
+            >
+              {actionLoading === 'all' ? (
+                <>
+                  <div className="animate-spin h-3 w-3 border border-[#ff2047]/30 border-t-[#ff2047] rounded-full" />
+                  <span>Revoking All...</span>
+                </>
+              ) : (
+                <span>Revoke All Devices</span>
+              )}
+            </button>
           </div>
 
           <div className="space-y-2.5 pt-2">
