@@ -540,21 +540,46 @@ export const roomService = {
       limit: 20,
     });
 
-    return roomsList
-      .filter((r) => r.expiresAt > now)
-      .map((r) => ({
-        id: r.id,
-        code: r.code,
-        title: r.title,
-        description: r.description,
-        type: r.type,
-        status: r.status,
-        hasPasscode: !!r.settings?.passcode,
-        host: r.host,
-        participantCount: r.users?.length || 0,
-        maxParticipants: r.settings?.maxParticipants || (r.type === 'meet' ? 4 : 10),
-        expiresAt: r.expiresAt,
-        createdAt: r.createdAt,
-      }));
+    const activeRooms = roomsList.filter((r) => r.expiresAt > now);
+
+    const mappedRooms = await Promise.all(
+      activeRooms.map(async (r) => {
+        
+        const activeChecks = await Promise.all(
+          (r.users || []).map(async (u) => {
+            const activeRoomId = await presenceService.getUserActiveRoom(u.userId);
+            if (activeRoomId === r.id) {
+              return true;
+            } else {
+              void db
+                .update(roomUser)
+                .set({ status: 'left', leftAt: new Date() })
+                .where(and(eq(roomUser.roomId, r.id), eq(roomUser.userId, u.userId)))
+                .catch(() => {});
+              return false;
+            }
+          })
+        );
+
+        const liveParticipantCount = activeChecks.filter(Boolean).length;
+
+        return {
+          id: r.id,
+          code: r.code,
+          title: r.title,
+          description: r.description,
+          type: r.type,
+          status: r.status,
+          hasPasscode: !!r.settings?.passcode,
+          host: r.host,
+          participantCount: liveParticipantCount,
+          maxParticipants: r.settings?.maxParticipants || (r.type === 'meet' ? 4 : 10),
+          expiresAt: r.expiresAt,
+          createdAt: r.createdAt,
+        };
+      })
+    );
+
+    return mappedRooms;
   },
 };
