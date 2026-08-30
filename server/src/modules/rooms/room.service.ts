@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { eq, and, ne, count, asc } from 'drizzle-orm';
+import { eq, and, ne, count, asc, desc } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { room, roomSettings, roomUser, type Room, type RoomSettings } from '../../db/room-schema.js';
 import { user } from '../../db/auth-schema.js';
@@ -505,5 +505,56 @@ export const roomService = {
       success: true,
       ttl: PRESENCE_HEARTBEAT_TTL,
     };
+  },
+
+  listMyRooms: async (userId: string, type?: 'meet' | 'audio') => {
+    const now = new Date();
+    const whereClause = and(
+      eq(room.hostId, userId),
+      eq(room.status, 'active'),
+      type ? eq(room.type, type) : undefined
+    );
+
+    const roomsList = await db.query.room.findMany({
+      where: whereClause,
+      with: {
+        settings: true,
+        host: {
+          columns: {
+            id: true,
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+        users: {
+          where: eq(roomUser.status, 'active'),
+          columns: {
+            id: true,
+            userId: true,
+            role: true,
+          },
+        },
+      },
+      orderBy: [desc(room.createdAt)],
+      limit: 20,
+    });
+
+    return roomsList
+      .filter((r) => r.expiresAt > now)
+      .map((r) => ({
+        id: r.id,
+        code: r.code,
+        title: r.title,
+        description: r.description,
+        type: r.type,
+        status: r.status,
+        hasPasscode: !!r.settings?.passcode,
+        host: r.host,
+        participantCount: r.users?.length || 0,
+        maxParticipants: r.settings?.maxParticipants || (r.type === 'meet' ? 4 : 10),
+        expiresAt: r.expiresAt,
+        createdAt: r.createdAt,
+      }));
   },
 };

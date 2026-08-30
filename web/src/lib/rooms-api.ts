@@ -167,9 +167,31 @@ export const roomsApi = {
     );
   },
 
+  listMyRooms: (type?: 'meet' | 'audio') => {
+    const query = type ? `?type=${type}` : '';
+    return request<AvailableRoomItem[]>(`/api/v1/rooms${query}`, {
+      method: 'GET',
+    });
+  },
+
   getMyPresence: () => {
     return request<{ isActive: boolean; activeRoom: RoomData | null }>('/api/v1/rooms/my/presence', {
       method: 'GET',
     });
   },
 };
+
+export interface AvailableRoomItem {
+  id: string;
+  code: string;
+  title: string;
+  description?: string | null;
+  type: 'meet' | 'audio';
+  status: 'active' | 'ended';
+  hasPasscode: boolean;
+  host?: HostData;
+  participantCount: number;
+  maxParticipants: number;
+  expiresAt: string;
+  createdAt: string;
+}

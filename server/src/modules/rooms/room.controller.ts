@@ -96,3 +96,14 @@ export const heartbeatHandler = async (req: Request, res: Response): Promise<voi
   });
 };
 
+export const listMyRoomsHandler = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.id;
+  const type = req.query.type as 'meet' | 'audio' | undefined;
+  const result = await roomService.listMyRooms(userId, type);
+
+  res.status(200).json({
+    success: true,
+    data: result,
+  });
+};
+

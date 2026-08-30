@@ -16,11 +16,14 @@ import {
   endRoomHandler,
   getUserPresenceHandler,
   heartbeatHandler,
+  listMyRoomsHandler,
 } from './room.controller.js';
 
 export const roomRouter = Router();
 
 roomRouter.use(requireAuth);
+
+roomRouter.get('/', listMyRoomsHandler);
 
 roomRouter.post(
   '/',

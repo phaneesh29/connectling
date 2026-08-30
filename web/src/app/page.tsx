@@ -4,13 +4,17 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from '@/lib/auth-client';
-import { roomsApi, type RoomData } from '@/lib/rooms-api';
+import { roomsApi, type RoomData, type AvailableRoomItem } from '@/lib/rooms-api';
 import { CreateRoomModal } from '@/components/create-room-modal';
 import {
   VideoIcon,
   AudioWaveformIcon,
   SparklesIcon,
   ArrowRightIcon,
+  LockIcon,
+  CopyIcon,
+  CheckIcon,
+  Trash2Icon,
 } from '@animateicons/react/lucide';
 
 export default function DashboardPage() {
@@ -25,6 +29,10 @@ export default function DashboardPage() {
   const [checkingPresence, setCheckingPresence] = useState(false);
   const [leavingActive, setLeavingActive] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [myRooms, setMyRooms] = useState<AvailableRoomItem[]>([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [deletingCode, setDeletingCode] = useState<string | null>(null);
 
   const checkPresence = useCallback(async () => {
     if (!session) return;
@@ -40,6 +48,21 @@ export default function DashboardPage() {
       setActiveRoom(null);
     } finally {
       setCheckingPresence(false);
+    }
+  }, [session]);
+
+  const fetchMyRooms = useCallback(async () => {
+    if (!session) return;
+    setLoadingRooms(true);
+    try {
+      const res = await roomsApi.listMyRooms();
+      if (res.data) {
+        setMyRooms(res.data);
+      }
+    } catch {
+      setMyRooms([]);
+    } finally {
+      setLoadingRooms(false);
     }
   }, [session]);
 
@@ -60,11 +83,51 @@ export default function DashboardPage() {
         .catch(() => {
           if (!ignore) setActiveRoom(null);
         });
+
+      roomsApi
+        .listMyRooms()
+        .then((res) => {
+          if (!ignore && res.data) {
+            setMyRooms(res.data);
+          }
+        })
+        .catch(() => {
+          if (!ignore) setMyRooms([]);
+        });
     }
     return () => {
       ignore = true;
     };
   }, [session]);
+
+  const handleCopy = (codeToCopy: string) => {
+    navigator.clipboard.writeText(codeToCopy);
+    setCopiedCode(codeToCopy);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const handleDeleteRoom = async (codeToDelete: string) => {
+    if (
+      !confirm(
+        'Are you sure you want to end and delete this space? All participants inside will be disconnected immediately.'
+      )
+    ) {
+      return;
+    }
+    setDeletingCode(codeToDelete);
+    try {
+      await roomsApi.endRoom(codeToDelete);
+      if (activeRoom?.code === codeToDelete) {
+        setActiveRoom(null);
+      }
+      const res = await roomsApi.listMyRooms();
+      if (res.data) setMyRooms(res.data);
+    } catch (err) {
+      console.error('Failed to end space:', err);
+    } finally {
+      setDeletingCode(null);
+    }
+  };
 
   const cleanRoomCode = (input: string) => {
     let clean = input.trim();
@@ -99,6 +162,7 @@ export default function DashboardPage() {
     try {
       await roomsApi.leaveRoom(activeRoom.code);
       setActiveRoom(null);
+      void fetchMyRooms();
     } catch (err) {
       console.error('Failed to leave room:', err);
     } finally {
@@ -308,6 +372,144 @@ export default function DashboardPage() {
             </form>
           </div>
         </section>
+
+        {/* Your Hosted Spaces Section */}
+        {session && (
+          <section className="space-y-4 pt-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <h2 className="text-sm sm:text-base font-medium text-[#fcfdff]">
+                  Your Hosted Spaces
+                </h2>
+                {myRooms.length > 0 && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.08] border border-white/[0.10] text-[#fcfdff]">
+                    {myRooms.length} Live
+                  </span>
+                )}
+              </div>
+
+              <button
+                onClick={() => void fetchMyRooms()}
+                disabled={loadingRooms}
+                className="text-xs font-mono text-[#888e90] hover:text-[#fcfdff] transition-all disabled:opacity-50"
+              >
+                {loadingRooms ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
+
+            {loadingRooms && myRooms.length === 0 ? (
+              <div className="p-8 rounded-2xl border border-white/[0.08] bg-[#0a0a0c] flex items-center justify-center">
+                <div className="animate-spin h-4 w-4 border border-white/30 border-t-white rounded-full" />
+              </div>
+            ) : myRooms.length === 0 ? (
+              <div className="p-6 rounded-2xl border border-dashed border-white/[0.08] bg-[#0a0a0c]/60 flex flex-col items-center justify-center text-center space-y-1.5 opacity-70">
+                <p className="text-xs text-[#fcfdff] font-medium">No active spaces created by you</p>
+                <p className="text-[11px] text-[#888e90] max-w-sm">
+                  Spaces you launch will appear here with live seat counts so you can quickly jump back in or share codes with teammates.
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {myRooms.map((r) => {
+                  const isMeet = r.type === 'meet';
+                  const roomHref = isMeet ? `/meet/${r.code}` : `/talk/${r.code}`;
+
+                  return (
+                    <div
+                      key={r.id}
+                      className="p-5 rounded-2xl border border-white/[0.10] bg-[#0a0a0c] hover:border-white/20 transition-all space-y-4 relative group"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="space-y-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`inline-flex items-center gap-1 text-[10px] font-medium font-mono px-2 py-0.5 rounded-md ${
+                                isMeet
+                                  ? 'bg-[#3b9eff]/10 text-[#3b9eff] border border-[#3b9eff]/20'
+                                  : 'bg-[#a855f7]/10 text-[#a855f7] border border-[#a855f7]/20'
+                              }`}
+                            >
+                              {isMeet ? <VideoIcon size={11} /> : <AudioWaveformIcon size={11} />}
+                              <span>{isMeet ? 'Video' : 'Voice'}</span>
+                            </span>
+
+                            {r.hasPasscode && (
+                              <span
+                                className="inline-flex items-center gap-0.5 text-[10px] font-mono text-amber-400 bg-amber-400/10 border border-amber-400/20 px-1.5 py-0.5 rounded-md"
+                                title="Passcode protected"
+                              >
+                                <LockIcon size={10} />
+                                <span>Locked</span>
+                              </span>
+                            )}
+                          </div>
+
+                          <h3 className="text-sm font-semibold text-[#fcfdff] truncate">
+                            {r.title}
+                          </h3>
+                          {r.description && (
+                            <p className="text-[11px] text-[#888e90] line-clamp-1">
+                              {r.description}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Room Code with Copy */}
+                        <button
+                          onClick={() => handleCopy(r.code)}
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.08] text-[11px] font-mono text-[#888e90] hover:text-[#fcfdff] transition-all shrink-0"
+                          title="Copy room code"
+                        >
+                          <span>{r.code}</span>
+                          {copiedCode === r.code ? (
+                            <CheckIcon size={11} className="text-[#11ff99]" />
+                          ) : (
+                            <CopyIcon size={11} />
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] text-xs">
+                        <div className="flex items-center gap-1.5 text-[11px] font-mono text-[#888e90]">
+                          <span className="h-1.5 w-1.5 rounded-full bg-[#11ff99] animate-pulse" />
+                          <span>
+                            {r.participantCount} / {r.maxParticipants} Seats
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleDeleteRoom(r.code)}
+                            disabled={deletingCode === r.code}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-red-500/10 border border-white/[0.08] hover:border-red-500/30 text-[#888e90] hover:text-[#ff2047] font-medium text-xs transition-all disabled:opacity-50"
+                            title="End and delete space"
+                          >
+                            {deletingCode === r.code ? (
+                              <div className="animate-spin h-3 w-3 border border-red-400/30 border-t-red-400 rounded-full" />
+                            ) : (
+                              <>
+                                <Trash2Icon size={12} />
+                                <span className="text-[11px]">Delete</span>
+                              </>
+                            )}
+                          </button>
+
+                          <Link
+                            href={roomHref}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-medium text-xs transition-all active:scale-[0.98] shadow-sm"
+                          >
+                            <span>Enter Space</span>
+                            <ArrowRightIcon size={11} />
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
       </main>
 
       <CreateRoomModal
@@ -317,6 +519,7 @@ export default function DashboardPage() {
         onClose={() => {
           setModalOpen(false);
           void checkPresence();
+          void fetchMyRooms();
         }}
       />
     </div>
