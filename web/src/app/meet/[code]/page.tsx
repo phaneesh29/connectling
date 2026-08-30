@@ -25,7 +25,11 @@ import {
   LogOutIcon,
   PhoneCallIcon,
   XIcon,
+  MessageSquareIcon,
 } from '@animateicons/react/lucide';
+import { getSocket } from '@/lib/socket';
+import { InRoomChat } from '@/components/in-room-chat';
+import type { ChatMessage } from '@/types/realtime';
 
 interface MeetPageProps {
   params: Promise<{ code: string }>;
@@ -55,6 +59,10 @@ export default function MeetPage({ params }: MeetPageProps) {
   const [updatingSettings, setUpdatingSettings] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [ending, setEnding] = useState(false);
+
+  const [chatOpen, setChatOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   useEffect(() => {
     if (!sessionPending && !session) {
@@ -135,6 +143,41 @@ export default function MeetPage({ params }: MeetPageProps) {
 
     return () => clearInterval(interval);
   }, [room, participant]);
+
+  // Connect WebSocket and listen for in-room ephemeral messages
+  useEffect(() => {
+    if (!room || !participant) return;
+    const socket = getSocket();
+    socket.connect();
+
+    socket.emit('room:join', {
+      roomCode: code,
+      isMuted: !isMicOn,
+      isVideoOn: isVideoOn,
+    });
+
+    const handleNewMessage = (msg: ChatMessage) => {
+      setMessages((prev) => [...prev, msg]);
+      setChatOpen((isOpen) => {
+        if (!isOpen) {
+          setUnreadChatCount((count) => count + 1);
+        }
+        return isOpen;
+      });
+    };
+
+    socket.on('chat:new-message', handleNewMessage);
+
+    return () => {
+      socket.off('chat:new-message', handleNewMessage);
+      socket.emit('room:leave', { roomCode: code });
+    };
+  }, [room, participant, code, isMicOn, isVideoOn]);
+
+  const handleSendMessage = (text: string) => {
+    const socket = getSocket();
+    socket.emit('chat:message', { roomCode: code, text });
+  };
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -420,6 +463,26 @@ export default function MeetPage({ params }: MeetPageProps) {
             <MonitorIcon size={17} />
           </button>
 
+          <button
+            onClick={() => {
+              setChatOpen(!chatOpen);
+              if (!chatOpen) setUnreadChatCount(0);
+            }}
+            className={`relative h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
+              chatOpen
+                ? 'bg-blue-500/20 text-[#3b9eff] border border-blue-500/40 shadow-sm'
+                : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
+            }`}
+            title="In-Call Messages"
+          >
+            <MessageSquareIcon size={17} />
+            {unreadChatCount > 0 && !chatOpen && (
+              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#3b9eff] text-black font-mono text-[9px] font-bold flex items-center justify-center shadow-lg animate-pulse">
+                {unreadChatCount}
+              </span>
+            )}
+          </button>
+
           <div className="h-6 w-px bg-white/[0.08] mx-1" />
 
           <button
@@ -540,6 +603,16 @@ export default function MeetPage({ params }: MeetPageProps) {
           </div>
         </div>
       )}
+
+      {/* In-Call Ephemeral Chat */}
+      <InRoomChat
+        isOpen={chatOpen}
+        onClose={() => setChatOpen(false)}
+        messages={messages}
+        onSendMessage={handleSendMessage}
+        currentUserId={session?.user?.id || ''}
+        roomTitle={room?.title}
+      />
     </div>
   );
 }

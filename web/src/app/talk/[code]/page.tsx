@@ -23,7 +23,11 @@ import {
   LogOutIcon,
   PhoneCallIcon,
   StarIcon,
+  MessageSquareIcon,
 } from '@animateicons/react/lucide';
+import { getSocket } from '@/lib/socket';
+import { InRoomChat } from '@/components/in-room-chat';
+import type { ChatMessage } from '@/types/realtime';
 
 interface TalkPageProps {
   params: Promise<{ code: string }>;
@@ -50,6 +54,10 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [copied, setCopied] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [ending, setEnding] = useState(false);
+
+  const [chatOpen, setChatOpen] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
 
   useEffect(() => {
     if (!sessionPending && !session) {
@@ -144,6 +152,41 @@ export default function TalkPage({ params }: TalkPageProps) {
       window.removeEventListener('beforeunload', onBeforeUnload);
     };
   }, [room, participant]);
+
+  // Connect WebSocket and listen for in-room ephemeral messages
+  useEffect(() => {
+    if (!room || !participant) return;
+    const socket = getSocket();
+    socket.connect();
+
+    socket.emit('room:join', {
+      roomCode: code,
+      isMuted: isMuted,
+      isVideoOn: false,
+    });
+
+    const handleNewMessage = (msg: ChatMessage) => {
+      setMessages((prev) => [...prev, msg]);
+      setChatOpen((isOpen) => {
+        if (!isOpen) {
+          setUnreadChatCount((count) => count + 1);
+        }
+        return isOpen;
+      });
+    };
+
+    socket.on('chat:new-message', handleNewMessage);
+
+    return () => {
+      socket.off('chat:new-message', handleNewMessage);
+      socket.emit('room:leave', { roomCode: code });
+    };
+  }, [room, participant, code, isMuted]);
+
+  const handleSendMessage = (text: string) => {
+    const socket = getSocket();
+    socket.emit('chat:message', { roomCode: code, text });
+  };
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -454,6 +497,26 @@ export default function TalkPage({ params }: TalkPageProps) {
             </button>
           )}
 
+          <button
+            onClick={() => {
+              setChatOpen(!chatOpen);
+              if (!chatOpen) setUnreadChatCount(0);
+            }}
+            className={`relative h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
+              chatOpen
+                ? 'bg-purple-500/20 text-[#a855f7] border border-purple-500/40 shadow-sm'
+                : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
+            }`}
+            title="In-Call Messages"
+          >
+            <MessageSquareIcon size={17} />
+            {unreadChatCount > 0 && !chatOpen && (
+              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#a855f7] text-white font-mono text-[9px] font-bold flex items-center justify-center shadow-lg animate-pulse">
+                {unreadChatCount}
+              </span>
+            )}
+          </button>
+
           <div className="h-6 w-px bg-white/[0.08] mx-1" />
 
           <button
@@ -478,7 +541,7 @@ export default function TalkPage({ params }: TalkPageProps) {
             <button
               onClick={handleEndRoom}
               disabled={leaving || ending}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#ff2047] hover:bg-[#ff2047]/90 text-white font-medium text-xs transition-all shadow-[0_0_16px_rgba(255,32,71,0.3)] disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#ff2047] hover:bg-[#ff2047]/90 text-white font-medium text-xs transition-all shadow-[0_0_16px_rgba(252,32,71,0.3)] disabled:opacity-50"
             >
               {ending ? (
                 <>
@@ -495,6 +558,16 @@ export default function TalkPage({ params }: TalkPageProps) {
           )}
         </div>
       </footer>
+
+      {/* In-Call Ephemeral Chat */}
+      <InRoomChat
+        isOpen={chatOpen}
+        onClose={() => setChatOpen(false)}
+        messages={messages}
+        onSendMessage={handleSendMessage}
+        currentUserId={session?.user?.id || ''}
+        roomTitle={room?.title}
+      />
     </div>
   );
 }
