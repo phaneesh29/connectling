@@ -29,7 +29,7 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center p-4 sm:p-6 bg-black ambient-glow-meet">
+    <main className="flex min-h-screen pt-24 pb-12 items-center justify-center p-4 sm:p-6 bg-black ambient-glow-meet">
       <div className="w-full max-w-md p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl shadow-2xl space-y-6 relative overflow-hidden glow-card">
         {/* Subtle Ambient Glow */}
         <div className="absolute top-0 right-0 w-48 h-48 bg-[#3b9eff] opacity-15 blur-3xl pointer-events-none" />

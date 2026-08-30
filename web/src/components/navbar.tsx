@@ -41,12 +41,12 @@ export function Navbar() {
     : 'U';
 
   return (
-    <header className="sticky top-0 z-50 w-full bg-[#0a0a0e]/70 backdrop-blur-xl backdrop-saturate-150 border-b border-white/[0.08] shadow-[0_4px_30px_rgba(0,0,0,0.5)]">
-      <div className="max-w-5xl mx-auto h-14 px-4 sm:px-6 flex items-center justify-between">
+    <header className="fixed top-4 sm:top-5 left-0 right-0 z-50 w-full px-4 sm:px-6 pointer-events-none transition-all duration-300">
+      <div className="max-w-4xl mx-auto h-14 px-4 sm:px-5 flex items-center justify-between rounded-2xl bg-[#0e0e14]/80 backdrop-blur-2xl backdrop-saturate-200 border border-white/[0.14] shadow-[0_16px_40px_-10px_rgba(0,0,0,0.7),inset_0_1px_1px_0_rgba(255,255,255,0.20)] pointer-events-auto">
         {/* Left: Brand Logo & Navigation */}
-        <div className="flex items-center gap-6 sm:gap-8">
+        <div className="flex items-center gap-5 sm:gap-7">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="h-8 w-8 rounded-xl bg-white/[0.06] border border-white/[0.12] flex items-center justify-center shadow-[inset_0_1px_0_rgba(255,255,255,0.15)] group-hover:bg-white/[0.10] group-hover:border-white/[0.25] transition-all duration-200">
+            <div className="h-8 w-8 rounded-xl bg-white/[0.08] border border-white/[0.16] flex items-center justify-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] group-hover:bg-white/[0.12] group-hover:border-white/[0.30] transition-all duration-200">
               <AudioWaveformIcon
                 size={16}
                 className="text-[#fcfdff] group-hover:scale-110 transition-transform duration-200"
@@ -58,23 +58,23 @@ export function Navbar() {
           </Link>
 
           {session && (
-            <nav className="hidden sm:flex items-center p-1 bg-white/[0.03] border border-white/[0.08] rounded-full">
+            <nav className="hidden sm:flex items-center p-1 bg-white/[0.04] border border-white/[0.08] rounded-xl">
               <Link
                 href="/"
-                className={`px-3.5 py-1 rounded-full text-xs transition-all duration-150 ${
+                className={`px-3 py-1 rounded-lg text-xs transition-all duration-150 ${
                   isActive('/')
-                    ? 'bg-white/[0.12] text-[#fcfdff] font-medium border border-white/[0.16] shadow-sm'
-                    : 'text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.04]'
+                    ? 'bg-white/[0.14] text-[#fcfdff] font-medium border border-white/[0.18] shadow-sm'
+                    : 'text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06]'
                 }`}
               >
                 Spaces
               </Link>
               <Link
                 href="/profile"
-                className={`px-3.5 py-1 rounded-full text-xs transition-all duration-150 ${
+                className={`px-3 py-1 rounded-lg text-xs transition-all duration-150 ${
                   isActive('/profile')
-                    ? 'bg-white/[0.12] text-[#fcfdff] font-medium border border-white/[0.16] shadow-sm'
-                    : 'text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.04]'
+                    ? 'bg-white/[0.14] text-[#fcfdff] font-medium border border-white/[0.18] shadow-sm'
+                    : 'text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06]'
                 }`}
               >
                 Profile
@@ -92,7 +92,7 @@ export function Navbar() {
               {/* User Profile Pill */}
               <Link
                 href="/profile"
-                className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.10] hover:border-white/[0.20] transition-all"
+                className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.12] hover:border-white/[0.22] transition-all"
               >
                 {session.user.image && !imgError ? (
                   <Image
@@ -120,7 +120,7 @@ export function Navbar() {
                 onClick={handleSignOut}
                 disabled={signingOut}
                 title="Sign out"
-                className="h-8 w-8 rounded-full bg-white/[0.04] hover:bg-red-500/10 border border-white/[0.10] hover:border-red-500/30 text-[#888e90] hover:text-red-400 flex items-center justify-center transition-all disabled:opacity-50"
+                className="h-8 w-8 rounded-xl bg-white/[0.05] hover:bg-red-500/10 border border-white/[0.12] hover:border-red-500/30 text-[#888e90] hover:text-red-400 flex items-center justify-center transition-all disabled:opacity-50"
               >
                 {signingOut ? (
                   <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
@@ -132,7 +132,7 @@ export function Navbar() {
           ) : (
             <Link
               href="/login"
-              className="inline-flex items-center justify-center gap-1.5 px-4 py-1.5 bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-medium text-xs rounded-full shadow-[0_0_20px_rgba(252,253,255,0.18)] transition-all active:scale-[0.98]"
+              className="inline-flex items-center justify-center gap-1.5 px-4 py-1.5 bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-medium text-xs rounded-xl shadow-[0_0_20px_rgba(252,253,255,0.18)] transition-all active:scale-[0.98]"
             >
               <SparklesIcon size={12} />
               <span>Sign In</span>
