@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useSession } from '@/lib/auth-client';
 import {
   roomsApi,
@@ -190,7 +191,7 @@ export default function MeetPage({ params }: MeetPageProps) {
 
   if (sessionPending || loading) {
     return (
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-black">
+      <div className="flex min-h-screen items-center justify-center bg-black">
         <div className="text-center space-y-3">
           <div className="animate-spin h-6 w-6 border border-white/20 border-t-[#fcfdff] rounded-full mx-auto" />
           <p className="text-xs font-mono text-[#888e90]">Establishing encrypted WebRTC connection...</p>
@@ -201,7 +202,7 @@ export default function MeetPage({ params }: MeetPageProps) {
 
   if (passcodeRequired) {
     return (
-      <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4 bg-black">
+      <main className="flex min-h-screen items-center justify-center p-4 bg-black">
         <div className="w-full max-w-md p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl space-y-6 text-center shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-48 h-48 bg-[#3b9eff] opacity-10 blur-3xl pointer-events-none" />
           <div className="h-12 w-12 rounded-xl bg-[#101012] border border-white/[0.10] text-[#ffc53d] flex items-center justify-center mx-auto">
@@ -259,7 +260,7 @@ export default function MeetPage({ params }: MeetPageProps) {
 
   if (error || !room) {
     return (
-      <main className="flex min-h-[calc(100vh-4rem)] items-center justify-center p-4 bg-black">
+      <main className="flex min-h-screen items-center justify-center p-4 bg-black">
         <div className="w-full max-w-md p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl space-y-4 text-center">
           <div className="h-12 w-12 rounded-xl bg-[#ff2047]/10 border border-[#ff2047]/20 text-[#ff2047] flex items-center justify-center mx-auto">
             <LockIcon size={22} />
@@ -282,7 +283,7 @@ export default function MeetPage({ params }: MeetPageProps) {
   const isHost = room.hostId === session?.user.id;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-black text-[#fcfdff] select-none ambient-glow-meet">
+    <div className="flex flex-col h-screen bg-black text-[#fcfdff] select-none ambient-glow-meet">
       <header className="h-14 border-b border-white/[0.06] px-4 sm:px-6 flex items-center justify-between bg-black/60 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <span className="h-2 w-2 rounded-full bg-[#11ff99] shadow-[0_0_8px_#11ff99]" />
@@ -322,9 +323,12 @@ export default function MeetPage({ params }: MeetPageProps) {
               <div className="w-full h-full bg-gradient-to-b from-[#0e0e12] to-[#06060a] flex flex-col items-center justify-center p-6 text-center space-y-3">
                 <div className="h-20 w-20 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
                   {session?.user.image ? (
-                    <img
+                    <Image
                       src={session.user.image}
-                      alt={session.user.name}
+                      alt={session.user.name || 'User'}
+                      width={80}
+                      height={80}
+                      unoptimized
                       className="h-full w-full rounded-full object-cover"
                     />
                   ) : (

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   signOut,
   useSession,
@@ -134,7 +135,7 @@ export default function ProfilePage() {
 
   if (isPending || !session) {
     return (
-      <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-black">
+      <div className="flex min-h-[calc(100vh-3.5rem)] items-center justify-center bg-black">
         <div className="animate-spin h-5 w-5 border border-white/20 border-t-[#fcfdff] rounded-full" />
       </div>
     );
@@ -174,9 +175,12 @@ export default function ProfilePage() {
       <div className="glow-card p-6 sm:p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-xl space-y-6">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 pb-6 border-b border-white/[0.06]">
           {user.image ? (
-            <img
+            <Image
               src={user.image}
               alt={user.name || 'User avatar'}
+              width={64}
+              height={64}
+              unoptimized
               className="w-16 h-16 rounded-full border border-white/20 object-cover shadow-2xl"
             />
           ) : (

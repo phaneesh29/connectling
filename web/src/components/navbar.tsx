@@ -2,15 +2,21 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut, useSession } from '@/lib/auth-client';
-import { AudioWaveformIcon, LogOutIcon, SparklesIcon } from '@animateicons/react/lucide';
+import { AudioWaveformIcon, LogOutIcon } from '@animateicons/react/lucide';
 
 export function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
   const { data: session, isPending } = useSession();
   const [signingOut, setSigningOut] = useState(false);
+
+  // Do not render the global navbar inside active meeting/audio room pages
+  if (pathname.startsWith('/meet/') || pathname.startsWith('/talk/')) {
+    return null;
+  }
 
   const isActive = (path: string) => pathname === path;
 
@@ -30,26 +36,27 @@ export function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-black/75 backdrop-blur-xl">
-      <div className="max-w-6xl mx-auto flex h-16 items-center justify-between px-4 sm:px-6">
+    <header className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-black/80 backdrop-blur-md">
+      <div className="max-w-5xl mx-auto flex h-14 items-center justify-between px-4 sm:px-6">
         {/* Brand & Main Nav */}
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="h-7 w-7 rounded-lg bg-[#101012] border border-white/[0.12] text-[#fcfdff] flex items-center justify-center transition-all duration-200 group-hover:border-white/30 group-hover:bg-[#18181c]">
-              <AudioWaveformIcon size={15} />
-            </div>
-            <span className="font-serif-headline text-lg text-[#fcfdff] tracking-tight font-medium">
+            <AudioWaveformIcon
+              size={17}
+              className="text-[#fcfdff] transition-transform duration-200 group-hover:scale-105"
+            />
+            <span className="font-serif-headline text-base text-[#fcfdff] tracking-tight font-normal">
               Connectling
             </span>
           </Link>
 
           {session && (
-            <nav className="hidden sm:flex items-center gap-1">
+            <nav className="hidden sm:flex items-center gap-6">
               <Link
                 href="/"
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                className={`text-xs transition-colors duration-150 ${
                   isActive('/')
-                    ? 'text-[#fcfdff] bg-[#101012] border border-white/[0.08]'
+                    ? 'text-[#fcfdff] font-medium'
                     : 'text-[#888e90] hover:text-[#fcfdff]'
                 }`}
               >
@@ -57,9 +64,9 @@ export function Navbar() {
               </Link>
               <Link
                 href="/profile"
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                className={`text-xs transition-colors duration-150 ${
                   isActive('/profile')
-                    ? 'text-[#fcfdff] bg-[#101012] border border-white/[0.08]'
+                    ? 'text-[#fcfdff] font-medium'
                     : 'text-[#888e90] hover:text-[#fcfdff]'
                 }`}
               >
@@ -69,58 +76,56 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Status indicator & User CTA */}
+        {/* User / CTA */}
         <div className="flex items-center gap-4">
-          {/* Status Badge Pill from DESIGN.md */}
-          <div className="hidden md:inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-[#101012] border border-white/[0.06] text-[11px] text-[#888e90]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#11ff99] shadow-[0_0_8px_#11ff99]" />
-            <span className="font-mono">Live Systems OK</span>
-          </div>
-
           {isPending ? (
-            <div className="h-8 w-20 bg-[#101012] border border-white/[0.06] animate-pulse rounded-lg" />
+            <div className="h-6 w-16 bg-white/[0.06] animate-pulse rounded" />
           ) : session ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               <Link
                 href="/profile"
-                className="flex items-center gap-2 p-1 pr-2 rounded-full bg-[#101012] border border-white/[0.08] hover:border-white/[0.18] transition-all"
+                className="flex items-center gap-2 text-xs text-[#888e90] hover:text-[#fcfdff] transition-colors"
               >
                 {session.user.image ? (
-                  <img
+                  <Image
                     src={session.user.image}
                     alt={session.user.name || 'User'}
-                    className="w-6 h-6 rounded-full object-cover border border-white/10"
+                    width={20}
+                    height={20}
+                    unoptimized
+                    className="w-5 h-5 rounded-full object-cover border border-white/10"
                   />
                 ) : (
-                  <div className="w-6 h-6 rounded-full bg-[#18181c] border border-white/10 flex items-center justify-center text-[10px] font-mono text-[#fcfdff]">
+                  <div className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-mono text-[#fcfdff]">
                     {session.user.name?.charAt(0) || 'U'}
                   </div>
                 )}
-                <span className="text-xs font-medium text-[#fcfdff]/90 max-w-[120px] truncate hidden sm:inline">
+                <span className="hidden sm:inline max-w-[120px] truncate text-xs">
                   {session.user.name}
                 </span>
               </Link>
+
+              <div className="h-3 w-px bg-white/[0.10]" />
 
               <button
                 onClick={handleSignOut}
                 disabled={signingOut}
                 title="Sign out"
-                className="h-8 w-8 rounded-lg bg-[#101012] border border-white/[0.08] hover:bg-[#18181c] hover:border-white/[0.2] flex items-center justify-center text-[#888e90] hover:text-[#fcfdff] transition-all disabled:opacity-50"
+                className="text-[#888e90] hover:text-[#fcfdff] p-1 transition-colors disabled:opacity-50"
               >
                 {signingOut ? (
-                  <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
+                  <div className="animate-spin h-3 w-3 border border-white/30 border-t-white rounded-full" />
                 ) : (
-                  <LogOutIcon size={13} />
+                  <LogOutIcon size={14} />
                 )}
               </button>
             </div>
           ) : (
             <Link
               href="/login"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-medium text-xs rounded-lg transition-all active:scale-[0.98] shadow-[0_0_20px_rgba(252,253,255,0.12)]"
+              className="inline-flex items-center justify-center px-3.5 py-1.5 bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-medium text-xs rounded-md transition-all active:scale-[0.98]"
             >
-              <SparklesIcon size={12} />
-              <span>Sign In</span>
+              Sign In
             </Link>
           )}
         </div>
