@@ -6,7 +6,7 @@ import compression from 'compression';
 import hpp from 'hpp';
 import { toNodeHandler } from 'better-auth/node';
 import { env } from './config/env.js';
-import { httpLogger } from './utils/logger.js';
+import { httpLogger, logger } from './utils/logger.js';
 import { auth } from './auth.js';
 import { apiRouter } from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middleware/error-handler.js';
@@ -55,5 +55,13 @@ const app = createApp();
 const server = createServer(app);
 
 export const io = initRealtimeGateway(server);
-export { server };
-export default app;
+
+if (!process.env.VERCEL) {
+  const port = process.env.PORT || 3000;
+  server.listen(port, () => {
+    logger.info(`listening on http://localhost:${port}`);
+  });
+}
+
+export { app, server };
+export default server;
