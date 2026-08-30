@@ -228,7 +228,7 @@ export default function ProfilePage() {
   const currentSessionToken = session.session?.token;
 
   return (
-    <main className="min-h-screen pt-20 pb-12 max-w-4xl mx-auto px-4 sm:px-6 space-y-8 bg-black text-[#fcfdff] ambient-glow-meet">
+    <main className="min-h-[calc(100vh-3.5rem)] py-8 sm:py-12 max-w-4xl mx-auto px-4 sm:px-6 space-y-8 bg-black text-[#fcfdff] ambient-glow-meet">
       {/* Header */}
       <div className="space-y-1">
         <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#101012] border border-white/[0.08] text-[11px] text-[#888e90] mb-2 font-mono">

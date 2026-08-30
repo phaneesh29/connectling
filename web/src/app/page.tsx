@@ -136,7 +136,7 @@ export default function DashboardPage() {
 
   return (
     <div
-      className={`min-h-screen pt-14 bg-black text-[#fcfdff] transition-all duration-700 ${
+      className={`min-h-[calc(100vh-3.5rem)] bg-black text-[#fcfdff] transition-all duration-700 ${
         activeMode === 'meet' ? 'ambient-glow-meet' : 'ambient-glow-audio'
       }`}
     >
