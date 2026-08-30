@@ -18,35 +18,34 @@ import {
   ArrowRightIcon,
   ZapIcon,
   HandCoinsIcon,
-  ClockIcon,
   ShieldCheckIcon,
   StarIcon,
   CameraIcon,
   RadioIcon,
   ActivityIcon,
-  LayersIcon,
 } from '@animateicons/react/lucide';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { data: session, isPending } = useSession();
+  const { data: session } = useSession();
 
   const [activeMode, setActiveMode] = useState<'meet' | 'audio'>('meet');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'meet' | 'audio'>('meet');
   const [codeInput, setCodeInput] = useState('');
   const [activeRoom, setActiveRoom] = useState<RoomData | null>(null);
-  const [checkingPresence, setCheckingPresence] = useState(true);
+  const [checkingPresence, setCheckingPresence] = useState(false);
   const [leavingActive, setLeavingActive] = useState(false);
   const [joining, setJoining] = useState(false);
 
-  // Interactive Live Demo states
-  const [previewTab, setPreviewTab] = useState<'code' | 'figma' | 'audio'>('code');
+  // Interactive Live Demo controls
+  const [previewTab, setPreviewTab] = useState<'code' | 'figma'>('code');
   const [isDemoMicActive, setIsDemoMicActive] = useState(true);
   const [isDemoCamActive, setIsDemoCamActive] = useState(true);
 
   const checkPresence = useCallback(async () => {
     if (!session) return;
+    setCheckingPresence(true);
     try {
       const res = await roomsApi.getMyPresence();
       if (res.data?.isActive && res.data.activeRoom) {
@@ -77,12 +76,7 @@ export default function DashboardPage() {
         })
         .catch(() => {
           if (!ignore) setActiveRoom(null);
-        })
-        .finally(() => {
-          if (!ignore) setCheckingPresence(false);
         });
-    } else {
-      setCheckingPresence(false);
     }
     return () => {
       ignore = true;
@@ -266,9 +260,9 @@ export default function DashboardPage() {
 
           <div className="flex items-center justify-between border-b border-white/[0.06] pb-4 relative z-10">
             <div className="flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-[#ff2047]/80" />
-              <span className="h-2 w-2 rounded-full bg-[#ffc53d]/80" />
-              <span className="h-2 w-2 rounded-full bg-[#11ff99]/80" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#ff2047]/80" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#ffc53d]/80" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#11ff99]/80" />
               <span className="font-mono text-[11px] text-[#888e90] ml-2">
                 connectling.com/{activeMode === 'meet' ? 'meet' : 'talk'}/[code]
               </span>
@@ -378,7 +372,7 @@ export default function DashboardPage() {
                 <div className="relative p-4 rounded-xl bg-[#0a0a0c] border border-white/[0.12] flex flex-col justify-between h-52 overflow-hidden group">
                   <div className="flex items-center justify-between z-10">
                     <span className="px-2 py-0.5 rounded bg-[#101012] border border-white/[0.08] text-[10px] font-mono text-[#3b9eff]">
-                      HD Camera
+                      {isDemoCamActive ? 'HD Camera 1080p' : 'Camera Off'}
                     </span>
                     <span className="h-2 w-2 rounded-full bg-[#11ff99] shadow-[0_0_6px_#11ff99]" />
                   </div>
@@ -388,21 +382,33 @@ export default function DashboardPage() {
                       <div className="h-14 w-14 rounded-full bg-[#141418] border border-white/20 flex items-center justify-center font-serif text-xl text-[#fcfdff] shadow-inner speaker-active-ring">
                         {displayName.charAt(0) || 'Y'}
                       </div>
-                      <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setIsDemoMicActive(!isDemoMicActive)}
+                        title="Toggle demo mic"
+                        className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center cursor-pointer hover:scale-110 transition-transform"
+                      >
                         {isDemoMicActive ? (
                           <MicIcon size={10} className="text-[#11ff99]" />
                         ) : (
                           <MicOffIcon size={10} className="text-[#ff2047]" />
                         )}
-                      </span>
+                      </button>
                     </div>
                     <span className="text-xs font-medium text-[#fcfdff] mt-2">{displayName}</span>
                     <span className="text-[10px] font-mono text-[#888e90]">Host (Speaking)</span>
                   </div>
 
                   <div className="flex items-center justify-between text-[10px] font-mono text-[#888e90] z-10 pt-2 border-t border-white/[0.04]">
-                    <span>VP8 Hardware</span>
-                    <span className="text-[#11ff99]">32ms RTT</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsDemoCamActive(!isDemoCamActive)}
+                      className="text-[10px] text-[#3b9eff] hover:underline flex items-center gap-1"
+                    >
+                      <CameraIcon size={10} />
+                      <span>{isDemoCamActive ? 'Disable' : 'Enable'}</span>
+                    </button>
+                    <span className="text-[#11ff99]">28ms RTT</span>
                   </div>
                 </div>
 
@@ -442,10 +448,10 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Window Content */}
-                  <div className="my-auto font-mono text-xs text-[#888e90] leading-relaxed p-2 bg-[#06060a]/80 rounded-lg border border-white/[0.04]">
+                  <div className="my-auto font-mono text-xs text-[#888e90] leading-relaxed p-2.5 bg-[#06060a]/80 rounded-lg border border-white/[0.04]">
                     {previewTab === 'code' ? (
                       <div className="space-y-1">
-                        <p className="text-[#3b9eff]">// Connectling Peer Mesh WebRTC Handshake</p>
+                        <p className="text-[#3b9eff]">{'// Connectling Peer Mesh WebRTC Handshake'}</p>
                         <p className="text-[#fcfdff]">
                           const peer = new <span className="text-[#ffc53d]">RTCPeerConnection</span>(iceConfig);
                         </p>
@@ -453,11 +459,11 @@ export default function DashboardPage() {
                       </div>
                     ) : (
                       <div className="flex items-center justify-between p-2 text-center">
-                        <div className="space-y-1">
+                        <div className="space-y-1 text-left">
                           <span className="text-[11px] text-[#fcfdff] block font-sans font-medium">Design Mockup: Video Mesh Stage</span>
                           <span className="text-[10px] text-[#888e90] block">4 Participants • 0ms UI Latency</span>
                         </div>
-                        <div className="h-6 px-2 bg-purple-500/20 text-purple-300 rounded flex items-center text-[10px]">
+                        <div className="h-6 px-2.5 bg-purple-500/20 text-purple-300 rounded flex items-center text-[10px] border border-purple-500/30">
                           Figma Live
                         </div>
                       </div>
@@ -531,7 +537,7 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {/* Realtime Telemetry HUD (Replacing 4 simple boxes) */}
+          {/* Realtime Telemetry HUD */}
           <div className="pt-2 border-t border-white/[0.06]">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
               <div className="p-3.5 bg-[#0a0a0c] border border-white/[0.08] rounded-xl flex items-center gap-3">
