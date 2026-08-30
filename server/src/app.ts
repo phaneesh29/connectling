@@ -55,5 +55,5 @@ const app = createApp();
 const server = createServer(app);
 
 export const io = initRealtimeGateway(server);
-
-export default server;
+export { server };
+export default app;
