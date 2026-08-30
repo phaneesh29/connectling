@@ -67,6 +67,7 @@ export default function ProfilePage() {
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (!isPending && !session) {
@@ -227,7 +228,7 @@ export default function ProfilePage() {
   const currentSessionToken = session.session?.token;
 
   return (
-    <main className="max-w-4xl mx-auto px-4 sm:px-6 py-10 sm:py-14 space-y-8 bg-black text-[#fcfdff] ambient-glow-meet">
+    <main className="min-h-screen pt-20 pb-12 max-w-4xl mx-auto px-4 sm:px-6 space-y-8 bg-black text-[#fcfdff] ambient-glow-meet">
       {/* Header */}
       <div className="space-y-1">
         <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-[#101012] border border-white/[0.08] text-[11px] text-[#888e90] mb-2 font-mono">
@@ -257,18 +258,20 @@ export default function ProfilePage() {
       {/* Profile Card */}
       <div className="glow-card p-6 sm:p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl space-y-6">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 pb-6 border-b border-white/[0.06]">
-          {user.image ? (
+          {user.image && !imageError ? (
             <Image
               src={user.image}
               alt={user.name || 'User avatar'}
               width={64}
               height={64}
               unoptimized
+              referrerPolicy="no-referrer"
+              onError={() => setImageError(true)}
               className="w-16 h-16 rounded-full border border-white/20 object-cover shadow-2xl"
             />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-[#101012] border border-white/10 flex items-center justify-center font-serif text-2xl text-[#fcfdff]">
-              {user.name?.charAt(0) || 'U'}
+            <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-white/10 to-white/20 border border-white/25 flex items-center justify-center font-medium text-2xl text-[#fcfdff] shadow-inner">
+              {user.name ? user.name.trim().charAt(0).toUpperCase() : 'U'}
             </div>
           )}
 

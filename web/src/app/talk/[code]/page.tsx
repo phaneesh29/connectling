@@ -322,6 +322,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                       width={72}
                       height={72}
                       unoptimized
+                      referrerPolicy="no-referrer"
                       className="h-full w-full object-cover"
                     />
                   ) : (
@@ -358,6 +359,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                         width={72}
                         height={72}
                         unoptimized
+                      referrerPolicy="no-referrer"
                         className="h-full w-full object-cover"
                       />
                     ) : (
@@ -398,6 +400,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                         width={48}
                         height={48}
                         unoptimized
+                      referrerPolicy="no-referrer"
                         className="h-full w-full object-cover"
                       />
                     ) : (

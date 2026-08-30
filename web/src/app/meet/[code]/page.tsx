@@ -329,6 +329,7 @@ export default function MeetPage({ params }: MeetPageProps) {
                       width={80}
                       height={80}
                       unoptimized
+                      referrerPolicy="no-referrer"
                       className="h-full w-full rounded-full object-cover"
                     />
                   ) : (

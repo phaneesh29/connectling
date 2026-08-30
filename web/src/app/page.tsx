@@ -136,11 +136,11 @@ export default function DashboardPage() {
 
   return (
     <div
-      className={`min-h-[calc(100vh-3.5rem)] bg-black text-[#fcfdff] transition-all duration-700 ${
+      className={`min-h-screen pt-14 bg-black text-[#fcfdff] transition-all duration-700 ${
         activeMode === 'meet' ? 'ambient-glow-meet' : 'ambient-glow-audio'
       }`}
     >
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 space-y-12">
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-8">
         {/* Active Room Banner */}
         {!checkingPresence && activeRoom && (
           <div className="p-4 sm:p-5 bg-[#0a0a0c] border border-amber-500/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden animate-in fade-in duration-300">
