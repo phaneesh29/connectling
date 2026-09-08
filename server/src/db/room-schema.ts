@@ -4,8 +4,6 @@ import { user } from './auth-schema.js';
 
 export const roomTypeEnum = pgEnum('room_type', ['meet', 'audio']);
 export const roomStatusEnum = pgEnum('room_status', ['active', 'ended', 'scheduled']);
-export const roomUserRoleEnum = pgEnum('room_user_role', ['host', 'co_host', 'speaker', 'listener', 'participant']);
-export const roomUserStatusEnum = pgEnum('room_user_status', ['active', 'left', 'kicked']);
 
 export const room = pgTable(
   'room',
@@ -60,37 +58,7 @@ export const roomSettings = pgTable(
   (table) => [index('room_settings_roomId_idx').on(table.roomId)]
 );
 
-export const roomUser = pgTable(
-  'room_user',
-  {
-    id: text('id').primaryKey(),
-    roomId: text('room_id')
-      .notNull()
-      .references(() => room.id, { onDelete: 'cascade' }),
-    userId: text('user_id')
-      .notNull()
-      .references(() => user.id, { onDelete: 'cascade' }),
-    role: roomUserRoleEnum('role').default('participant').notNull(),
-    status: roomUserStatusEnum('status').default('active').notNull(),
-    isMuted: boolean('is_muted').default(false).notNull(),
-    isVideoOn: boolean('is_video_on').default(false).notNull(),
-    isHandRaised: boolean('is_hand_raised').default(false).notNull(),
-    joinedAt: timestamp('joined_at').defaultNow().notNull(),
-    leftAt: timestamp('left_at'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-    updatedAt: timestamp('updated_at')
-      .defaultNow()
-      .$onUpdate(() => new Date())
-      .notNull(),
-  },
-  (table) => [
-    index('room_user_roomId_idx').on(table.roomId),
-    index('room_user_userId_idx').on(table.userId),
-    index('room_user_status_idx').on(table.status),
-  ]
-);
-
-export const roomRelations = relations(room, ({ one, many }) => ({
+export const roomRelations = relations(room, ({ one }) => ({
   host: one(user, {
     fields: [room.hostId],
     references: [user.id],
@@ -99,7 +67,6 @@ export const roomRelations = relations(room, ({ one, many }) => ({
     fields: [room.id],
     references: [roomSettings.roomId],
   }),
-  users: many(roomUser),
 }));
 
 export const roomSettingsRelations = relations(roomSettings, ({ one }) => ({
@@ -109,20 +76,7 @@ export const roomSettingsRelations = relations(roomSettings, ({ one }) => ({
   }),
 }));
 
-export const roomUserRelations = relations(roomUser, ({ one }) => ({
-  room: one(room, {
-    fields: [roomUser.roomId],
-    references: [room.id],
-  }),
-  user: one(user, {
-    fields: [roomUser.userId],
-    references: [user.id],
-  }),
-}));
-
 export type Room = typeof room.$inferSelect;
 export type NewRoom = typeof room.$inferInsert;
 export type RoomSettings = typeof roomSettings.$inferSelect;
 export type NewRoomSettings = typeof roomSettings.$inferInsert;
-export type RoomUser = typeof roomUser.$inferSelect;
-export type NewRoomUser = typeof roomUser.$inferInsert;

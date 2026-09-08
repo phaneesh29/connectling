@@ -15,7 +15,6 @@ export const ROOM_CONSTANTS = {
   MAX_ROOM_DURATION_HOURS: 24,
   ROOM_DURATION_MINUTES: 24 * 60,
   HEARTBEAT_INTERVAL_SECONDS: 15,
-  PRESENCE_TTL_SECONDS: 45,
 } as const;
 
 export type RoomType = keyof typeof ROOM_CAPACITY;
