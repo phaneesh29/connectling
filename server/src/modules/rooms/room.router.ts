@@ -14,7 +14,6 @@ import {
   leaveRoomHandler,
   updateSettingsHandler,
   endRoomHandler,
-  getUserPresenceHandler,
   heartbeatHandler,
   listMyRoomsHandler,
 } from './room.controller.js';
@@ -30,8 +29,6 @@ roomRouter.post(
   validateRequest({ body: createRoomSchema }),
   createRoomHandler
 );
-
-roomRouter.get('/my/presence', getUserPresenceHandler);
 
 roomRouter.get(
   '/:code',

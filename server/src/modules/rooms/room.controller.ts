@@ -75,16 +75,6 @@ export const endRoomHandler = async (req: Request, res: Response): Promise<void>
   });
 };
 
-export const getUserPresenceHandler = async (req: Request, res: Response): Promise<void> => {
-  const userId = req.user!.id;
-  const result = await roomService.getUserPresence(userId);
-
-  res.status(200).json({
-    success: true,
-    data: result,
-  });
-};
-
 export const heartbeatHandler = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.id;
   const { code } = req.params as RoomCodeParam;
