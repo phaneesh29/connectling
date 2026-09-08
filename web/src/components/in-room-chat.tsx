@@ -12,6 +12,8 @@ interface InRoomChatProps {
   onSendMessage: (text: string) => void;
   currentUserId: string;
   roomTitle?: string;
+  isChatAllowed?: boolean;
+  isHost?: boolean;
 }
 
 export function InRoomChat({
@@ -21,6 +23,8 @@ export function InRoomChat({
   onSendMessage,
   currentUserId,
   roomTitle,
+  isChatAllowed = true,
+  isHost = false,
 }: InRoomChatProps) {
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -148,6 +152,11 @@ export function InRoomChat({
       </div>
 
       {/* Input Bar */}
+      {!isChatAllowed && (
+        <div className="px-3 py-1 bg-amber-500/10 border-t border-amber-500/20 text-[10px] text-[#f59e0b] font-mono text-center">
+          {isHost ? 'Chat is disabled for participants' : 'Chat is disabled by the host'}
+        </div>
+      )}
       <form
         onSubmit={handleSend}
         className="p-3 border-t border-white/[0.08] bg-[#06060a] flex items-center gap-2 shrink-0"
@@ -155,15 +164,22 @@ export function InRoomChat({
         <input
           ref={inputRef}
           type="text"
-          placeholder="Send a message to everyone..."
+          disabled={!isChatAllowed && !isHost}
+          placeholder={
+            !isChatAllowed && !isHost
+              ? 'Chat disabled by host'
+              : !isChatAllowed && isHost
+              ? 'Send message (disabled for participants)...'
+              : 'Send a message to everyone...'
+          }
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          className="flex-1 px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-xs text-[#fcfdff] placeholder-[#888e90] focus:outline-none focus:border-white/40 transition-all font-sans"
+          className="flex-1 px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-xs text-[#fcfdff] placeholder-[#888e90] focus:outline-none focus:border-white/40 transition-all font-sans disabled:opacity-50 disabled:cursor-not-allowed"
         />
 
         <button
           type="submit"
-          disabled={!inputText.trim()}
+          disabled={!inputText.trim() || (!isChatAllowed && !isHost)}
           className="h-8 w-8 rounded-xl bg-[#fcfdff] hover:bg-[#f1f7fe] text-black flex items-center justify-center transition-all disabled:opacity-30 disabled:hover:bg-[#fcfdff] shrink-0"
           title="Send"
         >

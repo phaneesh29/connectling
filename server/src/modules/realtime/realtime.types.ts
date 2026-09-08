@@ -22,12 +22,26 @@ export interface ClientToServerEvents {
   'chat:message': (payload: { roomCode: string; text: string }) => void;
 }
 
+export interface RoomSettingsPayload {
+  id: string;
+  roomId: string;
+  micForAll: boolean;
+  videoForAll: boolean;
+  screenShareForAll: boolean;
+  allowChat: boolean;
+  allowRaiseHand: boolean;
+  maxParticipants: number;
+  isPrivate: boolean;
+  passcode?: string | null;
+}
+
 export interface ServerToClientEvents {
   'chat:new-message': (payload: ChatMessage) => void;
   'room:roster': (payload: { participants: RoomParticipant[] }) => void;
   'room:user-joined': (payload: { userId: string; name: string; image?: string | null }) => void;
   'room:user-left': (payload: { userId: string; name: string }) => void;
   'room:ended': (payload: { message: string }) => void;
+  'room:settings-updated': (payload: RoomSettingsPayload) => void;
   'error:message': (payload: { message: string }) => void;
 }
 

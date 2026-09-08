@@ -25,6 +25,8 @@ import {
   StarIcon,
   MessageSquareIcon,
   UsersIcon,
+  SettingsIcon,
+  XIcon,
 } from '@animateicons/react/lucide';
 import { getSocket } from '@/lib/socket';
 import { playJoinChime, playLeaveChime } from '@/lib/chime';
@@ -145,6 +147,8 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [roomToast, setRoomToast] = useState<{ text: string; type: 'join' | 'leave' } | null>(null);
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
   const [participantsOpen, setParticipantsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [updatingSettings, setUpdatingSettings] = useState(false);
 
   const chatOpenRef = useRef(chatOpen);
   const isMutedRef = useRef(isMuted);
@@ -160,6 +164,13 @@ export default function TalkPage({ params }: TalkPageProps) {
   useEffect(() => {
     isMutedRef.current = isMuted;
   }, [isMuted]);
+
+  const roomHostId = room?.hostId;
+  const roomHostIdRef = useRef(roomHostId);
+
+  useEffect(() => {
+    roomHostIdRef.current = roomHostId;
+  }, [roomHostId]);
 
   useEffect(() => {
     currentUserIdRef.current = currentUserId;
@@ -321,26 +332,65 @@ export default function TalkPage({ params }: TalkPageProps) {
       }, 3500);
     };
 
+    const handleSettingsUpdated = (updated: RoomSettingsData) => {
+      setSettings(updated);
+      setRoomToast({ text: 'Stage settings updated by host', type: 'join' });
+      setTimeout(() => {
+        setRoomToast((curr) => (curr?.text === 'Stage settings updated by host' ? null : curr));
+      }, 3500);
+
+      const isNotHost = Boolean(
+        roomHostIdRef.current &&
+          currentUserIdRef.current &&
+          roomHostIdRef.current !== currentUserIdRef.current
+      );
+
+      if (isNotHost && updated.micForAll === false && !isMutedRef.current) {
+        setIsMuted(true);
+        const socket = getSocket();
+        socket.emit('room:media-toggle', {
+          roomCode: code,
+          isMuted: true,
+        });
+        setRoomToast({ text: 'Microphone disabled by host', type: 'leave' });
+      }
+    };
+
     socket.on('chat:new-message', handleNewMessage);
     socket.on('room:roster', handleRoster);
     socket.on('room:user-joined', handleUserJoined);
     socket.on('room:user-left', handleUserLeft);
+    socket.on('room:settings-updated', handleSettingsUpdated);
 
     return () => {
       socket.off('chat:new-message', handleNewMessage);
       socket.off('room:roster', handleRoster);
       socket.off('room:user-joined', handleUserJoined);
       socket.off('room:user-left', handleUserLeft);
+      socket.off('room:settings-updated', handleSettingsUpdated);
       socket.emit('room:leave', { roomCode: code });
     };
   }, [roomId, code]);
 
+  const isHost = Boolean(room && session?.user && room.hostId === session.user.id);
+  const isSpeaker = isHost || participant?.role === 'speaker' || settings?.micForAll;
+  const isChatAllowed = settings?.allowChat !== false;
+  const isRaiseHandAllowed = settings?.allowRaiseHand !== false;
+
   const handleSendMessage = (text: string) => {
+    if (!isChatAllowed && !isHost) {
+      setRoomToast({ text: 'Chat is disabled by the host', type: 'leave' });
+      return;
+    }
     const socket = getSocket();
     socket.emit('chat:message', { roomCode: code, text });
   };
 
   const handleToggleMic = () => {
+    if (!isSpeaker && !isMuted) {
+      setRoomToast({ text: 'Microphone is disabled by the host', type: 'leave' });
+      return;
+    }
     const next = !isMuted;
     setIsMuted(next);
     const socket = getSocket();
@@ -348,6 +398,29 @@ export default function TalkPage({ params }: TalkPageProps) {
       roomCode: code,
       isMuted: next,
     });
+  };
+
+  const handleUpdateSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!room || !settings) return;
+    setUpdatingSettings(true);
+    try {
+      const res = await roomsApi.updateSettings(room.code, {
+        micForAll: settings.micForAll,
+        videoForAll: settings.videoForAll,
+        screenShareForAll: settings.screenShareForAll,
+        allowChat: settings.allowChat,
+        allowRaiseHand: settings.allowRaiseHand,
+      });
+      if (res.data) {
+        setSettings(res.data);
+        setSettingsOpen(false);
+      }
+    } catch (err) {
+      console.error('Failed to update stage settings:', err);
+    } finally {
+      setUpdatingSettings(false);
+    }
   };
 
   const handleCopyLink = () => {
@@ -471,9 +544,6 @@ export default function TalkPage({ params }: TalkPageProps) {
     );
   }
 
-  const isHost = room.hostId === session?.user.id;
-  const isSpeaker = isHost || participant?.role === 'speaker' || settings?.micForAll;
-
   const displayParticipants: RoomParticipant[] =
     participants.length > 0
       ? participants
@@ -548,6 +618,20 @@ export default function TalkPage({ params }: TalkPageProps) {
             {copied ? <CheckIcon size={13} className="text-[#11ff99]" /> : <CopyIcon size={13} />}
             <span className="hidden sm:inline font-mono text-[11px]">{copied ? 'Copied' : 'Share Stage'}</span>
           </button>
+
+          {isHost && (
+            <button
+              onClick={() => {
+                setSettingsOpen(true);
+                setParticipantsOpen(false);
+                setChatOpen(false);
+              }}
+              className="px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08] flex items-center gap-1.5"
+            >
+              <SettingsIcon size={13} />
+              <span className="hidden sm:inline">Settings</span>
+            </button>
+          )}
         </div>
       </header>
 
@@ -691,12 +775,28 @@ export default function TalkPage({ params }: TalkPageProps) {
             </button>
           ) : (
             <button
-              onClick={() => setHandRaised(!handRaised)}
+              onClick={() => {
+                if (!isRaiseHandAllowed && !handRaised) {
+                  setRoomToast({ text: 'Mic requests are disabled by the host', type: 'leave' });
+                  return;
+                }
+                setHandRaised(!handRaised);
+              }}
+              disabled={!isRaiseHandAllowed && !handRaised}
               className={`h-10 px-4 rounded-lg flex items-center gap-2 font-medium text-xs transition-all ${
-                handRaised
+                !isRaiseHandAllowed && !handRaised
+                  ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
+                  : handRaised
                   ? 'bg-[#ffc53d] text-black shadow-[0_0_16px_rgba(255,197,61,0.4)]'
                   : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
               }`}
+              title={
+                !isRaiseHandAllowed && !handRaised
+                  ? 'Mic requests disabled by host'
+                  : handRaised
+                  ? 'Lower Hand'
+                  : 'Request Mic'
+              }
             >
               <HandCoinsIcon size={14} />
               <span>{handRaised ? 'Hand Raised' : 'Request Mic'}</span>
@@ -788,6 +888,85 @@ export default function TalkPage({ params }: TalkPageProps) {
         </div>
       </footer>
 
+      {/* Stage Settings Modal */}
+      {settingsOpen && settings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-md bg-[#0a0a0c] border border-white/[0.12] rounded-2xl p-6 space-y-5 shadow-2xl text-[#fcfdff]">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
+              <h3 className="font-serif-headline text-base font-normal">Stage Settings</h3>
+              <button onClick={() => setSettingsOpen(false)} className="text-[#888e90] hover:text-[#fcfdff]">
+                <XIcon size={15} />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateSettings} className="space-y-3 text-xs">
+              <label className="flex items-center justify-between cursor-pointer p-2.5 rounded-lg hover:bg-[#101012]">
+                <div className="pr-4">
+                  <span className="text-[#fcfdff]/90 block font-medium">Open microphone for all participants</span>
+                  <span className="text-[11px] text-[#888e90]">Allow anyone on stage to speak freely without asking</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.micForAll}
+                  onChange={(e) => setSettings({ ...settings, micForAll: e.target.checked })}
+                  className="h-4 w-4 rounded border-white/20 bg-[#06060a] text-white"
+                />
+              </label>
+
+              <label className="flex items-center justify-between cursor-pointer p-2.5 rounded-lg hover:bg-[#101012]">
+                <div className="pr-4">
+                  <span className="text-[#fcfdff]/90 block font-medium">In-room text chat</span>
+                  <span className="text-[11px] text-[#888e90]">Allow participants to send messages in stage chat</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.allowChat}
+                  onChange={(e) => setSettings({ ...settings, allowChat: e.target.checked })}
+                  className="h-4 w-4 rounded border-white/20 bg-[#06060a] text-white"
+                />
+              </label>
+
+              <label className="flex items-center justify-between cursor-pointer p-2.5 rounded-lg hover:bg-[#101012]">
+                <div className="pr-4">
+                  <span className="text-[#fcfdff]/90 block font-medium">Allow audience to request mic</span>
+                  <span className="text-[11px] text-[#888e90]">Listeners can raise hand to request speaking turn</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={settings.allowRaiseHand}
+                  onChange={(e) => setSettings({ ...settings, allowRaiseHand: e.target.checked })}
+                  className="h-4 w-4 rounded border-white/20 bg-[#06060a] text-white"
+                />
+              </label>
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(false)}
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-[#888e90] hover:text-[#fcfdff]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={updatingSettings}
+                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-medium text-xs transition-colors shadow-[0_0_16px_rgba(252,253,255,0.12)] disabled:opacity-50"
+                >
+                  {updatingSettings ? (
+                    <>
+                      <div className="animate-spin h-3 w-3 border border-black/30 border-t-black rounded-full" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Settings</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* In-Call Ephemeral Chat */}
       <InRoomChat
         isOpen={chatOpen}
@@ -796,6 +975,8 @@ export default function TalkPage({ params }: TalkPageProps) {
         onSendMessage={handleSendMessage}
         currentUserId={session?.user?.id || ''}
         roomTitle={room?.title}
+        isChatAllowed={isChatAllowed}
+        isHost={isHost}
       />
 
       {/* In-Call Room Participants Roster */}

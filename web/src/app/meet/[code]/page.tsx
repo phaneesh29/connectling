@@ -87,6 +87,13 @@ export default function MeetPage({ params }: MeetPageProps) {
     isVideoOnRef.current = isVideoOn;
   }, [isMicOn, isVideoOn]);
 
+  const roomHostId = room?.hostId;
+  const roomHostIdRef = useRef(roomHostId);
+
+  useEffect(() => {
+    roomHostIdRef.current = roomHostId;
+  }, [roomHostId]);
+
   useEffect(() => {
     currentUserIdRef.current = currentUserId;
   }, [currentUserId]);
@@ -234,26 +241,80 @@ export default function MeetPage({ params }: MeetPageProps) {
       }, 3500);
     };
 
+    const handleSettingsUpdated = (updated: RoomSettingsData) => {
+      setSettings(updated);
+      setRoomToast({ text: 'Space settings updated by host', type: 'join' });
+      setTimeout(() => {
+        setRoomToast((curr) => (curr?.text === 'Space settings updated by host' ? null : curr));
+      }, 3500);
+
+      const isNotHost = Boolean(
+        roomHostIdRef.current &&
+          currentUserIdRef.current &&
+          roomHostIdRef.current !== currentUserIdRef.current
+      );
+
+      if (isNotHost) {
+        if (updated.micForAll === false && isMicOnRef.current) {
+          setIsMicOn(false);
+          const socket = getSocket();
+          socket.emit('room:media-toggle', {
+            roomCode: code,
+            isMuted: true,
+            isVideoOn: isVideoOnRef.current,
+          });
+        }
+        if (updated.videoForAll === false && isVideoOnRef.current) {
+          setIsVideoOn(false);
+          const socket = getSocket();
+          socket.emit('room:media-toggle', {
+            roomCode: code,
+            isMuted: !isMicOnRef.current,
+            isVideoOn: false,
+          });
+        }
+        if (updated.screenShareForAll === false) {
+          setIsScreenSharing(false);
+        }
+      }
+    };
+
     socket.on('chat:new-message', handleNewMessage);
     socket.on('room:roster', handleRoster);
     socket.on('room:user-joined', handleUserJoined);
     socket.on('room:user-left', handleUserLeft);
+    socket.on('room:settings-updated', handleSettingsUpdated);
 
     return () => {
       socket.off('chat:new-message', handleNewMessage);
       socket.off('room:roster', handleRoster);
       socket.off('room:user-joined', handleUserJoined);
       socket.off('room:user-left', handleUserLeft);
+      socket.off('room:settings-updated', handleSettingsUpdated);
       socket.emit('room:leave', { roomCode: code });
     };
   }, [roomId, code]);
 
+  const isHost = Boolean(room && session?.user && room.hostId === session.user.id);
+  const isMicAllowed = isHost || settings?.micForAll !== false;
+  const isVideoAllowed = isHost || settings?.videoForAll !== false;
+  const isScreenShareAllowed = isHost || settings?.screenShareForAll !== false;
+  const isChatAllowed = settings?.allowChat !== false;
+
   const handleSendMessage = (text: string) => {
+    if (!isChatAllowed && !isHost) {
+      setRoomToast({ text: 'Chat is disabled by the host', type: 'leave' });
+      return;
+    }
     const socket = getSocket();
     socket.emit('chat:message', { roomCode: code, text });
   };
 
   const handleToggleMic = () => {
+    if (!isMicAllowed && !isMicOn) {
+      setRoomToast({ text: 'Microphone is disabled by the host', type: 'leave' });
+      return;
+    }
     const next = !isMicOn;
     setIsMicOn(next);
     const socket = getSocket();
@@ -265,6 +326,10 @@ export default function MeetPage({ params }: MeetPageProps) {
   };
 
   const handleToggleVideo = () => {
+    if (!isVideoAllowed && !isVideoOn) {
+      setRoomToast({ text: 'Camera is disabled by the host', type: 'leave' });
+      return;
+    }
     const next = !isVideoOn;
     setIsVideoOn(next);
     const socket = getSocket();
@@ -273,6 +338,14 @@ export default function MeetPage({ params }: MeetPageProps) {
       isMuted: !isMicOn,
       isVideoOn: next,
     });
+  };
+
+  const handleToggleScreenShare = () => {
+    if (!isScreenShareAllowed && !isScreenSharing) {
+      setRoomToast({ text: 'Screen sharing is disabled by the host', type: 'leave' });
+      return;
+    }
+    setIsScreenSharing(!isScreenSharing);
   };
 
   const handleCopyLink = () => {
@@ -419,7 +492,6 @@ export default function MeetPage({ params }: MeetPageProps) {
     );
   }
 
-  const isHost = room.hostId === session?.user.id;
   const otherParticipants = participants.filter((p) => p.userId !== session?.user?.id);
 
   return (
@@ -628,36 +700,63 @@ export default function MeetPage({ params }: MeetPageProps) {
         <div className="flex items-center gap-3 sm:gap-4 p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-xl shadow-2xl">
           <button
             onClick={handleToggleMic}
+            disabled={!isMicAllowed && !isMicOn}
             className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
-              isMicOn
+              !isMicAllowed && !isMicOn
+                ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
+                : isMicOn
                 ? 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
                 : 'bg-[#ff2047] text-white shadow-[0_0_16px_rgba(255,32,71,0.4)]'
             }`}
-            title={isMicOn ? 'Mute Microphone' : 'Unmute Microphone'}
+            title={
+              !isMicAllowed && !isMicOn
+                ? 'Microphone disabled by host'
+                : isMicOn
+                ? 'Mute Microphone'
+                : 'Unmute Microphone'
+            }
           >
             {isMicOn ? <MicIcon size={17} /> : <MicOffIcon size={17} />}
           </button>
 
           <button
             onClick={handleToggleVideo}
+            disabled={!isVideoAllowed && !isVideoOn}
             className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
-              isVideoOn
+              !isVideoAllowed && !isVideoOn
+                ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
+                : isVideoOn
                 ? 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
                 : 'bg-[#ff2047] text-white shadow-[0_0_16px_rgba(255,32,71,0.4)]'
             }`}
-            title={isVideoOn ? 'Turn Off Camera' : 'Turn On Camera'}
+            title={
+              !isVideoAllowed && !isVideoOn
+                ? 'Camera disabled by host'
+                : isVideoOn
+                ? 'Turn Off Camera'
+                : 'Turn On Camera'
+            }
           >
             {isVideoOn ? <VideoIcon size={17} /> : <CameraIcon size={17} />}
           </button>
 
           <button
-            onClick={() => setIsScreenSharing(!isScreenSharing)}
+            onClick={handleToggleScreenShare}
+            disabled={!isScreenShareAllowed && !isScreenSharing}
             className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
-              isScreenSharing
+              !isScreenShareAllowed && !isScreenSharing
+                ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
+                : isScreenSharing
                 ? 'bg-gradient-to-r from-[#ff7a1a] to-[#ea580c] text-white shadow-[0_0_16px_rgba(255,122,26,0.45)]'
                 : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
             }`}
-            title="Screen Share"
+            title={
+              !isScreenShareAllowed && !isScreenSharing
+                ? 'Screen sharing disabled by host'
+                : isScreenSharing
+                ? 'Stop Sharing'
+                : 'Share Screen'
+            }
           >
             <MonitorIcon size={17} />
           </button>
@@ -834,6 +933,8 @@ export default function MeetPage({ params }: MeetPageProps) {
         onSendMessage={handleSendMessage}
         currentUserId={session?.user?.id || ''}
         roomTitle={room?.title}
+        isChatAllowed={isChatAllowed}
+        isHost={isHost}
       />
 
       {/* In-Call Room Participants Roster */}

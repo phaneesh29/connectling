@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { roomService } from './room.service.js';
+import { getRealtimeServer } from '../realtime/realtime.gateway.js';
 import type {
   CreateRoomInput,
   JoinRoomInput,
@@ -58,6 +59,12 @@ export const updateSettingsHandler = async (req: Request, res: Response): Promis
   const body = req.body as UpdateRoomSettingsInput;
   const result = await roomService.updateRoomSettings(userId, code, body);
 
+  try {
+    const io = getRealtimeServer();
+    io.in(`room:${code}`).emit('room:settings-updated', result);
+  } catch {
+  }
+
   res.status(200).json({
     success: true,
     data: result,
@@ -68,6 +75,12 @@ export const endRoomHandler = async (req: Request, res: Response): Promise<void>
   const userId = req.user!.id;
   const { code } = req.params as RoomCodeParam;
   const result = await roomService.endRoom(userId, code);
+
+  try {
+    const io = getRealtimeServer();
+    io.in(`room:${code}`).emit('room:ended', { message: 'The host has ended this space.' });
+  } catch {
+  }
 
   res.status(200).json({
     success: true,
