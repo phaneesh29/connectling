@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from '@/lib/auth-client';
-import { roomsApi, type RoomData, type AvailableRoomItem } from '@/lib/rooms-api';
+import { roomsApi, type AvailableRoomItem } from '@/lib/rooms-api';
 import { CreateRoomModal } from '@/components/create-room-modal';
 import {
   VideoIcon,
@@ -25,31 +25,11 @@ export default function DashboardPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'meet' | 'audio'>('meet');
   const [codeInput, setCodeInput] = useState('');
-  const [activeRoom, setActiveRoom] = useState<RoomData | null>(null);
-  const [checkingPresence, setCheckingPresence] = useState(false);
-  const [leavingActive, setLeavingActive] = useState(false);
   const [joining, setJoining] = useState(false);
   const [myRooms, setMyRooms] = useState<AvailableRoomItem[]>([]);
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [deletingCode, setDeletingCode] = useState<string | null>(null);
-
-  const checkPresence = useCallback(async () => {
-    if (!session) return;
-    setCheckingPresence(true);
-    try {
-      const res = await roomsApi.getMyPresence();
-      if (res.data?.isActive && res.data.activeRoom) {
-        setActiveRoom(res.data.activeRoom);
-      } else {
-        setActiveRoom(null);
-      }
-    } catch {
-      setActiveRoom(null);
-    } finally {
-      setCheckingPresence(false);
-    }
-  }, [session]);
 
   const fetchMyRooms = useCallback(async () => {
     if (!session) return;
@@ -69,21 +49,6 @@ export default function DashboardPage() {
   useEffect(() => {
     let ignore = false;
     if (session) {
-      roomsApi
-        .getMyPresence()
-        .then((res) => {
-          if (!ignore) {
-            if (res.data?.isActive && res.data.activeRoom) {
-              setActiveRoom(res.data.activeRoom);
-            } else {
-              setActiveRoom(null);
-            }
-          }
-        })
-        .catch(() => {
-          if (!ignore) setActiveRoom(null);
-        });
-
       roomsApi
         .listMyRooms()
         .then((res) => {
@@ -117,9 +82,6 @@ export default function DashboardPage() {
     setDeletingCode(codeToDelete);
     try {
       await roomsApi.endRoom(codeToDelete);
-      if (activeRoom?.code === codeToDelete) {
-        setActiveRoom(null);
-      }
       const res = await roomsApi.listMyRooms();
       if (res.data) setMyRooms(res.data);
     } catch (err) {
@@ -156,20 +118,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleLeaveActiveRoom = async () => {
-    if (!activeRoom) return;
-    setLeavingActive(true);
-    try {
-      await roomsApi.leaveRoom(activeRoom.code);
-      setActiveRoom(null);
-      void fetchMyRooms();
-    } catch (err) {
-      console.error('Failed to leave room:', err);
-    } finally {
-      setLeavingActive(false);
-    }
-  };
-
   const openCreateModal = (type: 'meet' | 'audio') => {
     if (!session) {
       router.push('/login');
@@ -186,46 +134,6 @@ export default function DashboardPage() {
       }`}
     >
       <main className="max-w-5xl mx-auto px-4 sm:px-6 pb-16 space-y-8">
-        {/* Active Room Banner */}
-        {!checkingPresence && activeRoom && (
-          <div className="p-4 sm:p-5 bg-[#0a0a0c] border border-amber-500/30 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative overflow-hidden animate-in fade-in duration-300">
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-500/[0.05] to-transparent pointer-events-none" />
-            <div className="flex items-center gap-3.5 relative z-10">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#11ff99] opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#11ff99]"></span>
-              </span>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono font-medium text-amber-400 uppercase tracking-widest">
-                    Active Session in Progress
-                  </span>
-                  <span className="text-[10px] font-mono text-[#888e90]">({activeRoom.code})</span>
-                </div>
-                <h3 className="text-sm font-semibold text-[#fcfdff] mt-0.5">
-                  {activeRoom.title}
-                </h3>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 w-full sm:w-auto relative z-10">
-              <Link
-                href={activeRoom.type === 'meet' ? `/meet/${activeRoom.code}` : `/talk/${activeRoom.code}`}
-                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-medium bg-[#fcfdff] hover:bg-[#f1f7fe] text-black rounded-lg transition-all active:scale-[0.98] shadow-[0_0_20px_rgba(252,253,255,0.15)]"
-              >
-                <span>Rejoin Space</span>
-                <ArrowRightIcon size={12} />
-              </Link>
-              <button
-                onClick={handleLeaveActiveRoom}
-                disabled={leavingActive}
-                className="px-3.5 py-2 text-xs font-medium bg-[#101012] hover:bg-[#18181c] border border-white/[0.08] text-[#888e90] hover:text-[#fcfdff] rounded-lg transition-all disabled:opacity-50"
-              >
-                {leavingActive ? 'Leaving...' : 'Leave'}
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Hero Section */}
         <section className="space-y-6 pt-1">
@@ -518,7 +426,6 @@ export default function DashboardPage() {
         defaultType={modalType}
         onClose={() => {
           setModalOpen(false);
-          void checkPresence();
           void fetchMyRooms();
         }}
       />

@@ -38,16 +38,9 @@ export interface RoomData {
 }
 
 export interface ParticipantData {
-  id: string;
   roomId: string;
   userId: string;
   role: 'host' | 'co_host' | 'speaker' | 'listener' | 'participant';
-  status: 'active' | 'left' | 'kicked';
-  isMuted: boolean;
-  isVideoOn: boolean;
-  isHandRaised: boolean;
-  joinedAt: string;
-  leftAt?: string | null;
 }
 
 export interface CreateRoomPayload {
@@ -170,12 +163,6 @@ export const roomsApi = {
   listMyRooms: (type?: 'meet' | 'audio') => {
     const query = type ? `?type=${type}` : '';
     return request<AvailableRoomItem[]>(`/api/v1/rooms${query}`, {
-      method: 'GET',
-    });
-  },
-
-  getMyPresence: () => {
-    return request<{ isActive: boolean; activeRoom: RoomData | null }>('/api/v1/rooms/my/presence', {
       method: 'GET',
     });
   },
