@@ -149,6 +149,7 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
   const [participantsOpen, setParticipantsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [permissionsPopupOpen, setPermissionsPopupOpen] = useState(false);
   const [updatingSettings, setUpdatingSettings] = useState(false);
   const [updatingKey, setUpdatingKey] = useState<'micForAll' | 'allowChat' | 'allowRaiseHand' | null>(null);
   const [grantedSpeaker, setGrantedSpeaker] = useState(false);
@@ -804,6 +805,10 @@ export default function TalkPage({ params }: TalkPageProps) {
         ]
       : [];
 
+  const pendingHandRaisesCount = participants.filter(
+    (p) => p.handRaised && p.userId !== room.hostId
+  ).length;
+
   return (
     <div className="flex flex-col h-screen bg-black text-[#fcfdff] select-none ambient-glow-audio">
       {roomToast && (
@@ -831,10 +836,42 @@ export default function TalkPage({ params }: TalkPageProps) {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Permissions / Host Controls Trigger Button */}
+          {settings && (
+            <button
+              onClick={() => {
+                setPermissionsPopupOpen(!permissionsPopupOpen);
+                setParticipantsOpen(false);
+                setChatOpen(false);
+              }}
+              className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                isHost && pendingHandRaisesCount > 0
+                  ? 'bg-[#ffc53d]/15 text-[#ffc53d] border-[#ffc53d]/40 shadow-[0_0_12px_rgba(255,197,61,0.2)]'
+                  : permissionsPopupOpen
+                  ? 'bg-amber-500/20 text-[#f59e0b] border-amber-500/40'
+                  : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
+              }`}
+              title={isHost ? 'Host Stage Controls & Speaking Requests' : 'View Stage Permissions'}
+            >
+              <ShieldCheckIcon size={13} className={isHost ? 'text-[#f59e0b]' : 'text-zinc-400'} />
+              <span className="hidden sm:inline font-mono text-[11px]">
+                {isHost ? 'Controls' : 'Permissions'}
+              </span>
+              {isHost && pendingHandRaisesCount > 0 && (
+                <span className="h-4 min-w-4 px-1 rounded-full bg-[#ffc53d] text-black font-mono text-[9px] font-bold flex items-center justify-center animate-pulse">
+                  {pendingHandRaisesCount}
+                </span>
+              )}
+            </button>
+          )}
+
           <button
             onClick={() => {
               setParticipantsOpen(!participantsOpen);
-              if (!participantsOpen) setChatOpen(false);
+              if (!participantsOpen) {
+                setChatOpen(false);
+                setPermissionsPopupOpen(false);
+              }
             }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
               participantsOpen
@@ -861,6 +898,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 setSettingsOpen(true);
                 setParticipantsOpen(false);
                 setChatOpen(false);
+                setPermissionsPopupOpen(false);
               }}
               className="px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08] flex items-center gap-1.5"
             >
@@ -872,166 +910,38 @@ export default function TalkPage({ params }: TalkPageProps) {
       </header>
 
       <main className="flex-1 p-4 sm:p-6 overflow-y-auto max-w-5xl mx-auto w-full space-y-6">
-        {/* Host Quick Control Strip */}
-        {isHost && settings && (
-          <div className="p-3.5 sm:p-4 rounded-2xl bg-[#09090b] border border-white/[0.10] shadow-xl relative overflow-hidden">
-            {/* Top specular highlight */}
-            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-amber-500/20 to-transparent pointer-events-none" />
-
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
-              <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[#f59e0b] flex items-center justify-center shrink-0">
-                  <ShieldCheckIcon size={16} />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xs font-medium text-[#fcfdff]">Host Stage Controls</h2>
-                    <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/15 text-[#f59e0b] border border-amber-500/30 font-semibold tracking-wider">
-                      HOST ONLY
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-[#888e90]">
-                    Manage audience microphone access, chat, and speaking requests in real time
-                  </p>
-                </div>
-              </div>
-
-              {/* Toggles */}
-              <div className="flex items-center flex-wrap gap-2">
-                {/* 1. Open Mic Toggle */}
-                <button
-                  type="button"
-                  onClick={() => handleQuickToggle('micForAll')}
-                  disabled={updatingKey === 'micForAll'}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
-                    settings.micForAll
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/15'
-                      : 'bg-[#101014] border-white/[0.08] text-[#888e90] hover:text-[#fcfdff] hover:bg-[#16161c]'
-                  } disabled:opacity-50`}
-                  title={settings.micForAll ? 'Click to restrict mic to host only' : 'Click to allow all participants to unmute'}
-                >
-                  <span className={`h-2 w-2 rounded-full ${settings.micForAll ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
-                  {settings.micForAll ? <MicIcon size={13} /> : <MicOffIcon size={13} />}
-                  <span>{settings.micForAll ? 'Open Mic: ON' : 'Open Mic: OFF'}</span>
-                </button>
-
-                {/* 2. In-Room Chat Toggle */}
-                <button
-                  type="button"
-                  onClick={() => handleQuickToggle('allowChat')}
-                  disabled={updatingKey === 'allowChat'}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
-                    settings.allowChat
-                      ? 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/15'
-                      : 'bg-[#101014] border-white/[0.08] text-[#888e90] hover:text-[#fcfdff] hover:bg-[#16161c]'
-                  } disabled:opacity-50`}
-                  title={settings.allowChat ? 'Click to mute chat for participants' : 'Click to enable in-room chat'}
-                >
-                  <span className={`h-2 w-2 rounded-full ${settings.allowChat ? 'bg-amber-400' : 'bg-zinc-600'}`} />
-                  <MessageSquareIcon size={13} />
-                  <span>{settings.allowChat ? 'Chat: ON' : 'Chat: MUTED'}</span>
-                </button>
-
-                {/* 3. Raise Hand / Mic Requests Toggle */}
-                <button
-                  type="button"
-                  onClick={() => handleQuickToggle('allowRaiseHand')}
-                  disabled={updatingKey === 'allowRaiseHand'}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-medium border transition-all ${
-                    settings.allowRaiseHand
-                      ? 'bg-orange-500/10 border-orange-500/30 text-orange-300 hover:bg-orange-500/15'
-                      : 'bg-[#101014] border-white/[0.08] text-[#888e90] hover:text-[#fcfdff] hover:bg-[#16161c]'
-                  } disabled:opacity-50`}
-                  title={settings.allowRaiseHand ? 'Click to disable mic requests' : 'Click to allow audience mic requests'}
-                >
-                  <span className={`h-2 w-2 rounded-full ${settings.allowRaiseHand ? 'bg-orange-400' : 'bg-zinc-600'}`} />
-                  <HandCoinsIcon size={13} />
-                  <span>{settings.allowRaiseHand ? 'Requests: ALLOWED' : 'Requests: OFF'}</span>
-                </button>
-
-                {/* Open Modal Button */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSettingsOpen(true);
-                    setParticipantsOpen(false);
-                    setChatOpen(false);
-                  }}
-                  className="h-8 w-8 rounded-xl bg-[#101014] border border-white/[0.08] text-[#888e90] hover:text-[#fcfdff] hover:bg-[#16161c] flex items-center justify-center transition-all"
-                  title="More room settings"
-                >
-                  <SettingsIcon size={13} />
-                </button>
-              </div>
-            </div>
-
-            {/* If participants have hand raised, show banner in host bar */}
-            {isHost && participants.some((p) => p.handRaised && p.userId !== room.hostId) && (
-              <div className="mt-3 pt-3 border-t border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                <div className="flex items-center gap-2 text-amber-300 font-medium text-xs">
-                  <span className="h-2 w-2 rounded-full bg-[#ffc53d] animate-ping" />
-                  <span>Audience requested to speak:</span>
-                  <span className="text-[#fcfdff] font-mono text-[11px]">
-                    {participants
-                      .filter((p) => p.handRaised && p.userId !== room.hostId)
-                      .map((p) => p.name)
-                      .join(', ')}
-                  </span>
-                </div>
-                <div className="flex items-center flex-wrap gap-2">
-                  {participants
-                    .filter((p) => p.handRaised && p.userId !== room.hostId)
-                    .map((p) => (
-                      <button
-                        key={p.userId}
-                        type="button"
-                        onClick={() => handleGrantMic(p.userId, p.name)}
-                        className="px-3 py-1 rounded-lg bg-[#ffc53d] hover:bg-[#ffc53d]/90 text-black text-xs font-semibold flex items-center gap-1.5 shadow-[0_0_12px_rgba(255,197,61,0.5)] transition-all animate-pulse active:scale-95 cursor-pointer"
-                      >
-                        <MicIcon size={12} />
-                        <span>Unmute {p.name.split(' ')[0]}</span>
-                      </button>
-                    ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Audience Policy Status Strip (When not host) */}
-        {!isHost && settings && (
-          <div className="px-3.5 py-2.5 rounded-xl bg-[#09090b] border border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#f59e0b] animate-pulse" />
-              <span className="text-[#888e90] text-[11px] font-mono">Stage Permissions:</span>
-            </div>
-            <div className="flex items-center gap-3 font-mono text-[11px]">
-              <span className={`flex items-center gap-1.5 ${settings.micForAll ? 'text-emerald-400' : 'text-[#888e90]'}`}>
-                {settings.micForAll ? <MicIcon size={11} /> : <MicOffIcon size={11} />}
-                <span>{settings.micForAll ? 'Open Mic' : 'Host Only Mic'}</span>
-              </span>
-              <span className="text-white/10">•</span>
-              <span className={`flex items-center gap-1.5 ${settings.allowChat ? 'text-[#fcfdff]' : 'text-[#888e90]'}`}>
-                <MessageSquareIcon size={11} />
-                <span>{settings.allowChat ? 'Chat Open' : 'Chat Muted'}</span>
-              </span>
-              <span className="text-white/10">•</span>
-              <span className={`flex items-center gap-1.5 ${settings.allowRaiseHand ? 'text-amber-400' : 'text-[#888e90]'}`}>
-                <HandCoinsIcon size={11} />
-                <span>{settings.allowRaiseHand ? 'Requests Allowed' : 'Requests Closed'}</span>
-              </span>
-            </div>
-          </div>
-        )}
-
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <span className="text-xs font-mono text-[#888e90] uppercase tracking-wider">
               Stage Participants & Listeners
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#101012] border border-white/[0.06] text-[#f59e0b] font-medium">
               {Math.max(1, displayParticipants.length)} in space
             </span>
+
+            {/* Subtle subheader trigger button */}
+            {settings && (
+              <button
+                type="button"
+                onClick={() => {
+                  setPermissionsPopupOpen(true);
+                  setParticipantsOpen(false);
+                  setChatOpen(false);
+                }}
+                className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-mono border transition-all cursor-pointer ${
+                  isHost && pendingHandRaisesCount > 0
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-300 shadow-sm'
+                    : 'bg-white/[0.03] border-white/[0.06] text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06]'
+                }`}
+                title={isHost ? 'Click to manage speaking & stage controls' : 'Click to view stage policies'}
+              >
+                <ShieldCheckIcon size={11} className={isHost ? 'text-[#f59e0b]' : 'text-zinc-400'} />
+                <span>{isHost ? 'Stage Controls' : 'Stage Permissions'}</span>
+                {isHost && pendingHandRaisesCount > 0 && (
+                  <span className="h-1.5 w-1.5 rounded-full bg-[#ffc53d] animate-ping" />
+                )}
+              </button>
+            )}
           </div>
           <button
             onClick={handleCopyLink}
@@ -1398,6 +1308,298 @@ export default function TalkPage({ params }: TalkPageProps) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Permissions & Stage Controls Popup */}
+      {permissionsPopupOpen && settings && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={() => setPermissionsPopupOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-[#0a0a0e] border border-white/[0.12] rounded-2xl p-5 sm:p-6 shadow-2xl relative overflow-hidden text-[#fcfdff] space-y-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top specular highlight line */}
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent pointer-events-none" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3.5">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                  <ShieldCheckIcon size={16} />
+                </div>
+                <div>
+                  <h3 className="font-serif-headline text-base font-medium tracking-tight text-[#fcfdff]">
+                    {isHost ? 'Stage Controls & Permissions' : 'Stage Permissions'}
+                  </h3>
+                  <p className="text-[11px] text-[#888e90] font-sans">
+                    {isHost
+                      ? 'Live microphone access & room policies'
+                      : 'Current broadcast policies set by the host'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPermissionsPopupOpen(false)}
+                className="h-7 w-7 rounded-lg flex items-center justify-center text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06] transition-colors"
+                aria-label="Close"
+              >
+                <XIcon size={15} />
+              </button>
+            </div>
+
+            {/* Content for Host vs Audience */}
+            {isHost ? (
+              <div className="space-y-4">
+                {/* Hand-raise queue section if someone requested to speak */}
+                {pendingHandRaisesCount > 0 && (
+                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-amber-300">
+                        <HandCoinsIcon size={13} className="animate-bounce" />
+                        <span>Speaking Requests ({pendingHandRaisesCount})</span>
+                      </div>
+                      <span className="text-[10px] font-mono text-amber-400/80">Pending</span>
+                    </div>
+
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                      {participants
+                        .filter((p) => p.handRaised && p.userId !== session?.user?.id)
+                        .map((p) => (
+                          <div
+                            key={p.userId}
+                            className="flex items-center justify-between p-2 rounded-lg bg-black/40 border border-white/[0.06]"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="h-6 w-6 rounded-full bg-amber-500/20 text-amber-300 font-mono text-xs flex items-center justify-center font-bold">
+                                {p.name.charAt(0).toUpperCase()}
+                              </div>
+                              <span className="text-xs text-[#fcfdff] truncate font-medium max-w-[140px]">
+                                {p.name}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleGrantMic(p.userId, p.name)}
+                              className="px-2.5 py-1 rounded-md bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-semibold text-[11px] shadow-sm transition-all flex items-center gap-1 cursor-pointer"
+                            >
+                              <MicIcon size={11} />
+                              <span>Allow Mic</span>
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Quick Toggles */}
+                <div className="space-y-2">
+                  <div className="text-[11px] font-mono uppercase tracking-wider text-[#888e90] px-0.5">
+                    Stage Policies
+                  </div>
+
+                  {/* Open Mic Toggle */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${settings.micForAll ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.04] text-zinc-400'}`}>
+                        <MicIcon size={14} />
+                      </div>
+                      <div>
+                        <div className="text-xs font-medium text-[#fcfdff]">Open Microphone</div>
+                        <div className="text-[11px] text-[#888e90]">
+                          {settings.micForAll ? 'Everyone can speak freely' : 'Host & granted speakers only'}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickToggle('micForAll')}
+                      disabled={updatingKey === 'micForAll'}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        settings.micForAll ? 'bg-amber-500' : 'bg-white/20'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-black shadow ring-0 transition duration-200 ease-in-out ${
+                          settings.micForAll ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Stage Chat Toggle */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${settings.allowChat ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.04] text-zinc-400'}`}>
+                        <MessageSquareIcon size={14} />
+                      </div>
+                      <div>
+                        <div className="text-xs font-medium text-[#fcfdff]">In-Room Chat</div>
+                        <div className="text-[11px] text-[#888e90]">
+                          {settings.allowChat ? 'Participants can chat' : 'Chat is muted'}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickToggle('allowChat')}
+                      disabled={updatingKey === 'allowChat'}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        settings.allowChat ? 'bg-amber-500' : 'bg-white/20'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-black shadow ring-0 transition duration-200 ease-in-out ${
+                          settings.allowChat ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Raise Hand Toggle */}
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${settings.allowRaiseHand ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.04] text-zinc-400'}`}>
+                        <HandCoinsIcon size={14} />
+                      </div>
+                      <div>
+                        <div className="text-xs font-medium text-[#fcfdff]">Audience Mic Requests</div>
+                        <div className="text-[11px] text-[#888e90]">
+                          {settings.allowRaiseHand ? 'Listeners can raise hand' : 'Requests disabled'}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickToggle('allowRaiseHand')}
+                      disabled={updatingKey === 'allowRaiseHand'}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        settings.allowRaiseHand ? 'bg-amber-500' : 'bg-white/20'
+                      }`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-black shadow ring-0 transition duration-200 ease-in-out ${
+                          settings.allowRaiseHand ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Footer with more settings link */}
+                <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPermissionsPopupOpen(false);
+                      setSettingsOpen(true);
+                    }}
+                    className="inline-flex items-center gap-1.5 text-xs text-[#888e90] hover:text-[#fcfdff] transition-colors font-mono cursor-pointer"
+                  >
+                    <SettingsIcon size={12} />
+                    <span>Advanced Room Settings</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPermissionsPopupOpen(false)}
+                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-xs font-medium text-[#fcfdff] transition-colors"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Non-Host / Audience View */
+              <div className="space-y-4">
+                <div className="space-y-2.5">
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                    <div className={`p-2 rounded-lg ${isSpeaker ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.04] text-zinc-400'}`}>
+                      {isSpeaker ? <MicIcon size={14} /> : <MicOffIcon size={14} />}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-[#fcfdff]">Microphone Access</span>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                          isSpeaker
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-white/[0.05] text-[#888e90]'
+                        }`}>
+                          {isSpeaker ? 'Speaking Allowed' : 'Muted by Host'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#888e90] mt-1">
+                        {isSpeaker
+                          ? 'You have permission to unmute and speak on stage.'
+                          : settings.allowRaiseHand
+                          ? 'You can click "Raise Hand" in the bottom controls to request speaking.'
+                          : 'Microphone is restricted by the stage host.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                    <div className={`p-2 rounded-lg ${isChatAllowed ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.04] text-zinc-400'}`}>
+                      <MessageSquareIcon size={14} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-[#fcfdff]">Stage Chat</span>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                          isChatAllowed
+                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                            : 'bg-white/[0.05] text-[#888e90]'
+                        }`}>
+                          {isChatAllowed ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#888e90] mt-1">
+                        {isChatAllowed
+                          ? 'All participants can send text messages in stage chat.'
+                          : 'Host has temporarily disabled in-room stage chat.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                    <div className={`p-2 rounded-lg ${settings.allowRaiseHand ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.04] text-zinc-400'}`}>
+                      <HandCoinsIcon size={14} />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-[#fcfdff]">Speaking Requests</span>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                          settings.allowRaiseHand
+                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                            : 'bg-white/[0.05] text-[#888e90]'
+                        }`}>
+                          {settings.allowRaiseHand ? 'Allowed' : 'Disabled'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#888e90] mt-1">
+                        {settings.allowRaiseHand
+                          ? 'Audience members may raise hands to ask to speak.'
+                          : 'Audience hand-raising is currently turned off by the host.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2 border-t border-white/[0.06]">
+                  <button
+                    type="button"
+                    onClick={() => setPermissionsPopupOpen(false)}
+                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.12] text-xs font-medium text-[#fcfdff] transition-colors"
+                  >
+                    Got it
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
