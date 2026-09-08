@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
 import { db } from './db/index.js';
@@ -25,6 +26,51 @@ export const auth = betterAuth({
     provider: 'pg',
     schema,
   }),
+  user: {
+    additionalFields: {
+      termsAccepted: {
+        type: 'boolean',
+        required: false,
+        defaultValue: false,
+        input: true,
+      },
+      termsAcceptedAt: {
+        type: 'date',
+        required: false,
+        input: true,
+      },
+    },
+  },
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          return {
+            data: {
+              ...user,
+              termsAccepted: true,
+              termsAcceptedAt: new Date(),
+            },
+          };
+        },
+      },
+    },
+    session: {
+      create: {
+        after: async (session) => {
+          if (session.userId) {
+            await db
+              .update(schema.user)
+              .set({
+                termsAccepted: true,
+                termsAcceptedAt: new Date(),
+              })
+              .where(eq(schema.user.id, session.userId));
+          }
+        },
+      },
+    },
+  },
   socialProviders: {
     google: {
       clientId: env.GOOGLE_CLIENT_ID,

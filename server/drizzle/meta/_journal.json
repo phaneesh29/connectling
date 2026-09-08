@@ -29,6 +29,13 @@
       "when": 1788875205874,
       "tag": "0003_fluffy_wind_dancer",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788876781561,
+      "tag": "0004_spotty_alex_wilder",
+      "breakpoints": true
     }
   ]
 }
