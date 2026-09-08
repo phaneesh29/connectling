@@ -123,15 +123,15 @@ export function InRoomChat({
                   </div>
                 )}
 
-                <div className={`space-y-1 max-w-[80%] ${isMe ? 'items-end text-right' : 'items-start text-left'}`}>
-                  <div className="flex items-center gap-1.5 text-[10px] text-[#888e90] px-1 font-mono">
+                <div className={`flex flex-col space-y-1 max-w-[80%] ${isMe ? 'items-end' : 'items-start'}`}>
+                  <div className={`flex items-center gap-1.5 text-[10px] text-[#888e90] px-1 font-mono ${isMe ? 'justify-end' : 'justify-start'}`}>
                     <span className="font-medium text-[#fcfdff]">{isMe ? 'You' : msg.name}</span>
                     <span>•</span>
                     <span>{timeStr}</span>
                   </div>
 
                   <div
-                    className={`p-2.5 rounded-2xl text-xs break-words leading-relaxed ${
+                    className={`w-fit max-w-full px-3 py-2 rounded-2xl text-xs break-words leading-relaxed text-left ${
                       isMe
                         ? 'bg-gradient-to-r from-orange-600/25 to-amber-600/25 text-[#fcfdff] border border-orange-500/35 rounded-tr-sm'
                         : 'bg-white/[0.06] text-[#fcfdff] border border-white/[0.10] rounded-tl-sm'

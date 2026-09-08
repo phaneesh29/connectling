@@ -32,6 +32,87 @@ import { InRoomChat } from '@/components/in-room-chat';
 import { InRoomParticipants } from '@/components/in-room-participants';
 import type { ChatMessage, RoomParticipant } from '@/types/realtime';
 
+interface StageTileGradient {
+  containerStyle: React.CSSProperties;
+  borderClass: string;
+}
+
+const STAGE_TILE_GRADIENTS: StageTileGradient[] = [
+  {
+    // Sunset Orange subtle tint
+    containerStyle: {
+      background:
+        'radial-gradient(ellipse 120% 75% at 50% -10%, rgba(255, 122, 26, 0.09) 0%, rgba(255, 122, 26, 0.02) 55%, #09090b 100%)',
+      boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.06)',
+    },
+    borderClass: 'border-white/[0.08] hover:border-orange-500/30',
+  },
+  {
+    // Amber subtle tint
+    containerStyle: {
+      background:
+        'radial-gradient(ellipse 120% 75% at 50% -10%, rgba(245, 158, 11, 0.09) 0%, rgba(245, 158, 11, 0.02) 55%, #09090b 100%)',
+      boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.06)',
+    },
+    borderClass: 'border-white/[0.08] hover:border-amber-500/30',
+  },
+  {
+    // Tangerine Coral subtle tint
+    containerStyle: {
+      background:
+        'radial-gradient(ellipse 120% 75% at 50% -10%, rgba(255, 98, 61, 0.09) 0%, rgba(255, 98, 61, 0.02) 55%, #09090b 100%)',
+      boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.06)',
+    },
+    borderClass: 'border-white/[0.08] hover:border-[#ff623d]/30',
+  },
+  {
+    // Warm Gold subtle tint
+    containerStyle: {
+      background:
+        'radial-gradient(ellipse 120% 75% at 50% -10%, rgba(251, 191, 36, 0.08) 0%, rgba(251, 191, 36, 0.02) 55%, #09090b 100%)',
+      boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.06)',
+    },
+    borderClass: 'border-white/[0.08] hover:border-yellow-500/30',
+  },
+  {
+    // Terracotta subtle tint
+    containerStyle: {
+      background:
+        'radial-gradient(ellipse 120% 75% at 50% -10%, rgba(234, 88, 12, 0.09) 0%, rgba(234, 88, 12, 0.02) 55%, #09090b 100%)',
+      boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.06)',
+    },
+    borderClass: 'border-white/[0.08] hover:border-orange-600/30',
+  },
+  {
+    // Warm Apricot subtle tint
+    containerStyle: {
+      background:
+        'radial-gradient(ellipse 120% 75% at 50% -10%, rgba(251, 146, 60, 0.09) 0%, rgba(251, 146, 60, 0.02) 55%, #09090b 100%)',
+      boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.06)',
+    },
+    borderClass: 'border-white/[0.08] hover:border-orange-400/30',
+  },
+];
+
+const HOST_STAGE_GRADIENT: StageTileGradient = {
+  containerStyle: {
+    background:
+      'radial-gradient(ellipse 120% 75% at 50% -10%, rgba(255, 197, 61, 0.12) 0%, rgba(245, 158, 11, 0.03) 55%, #09090b 100%)',
+    boxShadow: 'inset 0 1px 0 0 rgba(255, 255, 255, 0.08)',
+  },
+  borderClass: 'border-amber-500/25 hover:border-amber-400/40',
+};
+
+function getStageTileGradient(userId: string, isHost: boolean): StageTileGradient {
+  if (isHost) return HOST_STAGE_GRADIENT;
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash * 31 + userId.charCodeAt(i)) | 0;
+  }
+  const index = Math.abs(hash) % STAGE_TILE_GRADIENTS.length;
+  return STAGE_TILE_GRADIENTS[index];
+}
+
 interface TalkPageProps {
   params: Promise<{ code: string }>;
 }
@@ -493,14 +574,28 @@ export default function TalkPage({ params }: TalkPageProps) {
             const isPHost = p.userId === room.hostId;
             const isMe = p.userId === session?.user?.id;
             const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'U';
+            const gradient = getStageTileGradient(p.userId, isPHost);
+            const isSpeaking = !p.isMuted;
 
             return (
               <div
                 key={p.userId}
-                className="relative p-5 bg-[#0a0a0c] border border-white/[0.10] hover:border-white/[0.18] rounded-2xl flex flex-col items-center justify-center text-center space-y-3 shadow-xl transition-all group glow-card min-h-[160px]"
+                style={gradient.containerStyle}
+                className={`relative p-5 border rounded-2xl flex flex-col items-center justify-center text-center space-y-3 transition-all duration-200 group overflow-hidden min-h-[160px] ${
+                  gradient.borderClass
+                } ${
+                  isSpeaking ? 'ring-1 ring-emerald-500/50' : ''
+                }`}
               >
-                <div className="relative">
-                  <div className="h-16 w-16 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
+                {/* Subtle top edge specular highlight line */}
+                <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent pointer-events-none" />
+
+                <div className="relative z-10">
+                  <div
+                    className={`h-16 w-16 rounded-full bg-[#121216] border border-white/[0.10] flex items-center justify-center overflow-hidden shadow-lg transition-transform duration-200 group-hover:scale-[1.02] ${
+                      isSpeaking ? 'ring-2 ring-emerald-400/80 ring-offset-2 ring-offset-[#09090b]' : ''
+                    }`}
+                  >
                     {p.image ? (
                       <Image
                         src={p.image}
@@ -512,7 +607,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <span className="font-serif text-2xl text-[#fcfdff]">{initial}</span>
+                      <span className="font-serif text-2xl text-[#fcfdff] font-normal">{initial}</span>
                     )}
                   </div>
 
@@ -528,7 +623,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                     </span>
                   )}
 
-                  <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center">
+                  <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#101014] border border-white/[0.14] flex items-center justify-center">
                     {p.isMuted ? (
                       <MicOffIcon size={10} className="text-[#888e90]" />
                     ) : (
@@ -537,7 +632,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                   </span>
                 </div>
 
-                <div className="space-y-0.5 max-w-full px-1">
+                <div className="space-y-0.5 max-w-full px-1 relative z-10">
                   <p className="text-xs font-medium text-[#fcfdff] truncate">
                     {p.name}
                     {isMe && <span className="text-[#888e90]"> (You)</span>}
@@ -545,6 +640,10 @@ export default function TalkPage({ params }: TalkPageProps) {
                   {isPHost ? (
                     <span className="text-[10px] font-mono text-[#f59e0b] uppercase tracking-wider block font-semibold">
                       Stage Host
+                    </span>
+                  ) : isSpeaking ? (
+                    <span className="text-[10px] font-mono text-[#11ff99] uppercase tracking-wider block font-medium">
+                      Speaking
                     </span>
                   ) : (
                     <span className="text-[10px] font-mono text-[#888e90] uppercase tracking-wider block">
@@ -557,7 +656,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           })}
 
           {displayParticipants.length <= 1 && (
-            <div className="p-5 border border-dashed border-white/[0.10] rounded-2xl flex flex-col items-center justify-center text-center space-y-2.5 opacity-70 min-h-[160px]">
+            <div className="p-5 bg-[#09090b]/60 border border-dashed border-white/[0.08] hover:border-white/[0.14] rounded-2xl flex flex-col items-center justify-center text-center space-y-2.5 min-h-[160px] transition-all">
               <div className="h-10 w-10 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#888e90]">
                 <HeadphonesIcon size={18} />
               </div>
@@ -567,7 +666,7 @@ export default function TalkPage({ params }: TalkPageProps) {
               </div>
               <button
                 onClick={handleCopyLink}
-                className="px-2.5 py-1 text-[11px] rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-[#fcfdff] transition-all border border-white/[0.08]"
+                className="px-2.5 py-1 text-[11px] rounded-lg bg-white/[0.05] hover:bg-white/[0.10] text-[#fcfdff] transition-all border border-white/[0.08]"
               >
                 {copied ? 'Copied' : 'Copy Invite'}
               </button>
@@ -581,14 +680,14 @@ export default function TalkPage({ params }: TalkPageProps) {
           {isSpeaker ? (
             <button
               onClick={handleToggleMic}
-              className={`h-10 px-4 rounded-lg flex items-center gap-2 font-medium text-xs transition-all ${
+              className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
                 !isMuted
                   ? 'bg-gradient-to-r from-[#f59e0b] to-[#ea580c] text-white shadow-[0_0_16px_rgba(245,158,11,0.4)]'
                   : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
               }`}
+              title={!isMuted ? 'Mute microphone' : 'Unmute microphone'}
             >
-              {!isMuted ? <MicIcon size={14} /> : <MicOffIcon size={14} />}
-              <span>{!isMuted ? 'Mic Live' : 'Unmute'}</span>
+              {!isMuted ? <MicIcon size={17} /> : <MicOffIcon size={17} />}
             </button>
           ) : (
             <button
