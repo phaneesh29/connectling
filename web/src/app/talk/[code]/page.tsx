@@ -149,8 +149,6 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
   const [participantsOpen, setParticipantsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [permissionsPopupOpen, setPermissionsPopupOpen] = useState(false);
-  const [updatingSettings, setUpdatingSettings] = useState(false);
   const [updatingKey, setUpdatingKey] = useState<'micForAll' | 'allowChat' | 'allowRaiseHand' | null>(null);
   const [grantedSpeaker, setGrantedSpeaker] = useState(false);
 
@@ -637,29 +635,6 @@ export default function TalkPage({ params }: TalkPageProps) {
     }
   };
 
-  const handleUpdateSettings = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!room || !settings) return;
-    setUpdatingSettings(true);
-    try {
-      const res = await roomsApi.updateSettings(room.code, {
-        micForAll: settings.micForAll,
-        videoForAll: settings.videoForAll,
-        screenShareForAll: settings.screenShareForAll,
-        allowChat: settings.allowChat,
-        allowRaiseHand: settings.allowRaiseHand,
-      });
-      if (res.data) {
-        setSettings(res.data);
-        setSettingsOpen(false);
-      }
-    } catch (err) {
-      console.error('Failed to update stage settings:', err);
-    } finally {
-      setUpdatingSettings(false);
-    }
-  };
-
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
@@ -781,7 +756,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     );
   }
 
-  const displayParticipants: RoomParticipant[] =
+  const rawParticipants: RoomParticipant[] =
     participants.length > 0
       ? participants
       : room.host
@@ -804,6 +779,17 @@ export default function TalkPage({ params }: TalkPageProps) {
             : []),
         ]
       : [];
+
+  const displayParticipants: RoomParticipant[] = Array.from(
+    rawParticipants
+      .reduce((map, p) => {
+        if (!map.has(p.userId)) {
+          map.set(p.userId, p);
+        }
+        return map;
+      }, new Map<string, RoomParticipant>())
+      .values()
+  );
 
   const pendingHandRaisesCount = participants.filter(
     (p) => p.handRaised && p.userId !== room.hostId
@@ -831,31 +817,34 @@ export default function TalkPage({ params }: TalkPageProps) {
                 STAGE LIVE
               </span>
             </div>
-            <p className="text-[11px] text-[#888e90] font-mono">ID: {room.code}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Permissions / Host Controls Trigger Button */}
+          {/* Stage Settings (Host) or Permissions (Audience) */}
           {settings && (
             <button
               onClick={() => {
-                setPermissionsPopupOpen(!permissionsPopupOpen);
+                setSettingsOpen(!settingsOpen);
                 setParticipantsOpen(false);
                 setChatOpen(false);
               }}
               className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
                 isHost && pendingHandRaisesCount > 0
                   ? 'bg-[#ffc53d]/15 text-[#ffc53d] border-[#ffc53d]/40 shadow-[0_0_12px_rgba(255,197,61,0.2)]'
-                  : permissionsPopupOpen
+                  : settingsOpen
                   ? 'bg-amber-500/20 text-[#f59e0b] border-amber-500/40'
                   : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
               }`}
-              title={isHost ? 'Host Stage Controls & Speaking Requests' : 'View Stage Permissions'}
+              title={isHost ? 'Stage Settings & Speaking Requests' : 'View Stage Permissions'}
             >
-              <ShieldCheckIcon size={13} className={isHost ? 'text-[#f59e0b]' : 'text-zinc-400'} />
+              {isHost ? (
+                <SettingsIcon size={13} className={pendingHandRaisesCount > 0 ? 'text-[#f59e0b]' : 'text-zinc-400'} />
+              ) : (
+                <ShieldCheckIcon size={13} className="text-zinc-400" />
+              )}
               <span className="hidden sm:inline font-mono text-[11px]">
-                {isHost ? 'Controls' : 'Permissions'}
+                {isHost ? 'Settings' : 'Permissions'}
               </span>
               {isHost && pendingHandRaisesCount > 0 && (
                 <span className="h-4 min-w-4 px-1 rounded-full bg-[#ffc53d] text-black font-mono text-[9px] font-bold flex items-center justify-center animate-pulse">
@@ -870,7 +859,7 @@ export default function TalkPage({ params }: TalkPageProps) {
               setParticipantsOpen(!participantsOpen);
               if (!participantsOpen) {
                 setChatOpen(false);
-                setPermissionsPopupOpen(false);
+                setSettingsOpen(false);
               }
             }}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
@@ -891,21 +880,6 @@ export default function TalkPage({ params }: TalkPageProps) {
             {copied ? <CheckIcon size={13} className="text-[#11ff99]" /> : <CopyIcon size={13} />}
             <span className="hidden sm:inline font-mono text-[11px]">{copied ? 'Copied' : 'Share Stage'}</span>
           </button>
-
-          {isHost && (
-            <button
-              onClick={() => {
-                setSettingsOpen(true);
-                setParticipantsOpen(false);
-                setChatOpen(false);
-                setPermissionsPopupOpen(false);
-              }}
-              className="px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08] flex items-center gap-1.5"
-            >
-              <SettingsIcon size={13} />
-              <span className="hidden sm:inline">Settings</span>
-            </button>
-          )}
         </div>
       </header>
 
@@ -916,39 +890,9 @@ export default function TalkPage({ params }: TalkPageProps) {
               Stage Participants & Listeners
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#101012] border border-white/[0.06] text-[#f59e0b] font-medium">
-              {Math.max(1, displayParticipants.length)} in space
+              {displayParticipants.length} in space
             </span>
-
-            {/* Subtle subheader trigger button */}
-            {settings && (
-              <button
-                type="button"
-                onClick={() => {
-                  setPermissionsPopupOpen(true);
-                  setParticipantsOpen(false);
-                  setChatOpen(false);
-                }}
-                className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-mono border transition-all cursor-pointer ${
-                  isHost && pendingHandRaisesCount > 0
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-300 shadow-sm'
-                    : 'bg-white/[0.03] border-white/[0.06] text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06]'
-                }`}
-                title={isHost ? 'Click to manage speaking & stage controls' : 'Click to view stage policies'}
-              >
-                <ShieldCheckIcon size={11} className={isHost ? 'text-[#f59e0b]' : 'text-zinc-400'} />
-                <span>{isHost ? 'Stage Controls' : 'Stage Permissions'}</span>
-                {isHost && pendingHandRaisesCount > 0 && (
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#ffc53d] animate-ping" />
-                )}
-              </button>
-            )}
           </div>
-          <button
-            onClick={handleCopyLink}
-            className="text-xs text-[#888e90] hover:text-[#fcfdff] font-mono flex items-center gap-1 transition-colors"
-          >
-            <span>Stage ID: <strong className="text-[#fcfdff]">{room.code}</strong></span>
-          </button>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
@@ -1097,7 +1041,7 @@ export default function TalkPage({ params }: TalkPageProps) {
               </div>
               <div className="space-y-0.5">
                 <p className="text-xs text-[#fcfdff] font-medium">Listening Lounge</p>
-                <p className="text-[10px] font-mono text-[#888e90]">Share ID {room.code} to invite</p>
+                <p className="text-[10px] font-mono text-[#888e90]">Share link to invite listeners</p>
               </div>
               <button
                 onClick={handleCopyLink}
@@ -1233,90 +1177,11 @@ export default function TalkPage({ params }: TalkPageProps) {
         </div>
       </footer>
 
-      {/* Stage Settings Modal */}
-      {settingsOpen && settings && isHost && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className="w-full max-w-md bg-[#0a0a0c] border border-white/[0.12] rounded-2xl p-6 space-y-5 shadow-2xl text-[#fcfdff]">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="font-serif-headline text-base font-normal">Stage Settings</h3>
-              <button onClick={() => setSettingsOpen(false)} className="text-[#888e90] hover:text-[#fcfdff]">
-                <XIcon size={15} />
-              </button>
-            </div>
-
-            <form onSubmit={handleUpdateSettings} className="space-y-3 text-xs">
-              <label className="flex items-center justify-between cursor-pointer p-2.5 rounded-lg hover:bg-[#101012]">
-                <div className="pr-4">
-                  <span className="text-[#fcfdff]/90 block font-medium">Open microphone for all participants</span>
-                  <span className="text-[11px] text-[#888e90]">Allow anyone on stage to speak freely without asking</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={settings.micForAll}
-                  onChange={(e) => setSettings({ ...settings, micForAll: e.target.checked })}
-                  className="h-4 w-4 rounded border-white/20 bg-[#06060a] text-white"
-                />
-              </label>
-
-              <label className="flex items-center justify-between cursor-pointer p-2.5 rounded-lg hover:bg-[#101012]">
-                <div className="pr-4">
-                  <span className="text-[#fcfdff]/90 block font-medium">In-room text chat</span>
-                  <span className="text-[11px] text-[#888e90]">Allow participants to send messages in stage chat</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={settings.allowChat}
-                  onChange={(e) => setSettings({ ...settings, allowChat: e.target.checked })}
-                  className="h-4 w-4 rounded border-white/20 bg-[#06060a] text-white"
-                />
-              </label>
-
-              <label className="flex items-center justify-between cursor-pointer p-2.5 rounded-lg hover:bg-[#101012]">
-                <div className="pr-4">
-                  <span className="text-[#fcfdff]/90 block font-medium">Allow audience to request mic</span>
-                  <span className="text-[11px] text-[#888e90]">Listeners can raise hand to request speaking turn</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={settings.allowRaiseHand}
-                  onChange={(e) => setSettings({ ...settings, allowRaiseHand: e.target.checked })}
-                  className="h-4 w-4 rounded border-white/20 bg-[#06060a] text-white"
-                />
-              </label>
-
-              <div className="flex justify-end gap-2 pt-4 border-t border-white/[0.06]">
-                <button
-                  type="button"
-                  onClick={() => setSettingsOpen(false)}
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-[#888e90] hover:text-[#fcfdff]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={updatingSettings}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-medium text-xs transition-colors shadow-[0_0_16px_rgba(252,253,255,0.12)] disabled:opacity-50"
-                >
-                  {updatingSettings ? (
-                    <>
-                      <div className="animate-spin h-3 w-3 border border-black/30 border-t-black rounded-full" />
-                      <span>Saving...</span>
-                    </>
-                  ) : (
-                    <span>Save Settings</span>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Permissions & Stage Controls Popup */}
-      {permissionsPopupOpen && settings && (
+      {/* Stage Settings & Permissions Modal */}
+      {settingsOpen && settings && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-150"
-          onClick={() => setPermissionsPopupOpen(false)}
+          onClick={() => setSettingsOpen(false)}
         >
           <div
             className="w-full max-w-md bg-[#0a0a0e] border border-white/[0.12] rounded-2xl p-5 sm:p-6 shadow-2xl relative overflow-hidden text-[#fcfdff] space-y-5"
@@ -1329,11 +1194,11 @@ export default function TalkPage({ params }: TalkPageProps) {
             <div className="flex items-center justify-between border-b border-white/[0.06] pb-3.5">
               <div className="flex items-center gap-2.5">
                 <div className="h-8 w-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                  <ShieldCheckIcon size={16} />
+                  {isHost ? <SettingsIcon size={16} /> : <ShieldCheckIcon size={16} />}
                 </div>
                 <div>
                   <h3 className="font-serif-headline text-base font-medium tracking-tight text-[#fcfdff]">
-                    {isHost ? 'Stage Controls & Permissions' : 'Stage Permissions'}
+                    {isHost ? 'Stage Settings & Controls' : 'Stage Permissions'}
                   </h3>
                   <p className="text-[11px] text-[#888e90] font-sans">
                     {isHost
@@ -1344,7 +1209,7 @@ export default function TalkPage({ params }: TalkPageProps) {
               </div>
               <button
                 type="button"
-                onClick={() => setPermissionsPopupOpen(false)}
+                onClick={() => setSettingsOpen(false)}
                 className="h-7 w-7 rounded-lg flex items-center justify-center text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06] transition-colors"
                 aria-label="Close"
               >
@@ -1368,7 +1233,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
                     <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                       {participants
-                        .filter((p) => p.handRaised && p.userId !== session?.user?.id)
+                        .filter((p) => p.handRaised && p.userId !== room.hostId)
                         .map((p) => (
                           <div
                             key={p.userId}
@@ -1396,7 +1261,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                   </div>
                 )}
 
-                {/* Quick Toggles */}
+                {/* Stage Policies Quick Toggles */}
                 <div className="space-y-2">
                   <div className="text-[11px] font-mono uppercase tracking-wider text-[#888e90] px-0.5">
                     Stage Policies
@@ -1490,24 +1355,12 @@ export default function TalkPage({ params }: TalkPageProps) {
                   </div>
                 </div>
 
-                {/* Footer with more settings link */}
-                <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] text-xs">
+                {/* Footer */}
+                <div className="flex justify-end pt-2 border-t border-white/[0.06] text-xs">
                   <button
                     type="button"
-                    onClick={() => {
-                      setPermissionsPopupOpen(false);
-                      setSettingsOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1.5 text-xs text-[#888e90] hover:text-[#fcfdff] transition-colors font-mono cursor-pointer"
-                  >
-                    <SettingsIcon size={12} />
-                    <span>Advanced Room Settings</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setPermissionsPopupOpen(false)}
-                    className="px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-xs font-medium text-[#fcfdff] transition-colors"
+                    onClick={() => setSettingsOpen(false)}
+                    className="px-4 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.14] text-xs font-medium text-[#fcfdff] transition-colors cursor-pointer"
                   >
                     Done
                   </button>
@@ -1536,7 +1389,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                         {isSpeaker
                           ? 'You have permission to unmute and speak on stage.'
                           : settings.allowRaiseHand
-                          ? 'You can click "Raise Hand" in the bottom controls to request speaking.'
+                          ? 'You can click "Request Mic" in the bottom controls to request speaking.'
                           : 'Microphone is restricted by the stage host.'}
                       </p>
                     </div>
@@ -1592,8 +1445,8 @@ export default function TalkPage({ params }: TalkPageProps) {
                 <div className="flex justify-end pt-2 border-t border-white/[0.06]">
                   <button
                     type="button"
-                    onClick={() => setPermissionsPopupOpen(false)}
-                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.12] text-xs font-medium text-[#fcfdff] transition-colors"
+                    onClick={() => setSettingsOpen(false)}
+                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.12] text-xs font-medium text-[#fcfdff] transition-colors cursor-pointer"
                   >
                     Got it
                   </button>

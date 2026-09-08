@@ -36,7 +36,6 @@ export function InRoomParticipants({
   participants,
   currentUserId,
   hostId,
-  roomCode,
   onCopyLink,
   copied,
   onGrantMic,
@@ -235,13 +234,7 @@ export function InRoomParticipants({
       </div>
 
       {/* Invite Link Footer */}
-      <div className="p-3 border-t border-white/[0.08] bg-[#06060a] space-y-2 shrink-0">
-        <div className="flex items-center justify-between text-[11px]">
-          <span className="text-[#888e90] font-mono">Space Code:</span>
-          <span className="font-mono font-semibold text-[#fcfdff] bg-white/[0.06] px-2 py-0.5 rounded border border-white/[0.10]">
-            {roomCode}
-          </span>
-        </div>
+      <div className="p-3 border-t border-white/[0.08] bg-[#06060a] shrink-0">
         <button
           onClick={onCopyLink}
           className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-[#101012] hover:bg-[#18181c] border border-white/[0.12] text-xs font-medium text-[#fcfdff] transition-all"
