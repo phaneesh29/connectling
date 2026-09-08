@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, useSession } from '@/lib/auth-client';
 import {
@@ -126,6 +127,14 @@ function LoginContent() {
                 <div className="text-[11px] leading-snug space-y-0.5">
                   <span className="text-[#c8ced0]">
                     I agree to the{' '}
+                    <Link
+                      href="/terms"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#3b9eff] hover:underline font-medium inline-flex items-center gap-0.5"
+                    >
+                      Terms of Service & Privacy Policy
+                    </Link>{' '}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -133,9 +142,9 @@ function LoginContent() {
                         e.stopPropagation();
                         setTermsModalOpen(true);
                       }}
-                      className="text-[#3b9eff] hover:underline font-medium inline-flex items-center gap-0.5"
+                      className="text-[#888e90] hover:text-[#fcfdff] underline text-[10px]"
                     >
-                      Terms of Service & Privacy Policy
+                      (Preview)
                     </button>
                   </span>
                   <p className="text-[10px] text-[#888e90]">
@@ -261,25 +270,35 @@ function LoginContent() {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-white/[0.08] bg-[#121217] flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setTermsModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-medium text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06] transition-all"
+            <div className="px-6 py-4 border-t border-white/[0.08] bg-[#121217] flex items-center justify-between gap-3">
+              <Link
+                href="/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] text-[#3b9eff] hover:underline font-mono"
               >
-                Close
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAcceptedTerms(true);
-                  setTermsError(false);
-                  setTermsModalOpen(false);
-                }}
-                className="px-4 py-2 rounded-xl text-xs font-medium bg-[#3b9eff] hover:bg-[#328be0] text-black transition-all font-semibold shadow-[0_0_16px_rgba(59,158,255,0.3)]"
-              >
-                I Understand & Accept
-              </button>
+                Full document ↗
+              </Link>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setTermsModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06] transition-all"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAcceptedTerms(true);
+                    setTermsError(false);
+                    setTermsModalOpen(false);
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-medium bg-[#3b9eff] hover:bg-[#328be0] text-black transition-all font-semibold shadow-[0_0_16px_rgba(59,158,255,0.3)]"
+                >
+                  I Understand & Accept
+                </button>
+              </div>
             </div>
           </div>
         </div>
