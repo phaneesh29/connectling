@@ -24,7 +24,7 @@ function TogglePill({
   subtitle,
   checked,
   onChange,
-  activeColor = 'bg-[#3b9eff]',
+  activeColor = 'bg-[#ff7a1a]',
 }: {
   label: string;
   subtitle?: string;
@@ -62,7 +62,7 @@ function TogglePill({
 export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: CreateRoomModalProps) {
   const router = useRouter();
   const isMeet = defaultType === 'meet';
-  const themeColor = isMeet ? 'bg-[#3b9eff]' : 'bg-[#a855f7]';
+  const themeColor = isMeet ? 'bg-[#ff7a1a]' : 'bg-[#f59e0b]';
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -129,7 +129,7 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
         {/* Subtle Atmospheric Top Glow in Modal */}
         <div
           className={`absolute top-0 left-1/2 -translate-x-1/2 w-72 h-32 blur-3xl pointer-events-none opacity-25 ${
-            isMeet ? 'bg-[#3b9eff]' : 'bg-[#a855f7]'
+            isMeet ? 'bg-[#ff7a1a]' : 'bg-[#f59e0b]'
           }`}
         />
 
@@ -138,7 +138,7 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
           <div className="flex items-center gap-3">
             <div
               className={`h-9 w-9 rounded-lg flex items-center justify-center border border-white/[0.10] ${
-                isMeet ? 'bg-[#3b9eff]/10 text-[#3b9eff]' : 'bg-[#a855f7]/10 text-[#a855f7]'
+                isMeet ? 'bg-[#ff7a1a]/10 text-[#ff7a1a]' : 'bg-[#f59e0b]/10 text-[#f59e0b]'
               }`}
             >
               {isMeet ? <VideoIcon size={18} /> : <AudioWaveformIcon size={18} />}

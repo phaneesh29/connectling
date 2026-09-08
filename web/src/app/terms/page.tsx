@@ -30,7 +30,7 @@ export default function TermsPage() {
 
         {/* Header */}
         <header className="space-y-4 border-b border-white/[0.10] pb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] font-mono text-[#3b9eff]">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] font-mono text-[#ff7a1a]">
             <ShieldCheckIcon size={13} />
             <span>Zero-Data Retention Architecture</span>
           </div>
@@ -46,14 +46,14 @@ export default function TermsPage() {
           <div className="pt-2 flex flex-wrap items-center gap-3 text-xs text-[#888e90] font-mono">
             <span>Last Updated: September 2026</span>
             <span>•</span>
-            <span className="text-[#3b9eff]">Version 2.0 (Zero-Telemetry)</span>
+            <span className="text-[#ff7a1a]">Version 2.0 (Zero-Telemetry)</span>
           </div>
         </header>
 
         {/* Quick Highlights Grid */}
         <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="p-4 rounded-xl bg-[#0a0a0c] border border-white/[0.10] space-y-2">
-            <div className="h-8 w-8 rounded-lg bg-white/[0.05] border border-white/[0.10] flex items-center justify-center text-[#3b9eff]">
+            <div className="h-8 w-8 rounded-lg bg-white/[0.05] border border-white/[0.10] flex items-center justify-center text-[#ff7a1a]">
               <LockIcon size={16} />
             </div>
             <h3 className="text-xs font-semibold text-[#fcfdff]">Zero Recordings</h3>
@@ -63,7 +63,7 @@ export default function TermsPage() {
           </div>
 
           <div className="p-4 rounded-xl bg-[#0a0a0c] border border-white/[0.10] space-y-2">
-            <div className="h-8 w-8 rounded-lg bg-white/[0.05] border border-white/[0.10] flex items-center justify-center text-[#a855f7]">
+            <div className="h-8 w-8 rounded-lg bg-white/[0.05] border border-white/[0.10] flex items-center justify-center text-[#f59e0b]">
               <AudioWaveformIcon size={16} />
             </div>
             <h3 className="text-xs font-semibold text-[#fcfdff]">Ephemeral Rooms</h3>
@@ -94,7 +94,7 @@ export default function TermsPage() {
               By signing in to Connectling via Google OAuth and checking the acceptance checkbox, you enter into a binding legal agreement with Connectling. If you do not accept these terms, you may not access or use any spaces, video meetings, or audio lounges provided by the platform.
             </p>
             <p>
-              When you accept these terms, our authentication service records a timestamped consent flag (<code className="px-1.5 py-0.5 rounded bg-white/[0.06] text-[#3b9eff] font-mono text-xs">terms_accepted: true</code>) alongside your user identifier in our database to ensure compliance with digital consent regulations.
+              When you accept these terms, our authentication service records a timestamped consent flag (<code className="px-1.5 py-0.5 rounded bg-white/[0.06] text-[#ff7a1a] font-mono text-xs">terms_accepted: true</code>) alongside your user identifier in our database to ensure compliance with digital consent regulations.
             </p>
           </section>
 
@@ -108,19 +108,19 @@ export default function TermsPage() {
             </p>
             <ul className="space-y-2 pl-4 border-l border-white/[0.10]">
               <li className="flex items-start gap-2">
-                <CheckIcon size={14} className="text-[#3b9eff] shrink-0 mt-0.5" />
+                <CheckIcon size={14} className="text-[#ff7a1a] shrink-0 mt-0.5" />
                 <span>
                   <strong className="text-[#fcfdff]">No Media Recording:</strong> Audio, video, and screen-sharing data pass directly between participants without archival pipelines.
                 </span>
               </li>
               <li className="flex items-start gap-2">
-                <CheckIcon size={14} className="text-[#3b9eff] shrink-0 mt-0.5" />
+                <CheckIcon size={14} className="text-[#ff7a1a] shrink-0 mt-0.5" />
                 <span>
                   <strong className="text-[#fcfdff]">Ephemeral In-Memory Chat:</strong> In-room messages are routed via WebSocket connection memory and are never committed to permanent database tables.
                 </span>
               </li>
               <li className="flex items-start gap-2">
-                <CheckIcon size={14} className="text-[#3b9eff] shrink-0 mt-0.5" />
+                <CheckIcon size={14} className="text-[#ff7a1a] shrink-0 mt-0.5" />
                 <span>
                   <strong className="text-[#fcfdff]">Zero Presence Surveillance:</strong> We do not log when you enter or leave spaces, your online/offline status, or your engagement time.
                 </span>
@@ -137,7 +137,7 @@ export default function TermsPage() {
               Authentication is handled exclusively through Google OAuth. Connectling stores only the essential profile claims provided by Google (your public display name, email address, and avatar URL) to identify you within active spaces and manage session tokens. We never receive or store your Google password.
             </p>
             <p>
-              You can view and revoke any active login sessions at any time directly from your <Link href="/profile" className="text-[#3b9eff] hover:underline font-medium">Account Profile</Link>.
+              You can view and revoke any active login sessions at any time directly from your <Link href="/profile" className="text-[#ff7a1a] hover:underline font-medium">Account Profile</Link>.
             </p>
           </section>
 

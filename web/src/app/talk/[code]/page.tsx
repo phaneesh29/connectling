@@ -233,7 +233,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     return (
       <main className="flex min-h-screen items-center justify-center p-4 bg-black">
         <div className="w-full max-w-md p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl space-y-6 text-center shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-[#a855f7] opacity-10 blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-[#f59e0b] to-[#ea580c] opacity-10 blur-3xl pointer-events-none" />
           <div className="h-12 w-12 rounded-xl bg-[#101012] border border-white/[0.10] text-[#ffc53d] flex items-center justify-center mx-auto">
             <LockIcon size={22} />
           </div>
@@ -316,7 +316,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     <div className="flex flex-col h-screen bg-black text-[#fcfdff] select-none ambient-glow-audio">
       <header className="h-14 border-b border-white/[0.06] px-4 sm:px-6 flex items-center justify-between bg-black/60 backdrop-blur-xl">
         <div className="flex items-center gap-3">
-          <div className="h-7 w-7 rounded-lg bg-[#101012] border border-white/[0.08] text-[#a855f7] flex items-center justify-center">
+          <div className="h-7 w-7 rounded-lg bg-[#101012] border border-white/[0.08] text-[#f59e0b] flex items-center justify-center">
             <AudioWaveformIcon size={14} />
           </div>
           <div>
@@ -324,7 +324,7 @@ export default function TalkPage({ params }: TalkPageProps) {
               <h1 className="font-serif-headline text-sm font-normal text-[#fcfdff] truncate max-w-[200px] sm:max-w-md tracking-tight">
                 {room.title}
               </h1>
-              <span className="text-[9px] font-mono px-2 py-0.5 bg-[#101012] text-[#a855f7] border border-white/[0.08] rounded-full uppercase tracking-wider font-semibold">
+              <span className="text-[9px] font-mono px-2 py-0.5 bg-[#101012] text-[#f59e0b] border border-white/[0.08] rounded-full uppercase tracking-wider font-semibold">
                 STAGE LIVE
               </span>
             </div>
@@ -385,7 +385,7 @@ export default function TalkPage({ params }: TalkPageProps) {
               </div>
               <div className="space-y-0.5">
                 <p className="text-xs font-medium text-[#fcfdff] truncate max-w-[120px]">{room.host?.name}</p>
-                <span className="text-[10px] font-mono text-[#a855f7] uppercase tracking-wider block">
+                <span className="text-[10px] font-mono text-[#f59e0b] uppercase tracking-wider block">
                   Stage Host
                 </span>
               </div>
@@ -415,7 +415,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 </div>
                 <div className="space-y-0.5">
                   <p className="text-xs font-medium text-[#fcfdff] truncate max-w-[120px]">{session?.user.name} (You)</p>
-                  <span className="text-[10px] font-mono text-[#3b9eff] uppercase tracking-wider block">
+                  <span className="text-[10px] font-mono text-[#ff7a1a] uppercase tracking-wider block">
                     Speaker
                   </span>
                 </div>
@@ -476,7 +476,7 @@ export default function TalkPage({ params }: TalkPageProps) {
               onClick={() => setIsMuted(!isMuted)}
               className={`h-10 px-4 rounded-lg flex items-center gap-2 font-medium text-xs transition-all ${
                 !isMuted
-                  ? 'bg-[#a855f7] text-white shadow-[0_0_16px_rgba(168,85,247,0.4)]'
+                  ? 'bg-gradient-to-r from-[#f59e0b] to-[#ea580c] text-white shadow-[0_0_16px_rgba(245,158,11,0.4)]'
                   : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
               }`}
             >
@@ -504,14 +504,14 @@ export default function TalkPage({ params }: TalkPageProps) {
             }}
             className={`relative h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
               chatOpen
-                ? 'bg-purple-500/20 text-[#a855f7] border border-purple-500/40 shadow-sm'
+                ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 shadow-sm'
                 : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
             }`}
             title="In-Call Messages"
           >
             <MessageSquareIcon size={17} />
             {unreadChatCount > 0 && !chatOpen && (
-              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#a855f7] text-white font-mono text-[9px] font-bold flex items-center justify-center shadow-lg animate-pulse">
+              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#f59e0b] text-black font-mono text-[9px] font-bold flex items-center justify-center shadow-lg animate-pulse">
                 {unreadChatCount}
               </span>
             )}

@@ -247,7 +247,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     return (
       <main className="flex min-h-screen items-center justify-center p-4 bg-black">
         <div className="w-full max-w-md p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl space-y-6 text-center shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-[#3b9eff] opacity-10 blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-[#ff7a1a] to-[#ea580c] opacity-10 blur-3xl pointer-events-none" />
           <div className="h-12 w-12 rounded-xl bg-[#101012] border border-white/[0.10] text-[#ffc53d] flex items-center justify-center mx-auto">
             <LockIcon size={22} />
           </div>
@@ -455,7 +455,7 @@ export default function MeetPage({ params }: MeetPageProps) {
             onClick={() => setIsScreenSharing(!isScreenSharing)}
             className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
               isScreenSharing
-                ? 'bg-[#3b9eff] text-white shadow-[0_0_16px_rgba(59,158,255,0.4)]'
+                ? 'bg-gradient-to-r from-[#ff7a1a] to-[#ea580c] text-white shadow-[0_0_16px_rgba(255,122,26,0.45)]'
                 : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
             }`}
             title="Screen Share"
@@ -470,14 +470,14 @@ export default function MeetPage({ params }: MeetPageProps) {
             }}
             className={`relative h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
               chatOpen
-                ? 'bg-blue-500/20 text-[#3b9eff] border border-blue-500/40 shadow-sm'
+                ? 'bg-orange-500/20 text-[#ff7a1a] border border-orange-500/40 shadow-sm'
                 : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
             }`}
             title="In-Call Messages"
           >
             <MessageSquareIcon size={17} />
             {unreadChatCount > 0 && !chatOpen && (
-              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#3b9eff] text-black font-mono text-[9px] font-bold flex items-center justify-center shadow-lg animate-pulse">
+              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#ff7a1a] text-black font-mono text-[9px] font-bold flex items-center justify-center shadow-lg animate-pulse">
                 {unreadChatCount}
               </span>
             )}

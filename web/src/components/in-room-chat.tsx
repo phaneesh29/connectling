@@ -72,8 +72,8 @@ export function InRoomChat({
       </div>
 
       {/* Ephemeral Notice */}
-      <div className="px-4 py-2 bg-blue-500/[0.08] border-b border-blue-500/20 text-[10px] text-[#3b9eff] flex items-center gap-2 shrink-0 font-mono">
-        <span className="h-1.5 w-1.5 rounded-full bg-[#3b9eff] animate-pulse" />
+      <div className="px-4 py-2 bg-orange-500/[0.08] border-b border-orange-500/20 text-[10px] text-[#ff7a1a] flex items-center gap-2 shrink-0 font-mono">
+        <span className="h-1.5 w-1.5 rounded-full bg-[#ff7a1a] animate-pulse" />
         <span>Temporary in-memory chat • Cleared on exit</span>
       </div>
 
@@ -133,7 +133,7 @@ export function InRoomChat({
                   <div
                     className={`p-2.5 rounded-2xl text-xs break-words leading-relaxed ${
                       isMe
-                        ? 'bg-blue-600/20 text-[#fcfdff] border border-blue-500/30 rounded-tr-sm'
+                        ? 'bg-gradient-to-r from-orange-600/25 to-amber-600/25 text-[#fcfdff] border border-orange-500/35 rounded-tr-sm'
                         : 'bg-white/[0.06] text-[#fcfdff] border border-white/[0.10] rounded-tl-sm'
                     }`}
                   >

@@ -15,16 +15,15 @@
   --ash: #888e90;
   --stone: #464a4d;
   
-  --accent-orange: #ff801f;
-  --accent-orange-glow: rgba(255, 89, 0, 0.18);
+  --accent-orange: #ff7a1a;
+  --accent-orange-glow: rgba(255, 122, 26, 0.22);
+  --accent-amber: #f59e0b;
+  --accent-amber-glow: rgba(245, 158, 11, 0.22);
   --accent-yellow: #ffc53d;
-  --accent-blue: #3b9eff;
-  --accent-blue-glow: rgba(0, 117, 255, 0.20);
   --accent-green: #11ff99;
   --accent-green-glow: rgba(34, 255, 153, 0.18);
   --accent-red: #ff2047;
   --accent-red-glow: rgba(255, 32, 71, 0.22);
-  --accent-purple-glow: rgba(168, 85, 247, 0.20);
 }
 
 body {
@@ -46,18 +45,18 @@ body {
 /* Atmospheric Glow Backgrounds */
 .ambient-glow-meet {
   background: 
-    radial-gradient(ellipse 90% 600px at 50% -40px, rgba(0, 117, 255, 0.18), transparent 75%),
-    radial-gradient(ellipse 70% 500px at 85% 45%, rgba(59, 158, 255, 0.08), transparent 70%),
-    radial-gradient(ellipse 80% 600px at 15% 85%, rgba(0, 117, 255, 0.06), transparent 65%),
-    #050508;
+    radial-gradient(ellipse 90% 600px at 50% -40px, rgba(255, 122, 26, 0.18), transparent 75%),
+    radial-gradient(ellipse 70% 500px at 85% 45%, rgba(245, 158, 11, 0.08), transparent 70%),
+    radial-gradient(ellipse 80% 600px at 15% 85%, rgba(234, 88, 12, 0.06), transparent 65%),
+    #070605;
 }
 
 .ambient-glow-audio {
   background: 
-    radial-gradient(ellipse 90% 600px at 50% -40px, rgba(168, 85, 247, 0.18), transparent 75%),
-    radial-gradient(ellipse 70% 500px at 85% 45%, rgba(255, 89, 0, 0.08), transparent 70%),
-    radial-gradient(ellipse 80% 600px at 15% 85%, rgba(168, 85, 247, 0.06), transparent 65%),
-    #050508;
+    radial-gradient(ellipse 90% 600px at 50% -40px, rgba(245, 158, 11, 0.18), transparent 75%),
+    radial-gradient(ellipse 70% 500px at 85% 45%, rgba(255, 122, 26, 0.08), transparent 70%),
+    radial-gradient(ellipse 80% 600px at 15% 85%, rgba(217, 119, 6, 0.06), transparent 65%),
+    #070605;
 }
 
 /* Card Glow Effect on Hover */

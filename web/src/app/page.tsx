@@ -136,7 +136,7 @@ export default function DashboardPage() {
   if (sessionPending || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black">
-        <div className="animate-spin h-6 w-6 border-2 border-white/20 border-t-[#3b9eff] rounded-full" />
+        <div className="animate-spin h-6 w-6 border-2 border-white/20 border-t-[#ff7a1a] rounded-full" />
       </div>
     );
   }
@@ -166,7 +166,7 @@ export default function DashboardPage() {
                     : 'text-[#888e90] hover:text-[#fcfdff]'
                 }`}
               >
-                <VideoIcon size={14} className={activeMode === 'meet' ? 'text-[#3b9eff]' : ''} />
+                <VideoIcon size={14} className={activeMode === 'meet' ? 'text-[#ff7a1a]' : ''} />
                 <span>Video Meetings</span>
               </button>
 
@@ -182,7 +182,7 @@ export default function DashboardPage() {
                     : 'text-[#888e90] hover:text-[#fcfdff]'
                 }`}
               >
-                <AudioWaveformIcon size={14} className={activeMode === 'audio' ? 'text-[#a855f7]' : ''} />
+                <AudioWaveformIcon size={14} className={activeMode === 'audio' ? 'text-[#f59e0b]' : ''} />
                 <span>Audio Rooms</span>
               </button>
             </div>
@@ -214,7 +214,7 @@ export default function DashboardPage() {
         <section className="relative glow-card rounded-2xl border border-white/[0.12] bg-[#0a0a0c] overflow-hidden p-6 sm:p-8 space-y-6">
           <div
             className={`absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-20 -mr-20 -mt-20 ${
-              activeMode === 'meet' ? 'bg-[#3b9eff]' : 'bg-[#a855f7]'
+              activeMode === 'meet' ? 'bg-[#ff7a1a]' : 'bg-[#f59e0b]'
             }`}
           />
 
@@ -347,8 +347,8 @@ export default function DashboardPage() {
                             <span
                               className={`inline-flex items-center gap-1 text-[10px] font-medium font-mono px-2 py-0.5 rounded-md ${
                                 isMeet
-                                  ? 'bg-[#3b9eff]/10 text-[#3b9eff] border border-[#3b9eff]/20'
-                                  : 'bg-[#a855f7]/10 text-[#a855f7] border border-[#a855f7]/20'
+                                  ? 'bg-[#ff7a1a]/10 text-[#ff7a1a] border border-[#ff7a1a]/20'
+                                  : 'bg-[#f59e0b]/10 text-[#f59e0b] border border-[#f59e0b]/20'
                               }`}
                             >
                               {isMeet ? <VideoIcon size={11} /> : <AudioWaveformIcon size={11} />}
