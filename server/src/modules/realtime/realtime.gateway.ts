@@ -55,6 +55,11 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         await socket.join(roomChannel);
         socket.data.currentRoomCode = roomCode;
 
+        socket.to(roomChannel).emit('room:user-joined', {
+          userId: user.id,
+          name: user.name,
+        });
+
         logger.info({ userId: user.id, roomCode }, 'User joined chat room');
       } catch (err) {
         logger.error({ err, userId: user.id, roomCode }, 'Error joining chat room');
@@ -70,9 +75,17 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
     });
 
     const handleLeave = async (roomCode: string) => {
+      if (!socket.data.currentRoomCode) return;
+      socket.data.currentRoomCode = undefined;
+
       try {
-        await socket.leave(`room:${roomCode}`);
-        socket.data.currentRoomCode = undefined;
+        const roomChannel = `room:${roomCode}`;
+        socket.to(roomChannel).emit('room:user-left', {
+          userId: user.id,
+          name: user.name,
+        });
+
+        await socket.leave(roomChannel);
         logger.info({ userId: user.id, roomCode }, 'User departed chat room');
       } catch (err) {
         logger.error({ err, userId: user.id, roomCode }, 'Error handling socket leave');

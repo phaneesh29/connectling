@@ -15,6 +15,8 @@ export interface ClientToServerEvents {
 
 export interface ServerToClientEvents {
   'chat:new-message': (payload: ChatMessage) => void;
+  'room:user-joined': (payload: { userId: string; name: string }) => void;
+  'room:user-left': (payload: { userId: string; name: string }) => void;
   'room:ended': (payload: { message: string }) => void;
   'error:message': (payload: { message: string }) => void;
 }
