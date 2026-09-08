@@ -67,6 +67,10 @@ export default function TalkPage({ params }: TalkPageProps) {
 
   const chatOpenRef = useRef(chatOpen);
   const isMutedRef = useRef(isMuted);
+  const joinedCodeRef = useRef<string | null>(null);
+  const knownParticipantsRef = useRef<Set<string>>(new Set());
+  const currentUserId = session?.user?.id;
+  const currentUserIdRef = useRef(currentUserId);
 
   useEffect(() => {
     chatOpenRef.current = chatOpen;
@@ -75,6 +79,10 @@ export default function TalkPage({ params }: TalkPageProps) {
   useEffect(() => {
     isMutedRef.current = isMuted;
   }, [isMuted]);
+
+  useEffect(() => {
+    currentUserIdRef.current = currentUserId;
+  }, [currentUserId]);
 
   useEffect(() => {
     if (!sessionPending && !session) {
@@ -93,6 +101,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           setSettings(res.data.settings);
           setParticipant(res.data.participant);
           setPasscodeRequired(false);
+          joinedCodeRef.current = `${codeToJoin}:${currentUserIdRef.current}`;
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to join audio room';
@@ -111,7 +120,11 @@ export default function TalkPage({ params }: TalkPageProps) {
 
   useEffect(() => {
     let ignore = false;
-    if (session && code) {
+    if (currentUserId && code) {
+      const joinKey = `${code}:${currentUserId}`;
+      if (joinedCodeRef.current === joinKey) return;
+      joinedCodeRef.current = joinKey;
+
       roomsApi
         .joinRoom(code)
         .then((res) => {
@@ -124,6 +137,7 @@ export default function TalkPage({ params }: TalkPageProps) {
         })
         .catch((err: unknown) => {
           if (ignore) return;
+          joinedCodeRef.current = null;
           const msg = err instanceof Error ? err.message : 'Failed to join audio room';
           if (msg.toLowerCase().includes('passcode')) {
             setPasscodeRequired(true);
@@ -140,14 +154,17 @@ export default function TalkPage({ params }: TalkPageProps) {
     return () => {
       ignore = true;
     };
-  }, [session, code]);
+  }, [currentUserId, code]);
+
+  const roomId = room?.id;
+  const roomCode = room?.code;
 
   useEffect(() => {
-    if (!room || !participant) return;
+    if (!roomId || !roomCode) return;
 
     const interval = setInterval(async () => {
       try {
-        await roomsApi.sendHeartbeat(room.code);
+        await roomsApi.sendHeartbeat(roomCode);
       } catch {
         setError('This audio room has ended or expired.');
       }
@@ -155,7 +172,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
     const onBeforeUnload = () => {
       const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000';
-      fetch(`${apiUrl}/api/v1/rooms/${room.code}/leave`, {
+      fetch(`${apiUrl}/api/v1/rooms/${roomCode}/leave`, {
         method: 'POST',
         credentials: 'include',
         keepalive: true,
@@ -168,11 +185,11 @@ export default function TalkPage({ params }: TalkPageProps) {
       clearInterval(interval);
       window.removeEventListener('beforeunload', onBeforeUnload);
     };
-  }, [room, participant]);
+  }, [roomId, roomCode]);
 
   // Connect WebSocket and listen for in-room ephemeral messages
   useEffect(() => {
-    if (!room || !participant) return;
+    if (!roomId) return;
     const socket = getSocket();
     socket.connect();
 
@@ -187,17 +204,22 @@ export default function TalkPage({ params }: TalkPageProps) {
         return [...prev, msg];
       });
 
-      if (!chatOpenRef.current && msg.userId !== session?.user?.id) {
+      if (!chatOpenRef.current && msg.userId !== currentUserIdRef.current) {
         setUnreadChatCount((count) => count + 1);
       }
     };
 
     const handleRoster = ({ participants: roster }: { participants: RoomParticipant[] }) => {
+      roster.forEach((p) => knownParticipantsRef.current.add(p.userId));
       setParticipants(roster);
     };
 
     const handleUserJoined = ({ userId, name }: { userId: string; name: string }) => {
-      if (userId === session?.user?.id) return;
+      if (userId === currentUserIdRef.current) return;
+      // Suppress duplicate chime if user is already known on this stage
+      if (knownParticipantsRef.current.has(userId)) return;
+      knownParticipantsRef.current.add(userId);
+
       playJoinChime();
       setRoomToast({ text: `${name} joined the stage`, type: 'join' });
       setTimeout(() => {
@@ -206,7 +228,11 @@ export default function TalkPage({ params }: TalkPageProps) {
     };
 
     const handleUserLeft = ({ userId, name }: { userId: string; name: string }) => {
-      if (userId === session?.user?.id) return;
+      if (userId === currentUserIdRef.current) return;
+      // Suppress duplicate chime if user was not on the stage
+      if (!knownParticipantsRef.current.has(userId)) return;
+      knownParticipantsRef.current.delete(userId);
+
       playLeaveChime();
       setRoomToast({ text: `${name} left the stage`, type: 'leave' });
       setTimeout(() => {
@@ -226,7 +252,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       socket.off('room:user-left', handleUserLeft);
       socket.emit('room:leave', { roomCode: code });
     };
-  }, [room, participant, code, session?.user?.id]);
+  }, [roomId, code]);
 
   const handleSendMessage = (text: string) => {
     const socket = getSocket();

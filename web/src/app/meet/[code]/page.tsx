@@ -52,7 +52,7 @@ export default function MeetPage({ params }: MeetPageProps) {
 
   const [room, setRoom] = useState<RoomData | null>(null);
   const [settings, setSettings] = useState<RoomSettingsData | null>(null);
-  const [participant, setParticipant] = useState<ParticipantData | null>(null);
+  const [, setParticipant] = useState<ParticipantData | null>(null);
 
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
@@ -73,6 +73,10 @@ export default function MeetPage({ params }: MeetPageProps) {
   const chatOpenRef = useRef(chatOpen);
   const isMicOnRef = useRef(isMicOn);
   const isVideoOnRef = useRef(isVideoOn);
+  const joinedCodeRef = useRef<string | null>(null);
+  const knownParticipantsRef = useRef<Set<string>>(new Set());
+  const currentUserId = session?.user?.id;
+  const currentUserIdRef = useRef(currentUserId);
 
   useEffect(() => {
     chatOpenRef.current = chatOpen;
@@ -82,6 +86,10 @@ export default function MeetPage({ params }: MeetPageProps) {
     isMicOnRef.current = isMicOn;
     isVideoOnRef.current = isVideoOn;
   }, [isMicOn, isVideoOn]);
+
+  useEffect(() => {
+    currentUserIdRef.current = currentUserId;
+  }, [currentUserId]);
 
   useEffect(() => {
     if (!sessionPending && !session) {
@@ -100,6 +108,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           setSettings(res.data.settings);
           setParticipant(res.data.participant);
           setPasscodeRequired(false);
+          joinedCodeRef.current = `${codeToJoin}:${currentUserIdRef.current}`;
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to join meeting';
@@ -118,7 +127,11 @@ export default function MeetPage({ params }: MeetPageProps) {
 
   useEffect(() => {
     let ignore = false;
-    if (session && code) {
+    if (currentUserId && code) {
+      const joinKey = `${code}:${currentUserId}`;
+      if (joinedCodeRef.current === joinKey) return;
+      joinedCodeRef.current = joinKey;
+
       roomsApi
         .joinRoom(code)
         .then((res) => {
@@ -131,6 +144,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         })
         .catch((err: unknown) => {
           if (ignore) return;
+          joinedCodeRef.current = null;
           const msg = err instanceof Error ? err.message : 'Failed to join meeting';
           if (msg.toLowerCase().includes('passcode')) {
             setPasscodeRequired(true);
@@ -147,25 +161,28 @@ export default function MeetPage({ params }: MeetPageProps) {
     return () => {
       ignore = true;
     };
-  }, [session, code]);
+  }, [currentUserId, code]);
+
+  const roomId = room?.id;
+  const roomCode = room?.code;
 
   useEffect(() => {
-    if (!room || !participant) return;
+    if (!roomId || !roomCode) return;
 
     const interval = setInterval(async () => {
       try {
-        await roomsApi.sendHeartbeat(room.code);
+        await roomsApi.sendHeartbeat(roomCode);
       } catch {
         setError('This meeting has ended or expired.');
       }
     }, 15000);
 
     return () => clearInterval(interval);
-  }, [room, participant]);
+  }, [roomId, roomCode]);
 
   // Connect WebSocket and listen for in-room ephemeral messages
   useEffect(() => {
-    if (!room || !participant) return;
+    if (!roomId) return;
     const socket = getSocket();
     socket.connect();
 
@@ -181,17 +198,22 @@ export default function MeetPage({ params }: MeetPageProps) {
         return [...prev, msg];
       });
 
-      if (!chatOpenRef.current && msg.userId !== session?.user?.id) {
+      if (!chatOpenRef.current && msg.userId !== currentUserIdRef.current) {
         setUnreadChatCount((count) => count + 1);
       }
     };
 
     const handleRoster = ({ participants: roster }: { participants: RoomParticipant[] }) => {
+      roster.forEach((p) => knownParticipantsRef.current.add(p.userId));
       setParticipants(roster);
     };
 
     const handleUserJoined = ({ userId, name }: { userId: string; name: string }) => {
-      if (userId === session?.user?.id) return;
+      if (userId === currentUserIdRef.current) return;
+      // Suppress duplicate chime if user is already known in this space
+      if (knownParticipantsRef.current.has(userId)) return;
+      knownParticipantsRef.current.add(userId);
+
       playJoinChime();
       setRoomToast({ text: `${name} joined the space`, type: 'join' });
       setTimeout(() => {
@@ -200,7 +222,11 @@ export default function MeetPage({ params }: MeetPageProps) {
     };
 
     const handleUserLeft = ({ userId, name }: { userId: string; name: string }) => {
-      if (userId === session?.user?.id) return;
+      if (userId === currentUserIdRef.current) return;
+      // Suppress duplicate chime if user wasn't in the space
+      if (!knownParticipantsRef.current.has(userId)) return;
+      knownParticipantsRef.current.delete(userId);
+
       playLeaveChime();
       setRoomToast({ text: `${name} left the space`, type: 'leave' });
       setTimeout(() => {
@@ -220,7 +246,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       socket.off('room:user-left', handleUserLeft);
       socket.emit('room:leave', { roomCode: code });
     };
-  }, [room, participant, code, session?.user?.id]);
+  }, [roomId, code]);
 
   const handleSendMessage = (text: string) => {
     const socket = getSocket();
