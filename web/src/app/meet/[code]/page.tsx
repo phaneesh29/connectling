@@ -26,11 +26,13 @@ import {
   PhoneCallIcon,
   XIcon,
   MessageSquareIcon,
+  StarIcon,
 } from '@animateicons/react/lucide';
 import { getSocket } from '@/lib/socket';
 import { playJoinChime, playLeaveChime } from '@/lib/chime';
 import { InRoomChat } from '@/components/in-room-chat';
-import type { ChatMessage } from '@/types/realtime';
+import { InRoomParticipants } from '@/components/in-room-participants';
+import type { ChatMessage, RoomParticipant } from '@/types/realtime';
 
 interface MeetPageProps {
   params: Promise<{ code: string }>;
@@ -65,11 +67,21 @@ export default function MeetPage({ params }: MeetPageProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [roomToast, setRoomToast] = useState<{ text: string; type: 'join' | 'leave' } | null>(null);
+  const [participants, setParticipants] = useState<RoomParticipant[]>([]);
+  const [participantsOpen, setParticipantsOpen] = useState(false);
 
   const chatOpenRef = useRef(chatOpen);
+  const isMicOnRef = useRef(isMicOn);
+  const isVideoOnRef = useRef(isVideoOn);
+
   useEffect(() => {
     chatOpenRef.current = chatOpen;
   }, [chatOpen]);
+
+  useEffect(() => {
+    isMicOnRef.current = isMicOn;
+    isVideoOnRef.current = isVideoOn;
+  }, [isMicOn, isVideoOn]);
 
   useEffect(() => {
     if (!sessionPending && !session) {
@@ -159,6 +171,8 @@ export default function MeetPage({ params }: MeetPageProps) {
 
     socket.emit('room:join', {
       roomCode: code,
+      isMuted: !isMicOnRef.current,
+      isVideoOn: isVideoOnRef.current,
     });
 
     const handleNewMessage = (msg: ChatMessage) => {
@@ -170,6 +184,10 @@ export default function MeetPage({ params }: MeetPageProps) {
       if (!chatOpenRef.current && msg.userId !== session?.user?.id) {
         setUnreadChatCount((count) => count + 1);
       }
+    };
+
+    const handleRoster = ({ participants: roster }: { participants: RoomParticipant[] }) => {
+      setParticipants(roster);
     };
 
     const handleUserJoined = ({ userId, name }: { userId: string; name: string }) => {
@@ -191,11 +209,13 @@ export default function MeetPage({ params }: MeetPageProps) {
     };
 
     socket.on('chat:new-message', handleNewMessage);
+    socket.on('room:roster', handleRoster);
     socket.on('room:user-joined', handleUserJoined);
     socket.on('room:user-left', handleUserLeft);
 
     return () => {
       socket.off('chat:new-message', handleNewMessage);
+      socket.off('room:roster', handleRoster);
       socket.off('room:user-joined', handleUserJoined);
       socket.off('room:user-left', handleUserLeft);
       socket.emit('room:leave', { roomCode: code });
@@ -205,6 +225,28 @@ export default function MeetPage({ params }: MeetPageProps) {
   const handleSendMessage = (text: string) => {
     const socket = getSocket();
     socket.emit('chat:message', { roomCode: code, text });
+  };
+
+  const handleToggleMic = () => {
+    const next = !isMicOn;
+    setIsMicOn(next);
+    const socket = getSocket();
+    socket.emit('room:media-toggle', {
+      roomCode: code,
+      isMuted: !next,
+      isVideoOn,
+    });
+  };
+
+  const handleToggleVideo = () => {
+    const next = !isVideoOn;
+    setIsVideoOn(next);
+    const socket = getSocket();
+    socket.emit('room:media-toggle', {
+      roomCode: code,
+      isMuted: !isMicOn,
+      isVideoOn: next,
+    });
   };
 
   const handleCopyLink = () => {
@@ -352,6 +394,7 @@ export default function MeetPage({ params }: MeetPageProps) {
   }
 
   const isHost = room.hostId === session?.user.id;
+  const otherParticipants = participants.filter((p) => p.userId !== session?.user?.id);
 
   return (
     <div className="flex flex-col h-screen bg-black text-[#fcfdff] select-none ambient-glow-meet">
@@ -374,6 +417,22 @@ export default function MeetPage({ params }: MeetPageProps) {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => {
+              setParticipantsOpen(!participantsOpen);
+              if (!participantsOpen) setChatOpen(false);
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+              participantsOpen
+                ? 'bg-orange-500/20 text-[#ff7a1a] border-orange-500/40'
+                : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
+            }`}
+            title="People in space"
+          >
+            <UsersIcon size={13} />
+            <span className="font-mono text-[11px]">{Math.max(1, participants.length)}</span>
+          </button>
+
+          <button
             onClick={handleCopyLink}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08]"
           >
@@ -394,8 +453,19 @@ export default function MeetPage({ params }: MeetPageProps) {
       </header>
 
       <main className="flex-1 p-4 sm:p-6 overflow-y-auto flex items-center justify-center">
-        <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-2 gap-4 h-full max-h-[72vh]">
-          <div className="relative bg-[#0a0a0c] border border-white/[0.12] rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl group">
+        <div
+          className={`w-full max-w-5xl grid gap-4 h-full max-h-[72vh] ${
+            otherParticipants.length === 0
+              ? 'grid-cols-1 md:grid-cols-2'
+              : otherParticipants.length === 1
+              ? 'grid-cols-1 md:grid-cols-2'
+              : otherParticipants.length <= 3
+              ? 'grid-cols-1 sm:grid-cols-2'
+              : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+          }`}
+        >
+          {/* Local User Card */}
+          <div className="relative bg-[#0a0a0c] border border-white/[0.12] rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl group min-h-[220px]">
             {isVideoOn ? (
               <div className="w-full h-full bg-gradient-to-b from-[#0e0e12] to-[#06060a] flex flex-col items-center justify-center p-6 text-center space-y-3">
                 <div className="h-20 w-20 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
@@ -438,31 +508,100 @@ export default function MeetPage({ params }: MeetPageProps) {
             </div>
           </div>
 
-          <div className="relative bg-[#0a0a0c] border border-white/[0.08] rounded-2xl overflow-hidden flex flex-col items-center justify-center p-6 text-center space-y-4 shadow-2xl">
-            <div className="h-16 w-16 rounded-full bg-[#101012] border border-white/[0.10] flex items-center justify-center text-[#888e90]">
-              <UsersIcon size={24} />
+          {/* Other Connected Participants */}
+          {otherParticipants.map((p) => {
+            const isOtherHost = p.userId === room.hostId;
+            const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'U';
+            const isVideoActive = p.isVideoOn ?? true;
+
+            return (
+              <div
+                key={p.userId}
+                className="relative bg-[#0a0a0c] border border-white/[0.12] rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl group min-h-[220px]"
+              >
+                {isVideoActive ? (
+                  <div className="w-full h-full bg-gradient-to-b from-[#0e0e12] to-[#06060a] flex flex-col items-center justify-center p-6 text-center space-y-3">
+                    <div className="relative">
+                      <div className="h-20 w-20 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
+                        {p.image ? (
+                          <Image
+                            src={p.image}
+                            alt={p.name || 'Participant'}
+                            width={80}
+                            height={80}
+                            unoptimized
+                            referrerPolicy="no-referrer"
+                            className="h-full w-full rounded-full object-cover"
+                          />
+                        ) : (
+                          <span className="font-serif text-2xl text-[#fcfdff]">{initial}</span>
+                        )}
+                      </div>
+                      {isOtherHost && (
+                        <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#ffc53d] text-black flex items-center justify-center shadow-md">
+                          <StarIcon size={11} />
+                        </span>
+                      )}
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-medium text-[#fcfdff]">{p.name}</p>
+                      <p className="text-[10px] font-mono text-[#11ff99]">Connected</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <div className="h-14 w-14 rounded-full bg-[#101012] border border-white/[0.08] text-[#888e90] flex items-center justify-center">
+                      <CameraIcon size={20} />
+                    </div>
+                    <p className="text-[11px] font-mono text-[#888e90]">Camera muted</p>
+                  </div>
+                )}
+
+                <div className="absolute bottom-3 left-3 bg-[#0a0a0c]/80 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 text-[#fcfdff] border border-white/[0.10]">
+                  {p.isMuted ? (
+                    <MicOffIcon size={13} className="text-[#ff2047]" />
+                  ) : (
+                    <MicIcon size={13} className="text-[#11ff99]" />
+                  )}
+                  <span className="text-xs">{p.name}</span>
+                  {isOtherHost && (
+                    <span className="text-[9px] font-mono bg-white/10 text-[#fcfdff] px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">
+                      HOST
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* If No Other Participants Yet: Show Waiting Tile */}
+          {otherParticipants.length === 0 && (
+            <div className="relative bg-[#0a0a0c] border border-white/[0.08] rounded-2xl overflow-hidden flex flex-col items-center justify-center p-6 text-center space-y-4 shadow-2xl min-h-[220px]">
+              <div className="h-16 w-16 rounded-full bg-[#101012] border border-white/[0.10] flex items-center justify-center text-[#888e90]">
+                <UsersIcon size={24} />
+              </div>
+              <div className="space-y-1">
+                <h3 className="font-serif-headline text-base font-normal text-[#fcfdff]">Awaiting Collaborators</h3>
+                <p className="text-xs text-[#888e90] max-w-xs font-mono">
+                  Share space link or ID <span className="text-[#fcfdff] font-semibold">{room.code}</span>
+                </p>
+              </div>
+              <button
+                onClick={handleCopyLink}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#101012] hover:bg-[#18181c] text-xs font-medium rounded-lg transition-colors text-[#fcfdff] border border-white/[0.10]"
+              >
+                {copied ? <CheckIcon size={13} className="text-[#11ff99]" /> : <CopyIcon size={13} />}
+                <span>{copied ? 'Copied Link' : 'Copy Space Invite'}</span>
+              </button>
             </div>
-            <div className="space-y-1">
-              <h3 className="font-serif-headline text-base font-normal text-[#fcfdff]">Awaiting Collaborators</h3>
-              <p className="text-xs text-[#888e90] max-w-xs font-mono">
-                Share space link or ID <span className="text-[#fcfdff] font-semibold">{room.code}</span>
-              </p>
-            </div>
-            <button
-              onClick={handleCopyLink}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#101012] hover:bg-[#18181c] text-xs font-medium rounded-lg transition-colors text-[#fcfdff] border border-white/[0.10]"
-            >
-              {copied ? <CheckIcon size={13} className="text-[#11ff99]" /> : <CopyIcon size={13} />}
-              <span>{copied ? 'Copied Link' : 'Copy Space Invite'}</span>
-            </button>
-          </div>
+          )}
         </div>
       </main>
 
       <footer className="h-20 border-t border-white/[0.06] px-4 sm:px-6 flex items-center justify-center bg-black/75 backdrop-blur-xl">
         <div className="flex items-center gap-3 sm:gap-4 p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-xl shadow-2xl">
           <button
-            onClick={() => setIsMicOn(!isMicOn)}
+            onClick={handleToggleMic}
             className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
               isMicOn
                 ? 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
@@ -474,7 +613,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           </button>
 
           <button
-            onClick={() => setIsVideoOn(!isVideoOn)}
+            onClick={handleToggleVideo}
             className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
               isVideoOn
                 ? 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
@@ -499,8 +638,31 @@ export default function MeetPage({ params }: MeetPageProps) {
 
           <button
             onClick={() => {
+              setParticipantsOpen(!participantsOpen);
+              if (!participantsOpen) setChatOpen(false);
+            }}
+            className={`relative h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
+              participantsOpen
+                ? 'bg-orange-500/20 text-[#ff7a1a] border border-orange-500/40 shadow-sm'
+                : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
+            }`}
+            title="People in space"
+          >
+            <UsersIcon size={17} />
+            {participants.length > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#ff7a1a] text-black font-mono text-[9px] font-bold flex items-center justify-center shadow-lg">
+                {participants.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
               setChatOpen(!chatOpen);
-              if (!chatOpen) setUnreadChatCount(0);
+              if (!chatOpen) {
+                setParticipantsOpen(false);
+                setUnreadChatCount(0);
+              }
             }}
             className={`relative h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
               chatOpen
@@ -646,6 +808,18 @@ export default function MeetPage({ params }: MeetPageProps) {
         onSendMessage={handleSendMessage}
         currentUserId={session?.user?.id || ''}
         roomTitle={room?.title}
+      />
+
+      {/* In-Call Room Participants Roster */}
+      <InRoomParticipants
+        isOpen={participantsOpen}
+        onClose={() => setParticipantsOpen(false)}
+        participants={participants}
+        currentUserId={session?.user?.id}
+        hostId={room?.hostId}
+        roomCode={room?.code || code}
+        onCopyLink={handleCopyLink}
+        copied={copied}
       />
     </div>
   );

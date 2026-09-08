@@ -24,11 +24,13 @@ import {
   PhoneCallIcon,
   StarIcon,
   MessageSquareIcon,
+  UsersIcon,
 } from '@animateicons/react/lucide';
 import { getSocket } from '@/lib/socket';
 import { playJoinChime, playLeaveChime } from '@/lib/chime';
 import { InRoomChat } from '@/components/in-room-chat';
-import type { ChatMessage } from '@/types/realtime';
+import { InRoomParticipants } from '@/components/in-room-participants';
+import type { ChatMessage, RoomParticipant } from '@/types/realtime';
 
 interface TalkPageProps {
   params: Promise<{ code: string }>;
@@ -60,11 +62,19 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
   const [roomToast, setRoomToast] = useState<{ text: string; type: 'join' | 'leave' } | null>(null);
+  const [participants, setParticipants] = useState<RoomParticipant[]>([]);
+  const [participantsOpen, setParticipantsOpen] = useState(false);
 
   const chatOpenRef = useRef(chatOpen);
+  const isMutedRef = useRef(isMuted);
+
   useEffect(() => {
     chatOpenRef.current = chatOpen;
   }, [chatOpen]);
+
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
 
   useEffect(() => {
     if (!sessionPending && !session) {
@@ -168,6 +178,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
     socket.emit('room:join', {
       roomCode: code,
+      isMuted: isMutedRef.current,
     });
 
     const handleNewMessage = (msg: ChatMessage) => {
@@ -179,6 +190,10 @@ export default function TalkPage({ params }: TalkPageProps) {
       if (!chatOpenRef.current && msg.userId !== session?.user?.id) {
         setUnreadChatCount((count) => count + 1);
       }
+    };
+
+    const handleRoster = ({ participants: roster }: { participants: RoomParticipant[] }) => {
+      setParticipants(roster);
     };
 
     const handleUserJoined = ({ userId, name }: { userId: string; name: string }) => {
@@ -200,11 +215,13 @@ export default function TalkPage({ params }: TalkPageProps) {
     };
 
     socket.on('chat:new-message', handleNewMessage);
+    socket.on('room:roster', handleRoster);
     socket.on('room:user-joined', handleUserJoined);
     socket.on('room:user-left', handleUserLeft);
 
     return () => {
       socket.off('chat:new-message', handleNewMessage);
+      socket.off('room:roster', handleRoster);
       socket.off('room:user-joined', handleUserJoined);
       socket.off('room:user-left', handleUserLeft);
       socket.emit('room:leave', { roomCode: code });
@@ -214,6 +231,16 @@ export default function TalkPage({ params }: TalkPageProps) {
   const handleSendMessage = (text: string) => {
     const socket = getSocket();
     socket.emit('chat:message', { roomCode: code, text });
+  };
+
+  const handleToggleMic = () => {
+    const next = !isMuted;
+    setIsMuted(next);
+    const socket = getSocket();
+    socket.emit('room:media-toggle', {
+      roomCode: code,
+      isMuted: next,
+    });
   };
 
   const handleCopyLink = () => {
@@ -340,6 +367,30 @@ export default function TalkPage({ params }: TalkPageProps) {
   const isHost = room.hostId === session?.user.id;
   const isSpeaker = isHost || participant?.role === 'speaker' || settings?.micForAll;
 
+  const displayParticipants: RoomParticipant[] =
+    participants.length > 0
+      ? participants
+      : room.host
+      ? [
+          {
+            userId: room.hostId,
+            name: room.host.name || 'Host',
+            image: room.host.image,
+            isMuted: isHost ? isMuted : false,
+          },
+          ...(!isHost && session?.user
+            ? [
+                {
+                  userId: session.user.id,
+                  name: session.user.name || 'You',
+                  image: session.user.image,
+                  isMuted,
+                },
+              ]
+            : []),
+        ]
+      : [];
+
   return (
     <div className="flex flex-col h-screen bg-black text-[#fcfdff] select-none ambient-glow-audio">
       {roomToast && (
@@ -368,6 +419,22 @@ export default function TalkPage({ params }: TalkPageProps) {
 
         <div className="flex items-center gap-2">
           <button
+            onClick={() => {
+              setParticipantsOpen(!participantsOpen);
+              if (!participantsOpen) setChatOpen(false);
+            }}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+              participantsOpen
+                ? 'bg-amber-500/20 text-[#f59e0b] border-amber-500/40'
+                : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
+            }`}
+            title="People in lounge"
+          >
+            <UsersIcon size={13} />
+            <span className="font-mono text-[11px]">{Math.max(1, displayParticipants.length)}</span>
+          </button>
+
+          <button
             onClick={handleCopyLink}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08]"
           >
@@ -377,137 +444,117 @@ export default function TalkPage({ params }: TalkPageProps) {
         </div>
       </header>
 
-      <main className="flex-1 p-6 overflow-y-auto max-w-5xl mx-auto w-full space-y-8">
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-[#888e90] uppercase tracking-wider">
-              Podium & Active Speakers
-            </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#101012] border border-white/[0.06] text-[#888e90]">
-              {isHost ? '1 on podium' : 'Active Stage'}
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            <div className="relative p-6 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl flex flex-col items-center justify-center text-center space-y-3 shadow-2xl group glow-card">
-              <div className="relative">
-                <div className="h-18 w-18 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
-                  {room.host?.image ? (
-                    <Image
-                      src={room.host.image}
-                      alt={room.host.name || 'Host'}
-                      width={72}
-                      height={72}
-                      unoptimized
-                      referrerPolicy="no-referrer"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span className="font-serif text-2xl text-[#fcfdff]">{room.host?.name?.charAt(0) || 'H'}</span>
-                  )}
-                </div>
-                <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#ffc53d] text-black flex items-center justify-center shadow-md">
-                  <StarIcon size={11} />
-                </span>
-                <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center">
-                  {!isMuted && isHost ? (
-                    <MicIcon size={10} className="text-[#11ff99]" />
-                  ) : (
-                    <MicOffIcon size={10} className="text-[#888e90]" />
-                  )}
-                </span>
-              </div>
-              <div className="space-y-0.5">
-                <p className="text-xs font-medium text-[#fcfdff] truncate max-w-[120px]">{room.host?.name}</p>
-                <span className="text-[10px] font-mono text-[#f59e0b] uppercase tracking-wider block">
-                  Stage Host
-                </span>
-              </div>
-            </div>
-
-            {!isHost && isSpeaker && (
-              <div className="relative p-6 bg-[#0a0a0c] border border-white/[0.10] rounded-2xl flex flex-col items-center justify-center text-center space-y-3 shadow-2xl group glow-card">
-                <div className="relative">
-                  <div className="h-18 w-18 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden">
-                    {session?.user.image ? (
-                      <Image
-                        src={session.user.image}
-                        alt={session.user.name || 'User'}
-                        width={72}
-                        height={72}
-                        unoptimized
-                      referrerPolicy="no-referrer"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <span className="font-serif text-2xl text-[#fcfdff]">{session?.user.name?.charAt(0) || 'U'}</span>
-                    )}
-                  </div>
-                  <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center">
-                    {!isMuted ? <MicIcon size={10} className="text-[#11ff99]" /> : <MicOffIcon size={10} className="text-[#888e90]" />}
-                  </span>
-                </div>
-                <div className="space-y-0.5">
-                  <p className="text-xs font-medium text-[#fcfdff] truncate max-w-[120px]">{session?.user.name} (You)</p>
-                  <span className="text-[10px] font-mono text-[#ff7a1a] uppercase tracking-wider block">
-                    Speaker
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-
-        <section className="space-y-4 pt-6 border-t border-white/[0.06]">
+      <main className="flex-1 p-4 sm:p-6 overflow-y-auto max-w-5xl mx-auto w-full space-y-6">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono text-[#888e90] uppercase tracking-wider">
-              Audience & Listeners
+              Stage Participants & Listeners
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#101012] border border-white/[0.06] text-[#f59e0b] font-medium">
+              {Math.max(1, displayParticipants.length)} in space
             </span>
           </div>
+          <button
+            onClick={handleCopyLink}
+            className="text-xs text-[#888e90] hover:text-[#fcfdff] font-mono flex items-center gap-1 transition-colors"
+          >
+            <span>Stage ID: <strong className="text-[#fcfdff]">{room.code}</strong></span>
+          </button>
+        </div>
 
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-            {!isSpeaker && (
-              <div className="p-4 bg-[#0a0a0c] border border-white/[0.08] rounded-xl flex flex-col items-center justify-center text-center space-y-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {displayParticipants.map((p) => {
+            const isPHost = p.userId === room.hostId;
+            const isMe = p.userId === session?.user?.id;
+            const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'U';
+
+            return (
+              <div
+                key={p.userId}
+                className="relative p-5 bg-[#0a0a0c] border border-white/[0.10] hover:border-white/[0.18] rounded-2xl flex flex-col items-center justify-center text-center space-y-3 shadow-xl transition-all group glow-card min-h-[160px]"
+              >
                 <div className="relative">
-                  <div className="h-12 w-12 rounded-full bg-[#101012] border border-white/10 flex items-center justify-center overflow-hidden">
-                    {session?.user.image ? (
+                  <div className="h-16 w-16 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
+                    {p.image ? (
                       <Image
-                        src={session.user.image}
-                        alt={session.user.name || 'User'}
-                        width={48}
-                        height={48}
+                        src={p.image}
+                        alt={p.name}
+                        width={64}
+                        height={64}
                         unoptimized
-                      referrerPolicy="no-referrer"
+                        referrerPolicy="no-referrer"
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <span className="font-serif text-sm text-[#fcfdff]">{session?.user.name?.charAt(0) || 'U'}</span>
+                      <span className="font-serif text-2xl text-[#fcfdff]">{initial}</span>
                     )}
                   </div>
-                  {handRaised && (
-                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-[#ffc53d] text-black flex items-center justify-center animate-bounce shadow-md">
-                      <HandCoinsIcon size={9} />
+
+                  {isPHost && (
+                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#ffc53d] text-black flex items-center justify-center shadow-md">
+                      <StarIcon size={11} />
+                    </span>
+                  )}
+
+                  {isMe && handRaised && (
+                    <span className="absolute -top-1 -left-1 h-5 w-5 rounded-full bg-[#ff7a1a] text-black flex items-center justify-center animate-bounce shadow-md">
+                      <HandCoinsIcon size={10} />
+                    </span>
+                  )}
+
+                  <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center">
+                    {p.isMuted ? (
+                      <MicOffIcon size={10} className="text-[#888e90]" />
+                    ) : (
+                      <MicIcon size={10} className="text-[#11ff99]" />
+                    )}
+                  </span>
+                </div>
+
+                <div className="space-y-0.5 max-w-full px-1">
+                  <p className="text-xs font-medium text-[#fcfdff] truncate">
+                    {p.name}
+                    {isMe && <span className="text-[#888e90]"> (You)</span>}
+                  </p>
+                  {isPHost ? (
+                    <span className="text-[10px] font-mono text-[#f59e0b] uppercase tracking-wider block font-semibold">
+                      Stage Host
+                    </span>
+                  ) : (
+                    <span className="text-[10px] font-mono text-[#888e90] uppercase tracking-wider block">
+                      Listener
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] font-medium text-[#fcfdff] truncate max-w-[90px]">{session?.user.name}</p>
-                <span className="text-[9px] font-mono text-[#888e90]">Listener</span>
               </div>
-            )}
+            );
+          })}
 
-            <div className="p-4 border border-dashed border-white/[0.08] rounded-xl flex flex-col items-center justify-center text-center space-y-1.5 opacity-60">
-              <HeadphonesIcon size={18} className="text-[#888e90]" />
-              <p className="text-[10px] font-mono text-[#888e90]">Listening Lounge</p>
+          {displayParticipants.length <= 1 && (
+            <div className="p-5 border border-dashed border-white/[0.10] rounded-2xl flex flex-col items-center justify-center text-center space-y-2.5 opacity-70 min-h-[160px]">
+              <div className="h-10 w-10 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#888e90]">
+                <HeadphonesIcon size={18} />
+              </div>
+              <div className="space-y-0.5">
+                <p className="text-xs text-[#fcfdff] font-medium">Listening Lounge</p>
+                <p className="text-[10px] font-mono text-[#888e90]">Share ID {room.code} to invite</p>
+              </div>
+              <button
+                onClick={handleCopyLink}
+                className="px-2.5 py-1 text-[11px] rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-[#fcfdff] transition-all border border-white/[0.08]"
+              >
+                {copied ? 'Copied' : 'Copy Invite'}
+              </button>
             </div>
-          </div>
-        </section>
+          )}
+        </div>
       </main>
 
       <footer className="h-20 border-t border-white/[0.06] px-4 sm:px-6 flex items-center justify-center bg-black/75 backdrop-blur-xl">
         <div className="flex items-center gap-3 sm:gap-4 p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-xl shadow-2xl">
           {isSpeaker ? (
             <button
-              onClick={() => setIsMuted(!isMuted)}
+              onClick={handleToggleMic}
               className={`h-10 px-4 rounded-lg flex items-center gap-2 font-medium text-xs transition-all ${
                 !isMuted
                   ? 'bg-gradient-to-r from-[#f59e0b] to-[#ea580c] text-white shadow-[0_0_16px_rgba(245,158,11,0.4)]'
@@ -533,8 +580,31 @@ export default function TalkPage({ params }: TalkPageProps) {
 
           <button
             onClick={() => {
+              setParticipantsOpen(!participantsOpen);
+              if (!participantsOpen) setChatOpen(false);
+            }}
+            className={`relative h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
+              participantsOpen
+                ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 shadow-sm'
+                : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
+            }`}
+            title="People in lounge"
+          >
+            <UsersIcon size={17} />
+            {participants.length > 0 && (
+              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#f59e0b] text-black font-mono text-[9px] font-bold flex items-center justify-center shadow-lg">
+                {participants.length}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => {
               setChatOpen(!chatOpen);
-              if (!chatOpen) setUnreadChatCount(0);
+              if (!chatOpen) {
+                setParticipantsOpen(false);
+                setUnreadChatCount(0);
+              }
             }}
             className={`relative h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
               chatOpen
@@ -601,6 +671,18 @@ export default function TalkPage({ params }: TalkPageProps) {
         onSendMessage={handleSendMessage}
         currentUserId={session?.user?.id || ''}
         roomTitle={room?.title}
+      />
+
+      {/* In-Call Room Participants Roster */}
+      <InRoomParticipants
+        isOpen={participantsOpen}
+        onClose={() => setParticipantsOpen(false)}
+        participants={participants}
+        currentUserId={session?.user?.id}
+        hostId={room?.hostId}
+        roomCode={room?.code || code}
+        onCopyLink={handleCopyLink}
+        copied={copied}
       />
     </div>
   );
