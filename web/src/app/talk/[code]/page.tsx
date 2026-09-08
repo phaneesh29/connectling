@@ -26,6 +26,7 @@ import {
   MessageSquareIcon,
 } from '@animateicons/react/lucide';
 import { getSocket } from '@/lib/socket';
+import { playJoinChime, playLeaveChime } from '@/lib/chime';
 import { InRoomChat } from '@/components/in-room-chat';
 import type { ChatMessage } from '@/types/realtime';
 
@@ -58,6 +59,7 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [roomToast, setRoomToast] = useState<{ text: string; type: 'join' | 'leave' } | null>(null);
 
   const chatOpenRef = useRef(chatOpen);
   useEffect(() => {
@@ -179,10 +181,32 @@ export default function TalkPage({ params }: TalkPageProps) {
       }
     };
 
+    const handleUserJoined = ({ userId, name }: { userId: string; name: string }) => {
+      if (userId === session?.user?.id) return;
+      playJoinChime();
+      setRoomToast({ text: `${name} joined the stage`, type: 'join' });
+      setTimeout(() => {
+        setRoomToast((curr) => (curr?.text === `${name} joined the stage` ? null : curr));
+      }, 3500);
+    };
+
+    const handleUserLeft = ({ userId, name }: { userId: string; name: string }) => {
+      if (userId === session?.user?.id) return;
+      playLeaveChime();
+      setRoomToast({ text: `${name} left the stage`, type: 'leave' });
+      setTimeout(() => {
+        setRoomToast((curr) => (curr?.text === `${name} left the stage` ? null : curr));
+      }, 3500);
+    };
+
     socket.on('chat:new-message', handleNewMessage);
+    socket.on('room:user-joined', handleUserJoined);
+    socket.on('room:user-left', handleUserLeft);
 
     return () => {
       socket.off('chat:new-message', handleNewMessage);
+      socket.off('room:user-joined', handleUserJoined);
+      socket.off('room:user-left', handleUserLeft);
       socket.emit('room:leave', { roomCode: code });
     };
   }, [room, participant, code, session?.user?.id]);
@@ -318,6 +342,12 @@ export default function TalkPage({ params }: TalkPageProps) {
 
   return (
     <div className="flex flex-col h-screen bg-black text-[#fcfdff] select-none ambient-glow-audio">
+      {roomToast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#121217]/90 border border-white/[0.14] text-xs shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 pointer-events-none">
+          <span className={`h-2 w-2 rounded-full ${roomToast.type === 'join' ? 'bg-[#11ff99]' : 'bg-[#ff7a1a]'}`} />
+          <span className="text-[#fcfdff] font-medium">{roomToast.text}</span>
+        </div>
+      )}
       <header className="h-14 border-b border-white/[0.06] px-4 sm:px-6 flex items-center justify-between bg-black/60 backdrop-blur-xl">
         <div className="flex items-center gap-3">
           <div className="h-7 w-7 rounded-lg bg-[#101012] border border-white/[0.08] text-[#f59e0b] flex items-center justify-center">
