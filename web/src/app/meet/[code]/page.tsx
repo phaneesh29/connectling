@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, use } from 'react';
+import { useEffect, useState, useCallback, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -63,6 +63,11 @@ export default function MeetPage({ params }: MeetPageProps) {
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+
+  const chatOpenRef = useRef(chatOpen);
+  useEffect(() => {
+    chatOpenRef.current = chatOpen;
+  }, [chatOpen]);
 
   useEffect(() => {
     if (!sessionPending && !session) {
@@ -152,18 +157,17 @@ export default function MeetPage({ params }: MeetPageProps) {
 
     socket.emit('room:join', {
       roomCode: code,
-      isMuted: !isMicOn,
-      isVideoOn: isVideoOn,
     });
 
     const handleNewMessage = (msg: ChatMessage) => {
-      setMessages((prev) => [...prev, msg]);
-      setChatOpen((isOpen) => {
-        if (!isOpen) {
-          setUnreadChatCount((count) => count + 1);
-        }
-        return isOpen;
+      setMessages((prev) => {
+        if (prev.some((m) => m.id === msg.id)) return prev;
+        return [...prev, msg];
       });
+
+      if (!chatOpenRef.current && msg.userId !== session?.user?.id) {
+        setUnreadChatCount((count) => count + 1);
+      }
     };
 
     socket.on('chat:new-message', handleNewMessage);
@@ -172,7 +176,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       socket.off('chat:new-message', handleNewMessage);
       socket.emit('room:leave', { roomCode: code });
     };
-  }, [room, participant, code, isMicOn, isVideoOn]);
+  }, [room, participant, code, session?.user?.id]);
 
   const handleSendMessage = (text: string) => {
     const socket = getSocket();
