@@ -19,7 +19,13 @@ import {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { data: session } = useSession();
+  const { data: session, isPending: sessionPending } = useSession();
+
+  useEffect(() => {
+    if (!sessionPending && !session) {
+      router.replace('/login');
+    }
+  }, [session, sessionPending, router]);
 
   const [activeMode, setActiveMode] = useState<'meet' | 'audio'>('meet');
   const [modalOpen, setModalOpen] = useState(false);
@@ -126,6 +132,14 @@ export default function DashboardPage() {
     setModalType(type);
     setModalOpen(true);
   };
+
+  if (sessionPending || !session) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-black">
+        <div className="animate-spin h-6 w-6 border-2 border-white/20 border-t-[#3b9eff] rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <div
