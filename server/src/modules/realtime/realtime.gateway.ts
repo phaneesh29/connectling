@@ -12,6 +12,10 @@ import type {
 } from './realtime.types.js';
 import { realtimeService } from './realtime.service.js';
 import { buildChatMessage } from './realtime.utils.js';
+import { db } from '../../db/index.js';
+import { room } from '../../db/room-schema.js';
+import { eq } from 'drizzle-orm';
+import { normalizeRoomCode } from '../rooms/room.utils.js';
 
 export type RealtimeServer = Server<
   ClientToServerEvents,
@@ -47,6 +51,8 @@ const fetchRoomParticipants = async (
         image: u.image,
         isMuted: data.isMuted ?? false,
         isVideoOn: data.isVideoOn ?? true,
+        handRaised: data.handRaised ?? false,
+        canSpeak: data.canSpeak ?? false,
       });
     }
   }
@@ -75,13 +81,14 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
     const user = socket.data.user;
     logger.info({ userId: user.id, socketId: socket.id }, 'Realtime socket connected');
 
-    socket.on('room:join', async ({ roomCode, isMuted, isVideoOn }) => {
+    socket.on('room:join', async ({ roomCode, isMuted, isVideoOn, handRaised }) => {
       try {
         const roomChannel = `room:${roomCode}`;
         await socket.join(roomChannel);
         socket.data.currentRoomCode = roomCode;
         if (typeof isMuted === 'boolean') socket.data.isMuted = isMuted;
         if (typeof isVideoOn === 'boolean') socket.data.isVideoOn = isVideoOn;
+        if (typeof handRaised === 'boolean') socket.data.handRaised = handRaised;
 
         socket.to(roomChannel).emit('room:user-joined', {
           userId: user.id,
@@ -102,12 +109,103 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       }
     });
 
-    socket.on('room:media-toggle', async ({ roomCode, isMuted, isVideoOn }) => {
+    socket.on('room:media-toggle', async ({ roomCode, isMuted, isVideoOn, handRaised }) => {
       if (typeof isMuted === 'boolean') socket.data.isMuted = isMuted;
       if (typeof isVideoOn === 'boolean') socket.data.isVideoOn = isVideoOn;
+      if (typeof handRaised === 'boolean') socket.data.handRaised = handRaised;
 
       const participants = await fetchRoomParticipants(io, roomCode);
       io.in(`room:${roomCode}`).emit('room:roster', { participants });
+    });
+
+    socket.on('room:raise-hand', async ({ roomCode, handRaised }) => {
+      socket.data.handRaised = handRaised;
+      const roomChannel = `room:${roomCode}`;
+
+      io.in(roomChannel).emit('room:hand-raised', {
+        userId: user.id,
+        name: user.name,
+        handRaised,
+      });
+
+      const participants = await fetchRoomParticipants(io, roomCode);
+      io.in(roomChannel).emit('room:roster', { participants });
+
+      logger.info({ userId: user.id, roomCode, handRaised }, 'User toggled hand raise');
+    });
+
+    socket.on('room:grant-mic', async ({ roomCode, targetUserId }) => {
+      try {
+        const normalized = normalizeRoomCode(roomCode);
+        const foundRoom = await db.query.room.findFirst({
+          where: eq(room.code, normalized),
+          columns: { hostId: true },
+        });
+
+        if (!foundRoom || foundRoom.hostId !== user.id) {
+          socket.emit('error:message', { message: 'Only the host can grant speaking permission.' });
+          return;
+        }
+
+        const roomChannel = `room:${roomCode}`;
+        const sockets = await io.in(roomChannel).fetchSockets();
+
+        for (const s of sockets) {
+          if (s.data?.user?.id === targetUserId) {
+            s.data.canSpeak = true;
+            s.data.handRaised = false;
+            s.data.isMuted = false;
+          }
+        }
+
+        io.in(roomChannel).emit('room:mic-granted', {
+          targetUserId,
+          byUserId: user.id,
+        });
+
+        const participants = await fetchRoomParticipants(io, roomCode);
+        io.in(roomChannel).emit('room:roster', { participants });
+
+        logger.info({ hostId: user.id, targetUserId, roomCode }, 'Host granted mic permission');
+      } catch (err) {
+        logger.error({ err, hostId: user.id, targetUserId, roomCode }, 'Error granting mic permission');
+      }
+    });
+
+    socket.on('room:revoke-mic', async ({ roomCode, targetUserId }) => {
+      try {
+        const normalized = normalizeRoomCode(roomCode);
+        const foundRoom = await db.query.room.findFirst({
+          where: eq(room.code, normalized),
+          columns: { hostId: true },
+        });
+
+        if (!foundRoom || foundRoom.hostId !== user.id) {
+          socket.emit('error:message', { message: 'Only the host can revoke speaking permission.' });
+          return;
+        }
+
+        const roomChannel = `room:${roomCode}`;
+        const sockets = await io.in(roomChannel).fetchSockets();
+
+        for (const s of sockets) {
+          if (s.data?.user?.id === targetUserId) {
+            s.data.canSpeak = false;
+            s.data.isMuted = true;
+          }
+        }
+
+        io.in(roomChannel).emit('room:mic-revoked', {
+          targetUserId,
+        });
+
+        const participants = await fetchRoomParticipants(io, roomCode);
+        io.in(roomChannel).emit('room:roster', { participants });
+
+        logger.info({ hostId: user.id, targetUserId, roomCode }, 'Host revoked mic permission');
+      } catch (err) {
+        logger.error({ err, hostId: user.id, targetUserId, roomCode }, 'Error revoking mic permission');
+      }
     });
 
     socket.on('chat:message', ({ roomCode, text }) => {

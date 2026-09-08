@@ -14,6 +14,7 @@ import {
   CheckIcon,
   StarIcon,
   SearchIcon,
+  HandCoinsIcon,
 } from '@animateicons/react/lucide';
 
 interface InRoomParticipantsProps {
@@ -25,6 +26,8 @@ interface InRoomParticipantsProps {
   roomCode: string;
   onCopyLink: () => void;
   copied: boolean;
+  onGrantMic?: (userId: string, name: string) => void;
+  onRevokeMic?: (userId: string, name: string) => void;
 }
 
 export function InRoomParticipants({
@@ -36,6 +39,8 @@ export function InRoomParticipants({
   roomCode,
   onCopyLink,
   copied,
+  onGrantMic,
+  onRevokeMic,
 }: InRoomParticipantsProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -149,6 +154,13 @@ export function InRoomParticipants({
                         <span className="text-[9px] font-mono uppercase tracking-wider text-[#f59e0b] font-semibold">
                           Host
                         </span>
+                      ) : p.handRaised ? (
+                        <span className="text-[9px] font-mono text-[#ffc53d] flex items-center gap-1 font-medium animate-pulse">
+                          <HandCoinsIcon size={10} />
+                          <span>Hand Raised</span>
+                        </span>
+                      ) : p.canSpeak ? (
+                        <span className="text-[9px] font-mono text-[#11ff99] font-medium">Speaker</span>
                       ) : (
                         <span className="text-[9px] font-mono text-[#888e90]">Participant</span>
                       )}
@@ -157,6 +169,43 @@ export function InRoomParticipants({
                 </div>
 
                 <div className="flex items-center gap-1.5 shrink-0 text-[#888e90]">
+                  {/* Host direct unmute / invite actions */}
+                  {currentUserId === hostId && !isHost && (
+                    <>
+                      {p.handRaised ? (
+                        <button
+                          type="button"
+                          onClick={() => onGrantMic?.(p.userId, p.name)}
+                          className="px-2 py-0.5 rounded-md bg-[#ffc53d] hover:bg-[#ffc53d]/90 text-black text-[10px] font-semibold flex items-center gap-1 shadow-sm transition-all animate-pulse active:scale-95 cursor-pointer"
+                          title="Unmute and allow to speak"
+                        >
+                          <MicIcon size={10} />
+                          <span>Unmute</span>
+                        </button>
+                      ) : p.canSpeak ? (
+                        <button
+                          type="button"
+                          onClick={() => onRevokeMic?.(p.userId, p.name)}
+                          className="px-1.5 py-0.5 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[9px] font-mono flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+                          title="Revoke speaking access"
+                        >
+                          <MicOffIcon size={9} />
+                          <span>Mute</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => onGrantMic?.(p.userId, p.name)}
+                          className="opacity-0 group-hover:opacity-100 px-1.5 py-0.5 rounded-md bg-white/[0.04] hover:bg-white/[0.10] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.08] text-[9px] font-mono flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+                          title="Invite to speak"
+                        >
+                          <MicIcon size={9} />
+                          <span>Invite</span>
+                        </button>
+                      )}
+                    </>
+                  )}
+
                   <div
                     className={`h-6 w-6 rounded-md flex items-center justify-center border ${
                       p.isMuted

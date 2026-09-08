@@ -13,12 +13,17 @@ export interface RoomParticipant {
   image?: string | null;
   isMuted?: boolean;
   isVideoOn?: boolean;
+  handRaised?: boolean;
+  canSpeak?: boolean;
 }
 
 export interface ClientToServerEvents {
-  'room:join': (payload: { roomCode: string; isMuted?: boolean; isVideoOn?: boolean }) => void;
+  'room:join': (payload: { roomCode: string; isMuted?: boolean; isVideoOn?: boolean; handRaised?: boolean }) => void;
   'room:leave': (payload: { roomCode: string }) => void;
-  'room:media-toggle': (payload: { roomCode: string; isMuted?: boolean; isVideoOn?: boolean }) => void;
+  'room:media-toggle': (payload: { roomCode: string; isMuted?: boolean; isVideoOn?: boolean; handRaised?: boolean }) => void;
+  'room:raise-hand': (payload: { roomCode: string; handRaised: boolean }) => void;
+  'room:grant-mic': (payload: { roomCode: string; targetUserId: string }) => void;
+  'room:revoke-mic': (payload: { roomCode: string; targetUserId: string }) => void;
   'chat:message': (payload: { roomCode: string; text: string }) => void;
 }
 
@@ -42,6 +47,9 @@ export interface ServerToClientEvents {
   'room:user-left': (payload: { userId: string; name: string }) => void;
   'room:ended': (payload: { message: string }) => void;
   'room:settings-updated': (payload: RoomSettingsPayload) => void;
+  'room:hand-raised': (payload: { userId: string; name: string; handRaised: boolean }) => void;
+  'room:mic-granted': (payload: { targetUserId: string; byUserId: string }) => void;
+  'room:mic-revoked': (payload: { targetUserId: string }) => void;
   'error:message': (payload: { message: string }) => void;
 }
 
@@ -59,4 +67,6 @@ export interface SocketData {
   currentRoomCode?: string;
   isMuted?: boolean;
   isVideoOn?: boolean;
+  handRaised?: boolean;
+  canSpeak?: boolean;
 }

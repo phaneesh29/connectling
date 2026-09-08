@@ -151,6 +151,14 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [updatingSettings, setUpdatingSettings] = useState(false);
   const [updatingKey, setUpdatingKey] = useState<'micForAll' | 'allowChat' | 'allowRaiseHand' | null>(null);
+  const [grantedSpeaker, setGrantedSpeaker] = useState(false);
+
+  const isHost = Boolean(room && session?.user && room.hostId === session.user.id);
+  const isHostRef = useRef(isHost);
+
+  useEffect(() => {
+    isHostRef.current = isHost;
+  }, [isHost]);
 
   const chatOpenRef = useRef(chatOpen);
   const isMutedRef = useRef(isMuted);
@@ -310,6 +318,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     socket.emit('room:join', {
       roomCode: code,
       isMuted: isMutedRef.current,
+      handRaised: handRaisedRef.current,
     });
 
     const handleNewMessage = (msg: ChatMessage) => {
@@ -354,6 +363,85 @@ export default function TalkPage({ params }: TalkPageProps) {
       }, 3500);
     };
 
+    const handleHandRaised = ({
+      userId,
+      name,
+      handRaised: isRaised,
+    }: {
+      userId: string;
+      name: string;
+      handRaised: boolean;
+    }) => {
+      setParticipants((prev) =>
+        prev.map((p) => (p.userId === userId ? { ...p, handRaised: isRaised } : p))
+      );
+
+      if (userId === currentUserIdRef.current) {
+        setHandRaised(isRaised);
+      }
+
+      if (isHostRef.current && isRaised && userId !== currentUserIdRef.current) {
+        playJoinChime();
+        setRoomToast({ text: `${name} requested to speak`, type: 'join' });
+        setTimeout(() => {
+          setRoomToast((curr) => (curr?.text === `${name} requested to speak` ? null : curr));
+        }, 4000);
+      }
+    };
+
+    const handleMicGranted = ({ targetUserId }: { targetUserId: string; byUserId: string }) => {
+      setParticipants((prev) =>
+        prev.map((p) =>
+          p.userId === targetUserId ? { ...p, canSpeak: true, handRaised: false } : p
+        )
+      );
+
+      if (targetUserId === currentUserIdRef.current) {
+        setGrantedSpeaker(true);
+        setHandRaised(false);
+        setIsMuted(false);
+        const socket = getSocket();
+        socket.emit('room:media-toggle', {
+          roomCode: code,
+          isMuted: false,
+          handRaised: false,
+        });
+        playJoinChime();
+        setRoomToast({
+          text: 'Host granted you speaking access! Your mic is live.',
+          type: 'join',
+        });
+        setTimeout(() => {
+          setRoomToast((curr) =>
+            curr?.text === 'Host granted you speaking access! Your mic is live.' ? null : curr
+          );
+        }, 4500);
+      }
+    };
+
+    const handleMicRevoked = ({ targetUserId }: { targetUserId: string }) => {
+      setParticipants((prev) =>
+        prev.map((p) => (p.userId === targetUserId ? { ...p, canSpeak: false } : p))
+      );
+
+      if (targetUserId === currentUserIdRef.current) {
+        setGrantedSpeaker(false);
+        setIsMuted(true);
+        const socket = getSocket();
+        socket.emit('room:media-toggle', {
+          roomCode: code,
+          isMuted: true,
+        });
+        playLeaveChime();
+        setRoomToast({ text: 'Host muted your microphone', type: 'leave' });
+        setTimeout(() => {
+          setRoomToast((curr) =>
+            curr?.text === 'Host muted your microphone' ? null : curr
+          );
+        }, 3500);
+      }
+    };
+
     const handleSettingsUpdated = (updated: RoomSettingsData) => {
       setSettings(updated);
       setRoomToast({ text: 'Stage settings updated by host', type: 'join' });
@@ -371,6 +459,7 @@ export default function TalkPage({ params }: TalkPageProps) {
         isNotHost &&
         updated.micForAll === false &&
         participantRef.current?.role !== 'speaker' &&
+        !grantedSpeaker &&
         !isMutedRef.current
       ) {
         setIsMuted(true);
@@ -384,6 +473,11 @@ export default function TalkPage({ params }: TalkPageProps) {
 
       if (isNotHost && updated.allowRaiseHand === false && handRaisedRef.current) {
         setHandRaised(false);
+        const socket = getSocket();
+        socket.emit('room:raise-hand', {
+          roomCode: code,
+          handRaised: false,
+        });
       }
     };
 
@@ -392,6 +486,9 @@ export default function TalkPage({ params }: TalkPageProps) {
     socket.on('room:user-joined', handleUserJoined);
     socket.on('room:user-left', handleUserLeft);
     socket.on('room:settings-updated', handleSettingsUpdated);
+    socket.on('room:hand-raised', handleHandRaised);
+    socket.on('room:mic-granted', handleMicGranted);
+    socket.on('room:mic-revoked', handleMicRevoked);
 
     return () => {
       socket.off('chat:new-message', handleNewMessage);
@@ -399,12 +496,20 @@ export default function TalkPage({ params }: TalkPageProps) {
       socket.off('room:user-joined', handleUserJoined);
       socket.off('room:user-left', handleUserLeft);
       socket.off('room:settings-updated', handleSettingsUpdated);
+      socket.off('room:hand-raised', handleHandRaised);
+      socket.off('room:mic-granted', handleMicGranted);
+      socket.off('room:mic-revoked', handleMicRevoked);
       socket.emit('room:leave', { roomCode: code });
     };
-  }, [roomId, code]);
+  }, [roomId, code, grantedSpeaker]);
 
-  const isHost = Boolean(room && session?.user && room.hostId === session.user.id);
-  const isSpeaker = isHost || participant?.role === 'speaker' || settings?.micForAll;
+  const myRosterParticipant = participants.find((p) => p.userId === currentUserId);
+  const isSpeaker =
+    isHost ||
+    participant?.role === 'speaker' ||
+    settings?.micForAll ||
+    grantedSpeaker ||
+    Boolean(myRosterParticipant?.canSpeak);
   const isChatAllowed = settings?.allowChat !== false;
   const isRaiseHandAllowed = settings?.allowRaiseHand !== false;
 
@@ -429,6 +534,61 @@ export default function TalkPage({ params }: TalkPageProps) {
       roomCode: code,
       isMuted: next,
     });
+  };
+
+  const handleToggleHandRaise = () => {
+    if (!isRaiseHandAllowed && !handRaised) {
+      setRoomToast({ text: 'Mic requests are disabled by the host', type: 'leave' });
+      return;
+    }
+    const next = !handRaised;
+    setHandRaised(next);
+    const socket = getSocket();
+    socket.emit('room:raise-hand', {
+      roomCode: code,
+      handRaised: next,
+    });
+    setRoomToast({
+      text: next ? 'Hand raised — waiting for host to unmute' : 'Hand lowered',
+      type: next ? 'join' : 'leave',
+    });
+    setTimeout(() => {
+      setRoomToast((curr) => (curr?.text?.startsWith('Hand') ? null : curr));
+    }, 3000);
+  };
+
+  const handleGrantMic = (targetUserId: string, targetName: string) => {
+    if (!isHost) return;
+    const socket = getSocket();
+    socket.emit('room:grant-mic', {
+      roomCode: code,
+      targetUserId,
+    });
+    setRoomToast({
+      text: `Granted speaking access to ${targetName}`,
+      type: 'join',
+    });
+    setTimeout(() => {
+      setRoomToast((curr) =>
+        curr?.text?.startsWith('Granted speaking access') ? null : curr
+      );
+    }, 3000);
+  };
+
+  const handleRevokeMic = (targetUserId: string, targetName: string) => {
+    if (!isHost) return;
+    const socket = getSocket();
+    socket.emit('room:revoke-mic', {
+      roomCode: code,
+      targetUserId,
+    });
+    setRoomToast({
+      text: `Muted ${targetName}`,
+      type: 'leave',
+    });
+    setTimeout(() => {
+      setRoomToast((curr) => (curr?.text?.startsWith('Muted ') ? null : curr));
+    }, 3000);
   };
 
   const handleQuickToggle = async (key: 'micForAll' | 'allowChat' | 'allowRaiseHand') => {
@@ -804,6 +964,37 @@ export default function TalkPage({ params }: TalkPageProps) {
                 </button>
               </div>
             </div>
+
+            {/* If participants have hand raised, show banner in host bar */}
+            {isHost && participants.some((p) => p.handRaised && p.userId !== room.hostId) && (
+              <div className="mt-3 pt-3 border-t border-amber-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2 text-amber-300 font-medium text-xs">
+                  <span className="h-2 w-2 rounded-full bg-[#ffc53d] animate-ping" />
+                  <span>Audience requested to speak:</span>
+                  <span className="text-[#fcfdff] font-mono text-[11px]">
+                    {participants
+                      .filter((p) => p.handRaised && p.userId !== room.hostId)
+                      .map((p) => p.name)
+                      .join(', ')}
+                  </span>
+                </div>
+                <div className="flex items-center flex-wrap gap-2">
+                  {participants
+                    .filter((p) => p.handRaised && p.userId !== room.hostId)
+                    .map((p) => (
+                      <button
+                        key={p.userId}
+                        type="button"
+                        onClick={() => handleGrantMic(p.userId, p.name)}
+                        className="px-3 py-1 rounded-lg bg-[#ffc53d] hover:bg-[#ffc53d]/90 text-black text-xs font-semibold flex items-center gap-1.5 shadow-[0_0_12px_rgba(255,197,61,0.5)] transition-all animate-pulse active:scale-95 cursor-pointer"
+                      >
+                        <MicIcon size={12} />
+                        <span>Unmute {p.name.split(' ')[0]}</span>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -898,9 +1089,12 @@ export default function TalkPage({ params }: TalkPageProps) {
                     </span>
                   )}
 
-                  {isMe && handRaised && (
-                    <span className="absolute -top-1 -left-1 h-5 w-5 rounded-full bg-[#ff7a1a] text-black flex items-center justify-center animate-bounce shadow-md">
-                      <HandCoinsIcon size={10} />
+                  {((isMe && handRaised) || p.handRaised) && (
+                    <span
+                      className="absolute -top-1 -left-1 h-6 w-6 rounded-full bg-[#ffc53d] text-black flex items-center justify-center animate-bounce shadow-lg ring-2 ring-amber-400/60 z-20"
+                      title={`${p.name} requested to speak`}
+                    >
+                      <HandCoinsIcon size={12} />
                     </span>
                   )}
 
@@ -913,7 +1107,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                   </span>
                 </div>
 
-                <div className="space-y-0.5 max-w-full px-1 relative z-10">
+                <div className="space-y-0.5 max-w-full px-1 relative z-10 w-full">
                   <p className="text-xs font-medium text-[#fcfdff] truncate">
                     {p.name}
                     {isMe && <span className="text-[#888e90]"> (You)</span>}
@@ -926,10 +1120,60 @@ export default function TalkPage({ params }: TalkPageProps) {
                     <span className="text-[10px] font-mono text-[#11ff99] uppercase tracking-wider block font-medium">
                       Speaking
                     </span>
+                  ) : p.canSpeak || (isMe && (participant?.role === 'speaker' || grantedSpeaker)) ? (
+                    <span className="text-[10px] font-mono text-[#ffc53d] uppercase tracking-wider block font-medium">
+                      Speaker
+                    </span>
                   ) : (
                     <span className="text-[10px] font-mono text-[#888e90] uppercase tracking-wider block">
                       Listener
                     </span>
+                  )}
+
+                  {/* Host Direct Unmute / Speaker Controls on Participant Tile */}
+                  {isHost && !isPHost && (
+                    <div className="pt-2 flex justify-center w-full">
+                      {p.handRaised ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleGrantMic(p.userId, p.name);
+                          }}
+                          className="w-full py-1 px-2 rounded-lg bg-[#ffc53d] hover:bg-[#ffc53d]/90 text-black text-[11px] font-semibold flex items-center justify-center gap-1 shadow-[0_0_12px_rgba(255,197,61,0.5)] transition-all animate-pulse active:scale-95 cursor-pointer"
+                          title="Unmute and allow participant to speak"
+                        >
+                          <MicIcon size={12} />
+                          <span>Allow to Speak</span>
+                        </button>
+                      ) : p.canSpeak ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRevokeMic(p.userId, p.name);
+                          }}
+                          className="w-full py-0.5 px-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer"
+                          title="Revoke speaking access and mute"
+                        >
+                          <MicOffIcon size={11} />
+                          <span>Mute / Revoke</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleGrantMic(p.userId, p.name);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 w-full py-0.5 px-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.08] text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer"
+                          title="Invite participant to speak"
+                        >
+                          <MicIcon size={11} />
+                          <span>Allow Mic</span>
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
@@ -972,27 +1216,21 @@ export default function TalkPage({ params }: TalkPageProps) {
             </button>
           ) : (
             <button
-              onClick={() => {
-                if (!isRaiseHandAllowed && !handRaised) {
-                  setRoomToast({ text: 'Mic requests are disabled by the host', type: 'leave' });
-                  return;
-                }
-                setHandRaised(!handRaised);
-              }}
+              onClick={handleToggleHandRaise}
               disabled={!isRaiseHandAllowed && !handRaised}
               className={`h-10 px-4 rounded-lg flex items-center gap-2 font-medium text-xs transition-all ${
                 !isRaiseHandAllowed && !handRaised
                   ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
                   : handRaised
-                  ? 'bg-[#ffc53d] text-black shadow-[0_0_16px_rgba(255,197,61,0.4)]'
+                  ? 'bg-[#ffc53d] text-black shadow-[0_0_16px_rgba(255,197,61,0.4)] ring-2 ring-amber-400/50 animate-pulse'
                   : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
               }`}
               title={
                 !isRaiseHandAllowed && !handRaised
                   ? 'Mic requests disabled by host'
                   : handRaised
-                  ? 'Lower Hand'
-                  : 'Request Mic'
+                  ? 'Lower Hand (Cancel Request)'
+                  : 'Request Mic to Speak'
               }
             >
               <HandCoinsIcon size={14} />
@@ -1186,6 +1424,8 @@ export default function TalkPage({ params }: TalkPageProps) {
         roomCode={room?.code || code}
         onCopyLink={handleCopyLink}
         copied={copied}
+        onGrantMic={isHost ? handleGrantMic : undefined}
+        onRevokeMic={isHost ? handleRevokeMic : undefined}
       />
     </div>
   );
