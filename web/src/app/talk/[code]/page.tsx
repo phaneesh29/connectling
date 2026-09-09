@@ -1335,57 +1335,63 @@ export default function TalkPage({ params }: TalkPageProps) {
       <footer className="relative z-40 h-20 border-t border-white/[0.06] px-4 sm:px-6 flex items-center justify-center bg-black/75 backdrop-blur-xl">
         <div className="flex items-center gap-3 sm:gap-4 p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-xl shadow-2xl">
           {isSpeaker ? (
-            <div className={`relative ${audioMenuOpen ? 'z-50' : 'z-10'}`}>
-              <MediaDeviceMenu
-                isOpen={audioMenuOpen}
-                onClose={() => setAudioMenuOpen(false)}
-                type="audio"
-                audioInputs={mediaDevices.audioInputs}
-                audioOutputs={mediaDevices.audioOutputs}
-                selectedAudioInputId={mediaDevices.selectedAudioInputId}
-                selectedAudioOutputId={mediaDevices.selectedAudioOutputId}
-                onSelectAudioInput={mediaDevices.setSelectedAudioInputId}
-                onSelectAudioOutput={mediaDevices.setSelectedAudioOutputId}
-                onRequestPermissions={() => mediaDevices.requestPermissions(true, false)}
-                onTestSpeaker={mediaDevices.testSpeaker}
-                testingSpeaker={mediaDevices.testingSpeaker}
-              />
-              <div
-                className={`inline-flex items-center rounded-lg transition-all ${
-                  !isMuted
-                    ? 'bg-gradient-to-r from-[#f59e0b] to-[#ea580c] text-white shadow-[0_0_16px_rgba(245,158,11,0.4)]'
-                    : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
-                }`}
+            <div
+              className={`inline-flex items-center rounded-xl transition-all ${
+                !isMuted
+                  ? audioMenuOpen
+                    ? 'bg-gradient-to-r from-[#f59e0b] to-[#ea580c] text-white ring-2 ring-amber-400/50 shadow-[0_0_20px_rgba(245,158,11,0.5)] border border-amber-400/40'
+                    : 'bg-gradient-to-r from-[#f59e0b] to-[#ea580c] text-white shadow-[0_0_16px_rgba(245,158,11,0.4)] border border-amber-500/30'
+                  : audioMenuOpen
+                  ? 'bg-[#181820] text-[#fcfdff] border border-amber-500/50 ring-1 ring-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.2)]'
+                  : 'bg-[#121216] hover:bg-[#18181f] text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16] shadow-sm'
+              }`}
+            >
+              <button
+                type="button"
+                onClick={handleToggleMic}
+                className="h-10 px-3 rounded-l-xl flex items-center justify-center hover:bg-white/[0.06] transition-all cursor-pointer"
+                title={!isMuted ? 'Mute microphone' : 'Unmute microphone'}
               >
-                <button
-                  type="button"
-                  onClick={handleToggleMic}
-                  className="h-10 px-2.5 sm:px-3 rounded-l-lg flex items-center justify-center hover:opacity-90 transition-all cursor-pointer"
-                  title={!isMuted ? 'Mute microphone' : 'Unmute microphone'}
-                >
-                  {!isMuted ? <MicIcon size={17} /> : <MicOffIcon size={17} />}
-                </button>
-                <div
-                  className={`w-px h-5 ${
-                    !isMuted ? 'bg-white/20' : 'bg-white/[0.10]'
-                  }`}
-                />
+                {!isMuted ? <MicIcon size={17} /> : <MicOffIcon size={17} />}
+              </button>
+              <div
+                className={`w-px h-4.5 ${
+                  !isMuted ? 'bg-white/25' : audioMenuOpen ? 'bg-amber-500/40' : 'bg-white/[0.10]'
+                }`}
+              />
+              {/* Up-Arrow Trigger & Popover Anchor */}
+              <div className={`relative ${audioMenuOpen ? 'z-50' : ''}`}>
                 <button
                   type="button"
                   data-media-menu-toggle="audio"
                   onClick={() => setAudioMenuOpen((prev) => !prev)}
-                  className={`h-10 px-1.5 sm:px-2 rounded-r-lg flex items-center justify-center hover:opacity-90 hover:bg-white/[0.08] transition-all cursor-pointer ${
-                    audioMenuOpen ? 'bg-white/[0.12] text-white' : ''
+                  className={`h-10 px-2 rounded-r-xl flex items-center justify-center hover:bg-white/[0.08] transition-all cursor-pointer ${
+                    audioMenuOpen ? 'bg-white/[0.12] text-amber-300' : 'text-[#888e90] hover:text-[#fcfdff]'
                   }`}
                   title="Audio & Speaker Settings"
                 >
                   <ChevronUpIcon
                     size={14}
                     className={`transition-transform duration-200 pointer-events-none ${
-                      audioMenuOpen ? 'rotate-180' : ''
+                      audioMenuOpen ? 'rotate-180 text-amber-300' : ''
                     }`}
                   />
                 </button>
+
+                <MediaDeviceMenu
+                  isOpen={audioMenuOpen}
+                  onClose={() => setAudioMenuOpen(false)}
+                  type="audio"
+                  audioInputs={mediaDevices.audioInputs}
+                  audioOutputs={mediaDevices.audioOutputs}
+                  selectedAudioInputId={mediaDevices.selectedAudioInputId}
+                  selectedAudioOutputId={mediaDevices.selectedAudioOutputId}
+                  onSelectAudioInput={mediaDevices.setSelectedAudioInputId}
+                  onSelectAudioOutput={mediaDevices.setSelectedAudioOutputId}
+                  onRequestPermissions={() => mediaDevices.requestPermissions(true, false)}
+                  onTestSpeaker={mediaDevices.testSpeaker}
+                  testingSpeaker={mediaDevices.testingSpeaker}
+                />
               </div>
             </div>
           ) : (
@@ -1394,12 +1400,12 @@ export default function TalkPage({ params }: TalkPageProps) {
                 type="button"
                 onClick={handleToggleHandRaise}
                 disabled={!isRaiseHandAllowed && !handRaised}
-                className={`h-10 px-4 rounded-lg flex items-center gap-2 font-medium text-xs transition-all ${
+                className={`h-10 px-4 rounded-xl flex items-center gap-2 font-medium text-xs transition-all ${
                   !isRaiseHandAllowed && !handRaised
-                    ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
+                    ? 'opacity-40 cursor-not-allowed bg-[#121216] text-[#888e90] border border-white/[0.06]'
                     : handRaised
-                    ? 'bg-[#ffc53d] text-black shadow-[0_0_16px_rgba(255,197,61,0.4)] ring-2 ring-amber-400/50 animate-pulse'
-                    : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
+                    ? 'bg-[#ffc53d] text-black shadow-[0_0_16px_rgba(255,197,61,0.4)] ring-2 ring-amber-400/50 animate-pulse font-semibold'
+                    : 'bg-[#121216] hover:bg-[#18181f] text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
                 }`}
                 title={
                   !isRaiseHandAllowed && !handRaised
@@ -1432,10 +1438,10 @@ export default function TalkPage({ params }: TalkPageProps) {
                   type="button"
                   data-media-menu-toggle="audio"
                   onClick={() => setAudioMenuOpen((prev) => !prev)}
-                  className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
+                  className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${
                     audioMenuOpen
-                      ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 shadow-sm'
-                      : 'bg-[#101012] hover:bg-[#18181c] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.08]'
+                      ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 ring-1 ring-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+                      : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
                   }`}
                   title="Audio & Speaker Settings"
                 >

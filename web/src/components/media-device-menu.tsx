@@ -4,6 +4,7 @@ import React, { useRef, useEffect } from 'react';
 import {
   MicIcon,
   VideoIcon,
+  CameraIcon,
   HeadphonesIcon,
   CheckIcon,
   Volume2Icon,
@@ -81,34 +82,6 @@ export function MediaDeviceMenu({
     };
   }, [isOpen, onClose, type]);
 
-  // Adjust horizontal offset to keep inside viewport on small screens / edge positions
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const adjustPosition = () => {
-      if (!menuRef.current) return;
-      // Reset first to measure natural center position
-      menuRef.current.style.transform = 'translateX(-50%)';
-      const naturalRect = menuRef.current.getBoundingClientRect();
-      const padding = 12;
-
-      if (naturalRect.left < padding) {
-        const offset = padding - naturalRect.left;
-        menuRef.current.style.transform = `translateX(calc(-50% + ${offset}px))`;
-      } else if (naturalRect.right > window.innerWidth - padding) {
-        const offset = naturalRect.right - (window.innerWidth - padding);
-        menuRef.current.style.transform = `translateX(calc(-50% - ${offset}px))`;
-      }
-    };
-
-    const raf = requestAnimationFrame(adjustPosition);
-    window.addEventListener('resize', adjustPosition);
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('resize', adjustPosition);
-    };
-  }, [isOpen]);
-
   if (!isOpen) return null;
 
   const hasAudioPermissions = audioInputs.some((d) => Boolean(d.label));
@@ -117,21 +90,35 @@ export function MediaDeviceMenu({
   return (
     <div
       ref={menuRef}
-      className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-72 sm:w-80 max-w-[calc(100vw-24px)] max-h-[min(480px,calc(100vh-100px))] overflow-y-auto no-scrollbar bg-[#0a0a0c] border border-white/[0.16] rounded-2xl p-4 shadow-[0_25px_60px_rgba(0,0,0,0.95)] text-[#fcfdff] z-50 backdrop-blur-2xl animate-in zoom-in-95 fade-in duration-150 ring-1 ring-white/10"
+      className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-80 sm:w-84 max-w-[calc(100vw-24px)] max-h-[min(520px,calc(100vh-110px))] overflow-y-auto no-scrollbar bg-[#0c0c10]/95 border border-white/[0.14] rounded-2xl p-4 shadow-[0_25px_70px_-10px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] text-[#fcfdff] z-50 backdrop-blur-2xl animate-in zoom-in-95 fade-in slide-in-from-bottom-2 duration-150 ring-1 ring-white/10"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Top Ambient Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-16 blur-2xl pointer-events-none opacity-20 bg-[#ff7a1a]" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-16 blur-2xl pointer-events-none opacity-25 bg-gradient-to-r from-[#ff7a1a] via-[#f59e0b] to-[#ea580c]" />
+
+      {/* Bottom Notch Anchor directly over Up-Arrow */}
+      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#0c0c10] border-r border-b border-white/[0.14] rotate-45 pointer-events-none" />
 
       {/* Header */}
-      <div className="flex items-center justify-between pb-2 mb-3 border-b border-white/[0.06] relative z-10">
-        <span className="text-[11px] font-mono uppercase tracking-wider text-[#888e90]">
-          {type === 'audio' ? 'Audio Settings' : 'Video Settings'}
-        </span>
+      <div className="flex items-center justify-between pb-3 mb-3.5 border-b border-white/[0.08] relative z-10">
+        <div className="flex items-center gap-2">
+          <div className="h-6 w-6 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-[#ff7a1a]">
+            {type === 'audio' ? <MicIcon size={13} /> : <CameraIcon size={13} />}
+          </div>
+          <div>
+            <span className="text-xs font-semibold tracking-tight text-[#fcfdff] block leading-none">
+              {type === 'audio' ? 'Audio Devices' : 'Video Devices'}
+            </span>
+            <span className="text-[10px] font-mono uppercase tracking-wider text-[#888e90]">
+              Hardware Setup
+            </span>
+          </div>
+        </div>
         <button
           type="button"
           onClick={onClose}
-          className="text-[#888e90] hover:text-[#fcfdff] p-1 rounded-md hover:bg-white/[0.05] transition-colors cursor-pointer"
+          className="text-[#888e90] hover:text-[#fcfdff] p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer"
+          title="Close"
         >
           <XIcon size={13} />
         </button>
@@ -139,15 +126,15 @@ export function MediaDeviceMenu({
 
       {type === 'audio' && (
         <div className="space-y-4 relative z-10">
-          {/* Microphones */}
+          {/* Microphones Section */}
           <div>
-            <div className="flex items-center justify-between mb-1.5 px-1">
+            <div className="flex items-center justify-between mb-2 px-1">
               <div className="flex items-center gap-1.5 text-xs font-medium text-[#fcfdff]">
-                <MicIcon size={12} className="text-[#ff7a1a]" />
+                <MicIcon size={13} className="text-[#ff7a1a]" />
                 <span>Microphone</span>
               </div>
-              <span className="text-[10px] font-mono text-[#888e90]">
-                {audioInputs.length} found
+              <span className="text-[10px] font-mono text-[#888e90] bg-white/[0.05] border border-white/[0.06] px-1.5 py-0.5 rounded-full">
+                {audioInputs.length} detected
               </span>
             </div>
 
@@ -155,17 +142,18 @@ export function MediaDeviceMenu({
               <button
                 type="button"
                 onClick={() => void onRequestPermissions()}
-                className="w-full text-left px-2.5 py-2 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 text-orange-400 text-xs font-medium transition-colors mb-2 cursor-pointer"
+                className="w-full text-left px-3 py-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/15 border border-orange-500/25 text-orange-400 text-xs font-medium transition-colors mb-2 cursor-pointer flex items-center gap-2"
               >
-                Click to grant microphone permissions
+                <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-ping" />
+                <span>Grant microphone permission to see labels</span>
               </button>
             )}
 
-            <div className="space-y-0.5 max-h-36 overflow-y-auto no-scrollbar">
+            <div className="space-y-1 max-h-36 overflow-y-auto no-scrollbar">
               {audioInputs.length === 0 ? (
-                <p className="text-[11px] text-[#888e90] italic px-2 py-1">
-                  No microphones found
-                </p>
+                <div className="p-3 text-center bg-white/[0.02] border border-white/[0.04] rounded-xl">
+                  <p className="text-xs text-[#888e90]">No microphones detected</p>
+                </div>
               ) : (
                 audioInputs.map((device, idx) => {
                   const isSelected =
@@ -179,15 +167,32 @@ export function MediaDeviceMenu({
                       key={device.deviceId || idx}
                       type="button"
                       onClick={() => onSelectAudioInput?.(device.deviceId)}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                      className={`w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer group ${
                         isSelected
-                          ? 'bg-white/[0.08] text-[#fcfdff] font-medium'
-                          : 'text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.04]'
+                          ? 'bg-white/[0.08] text-[#fcfdff] border border-white/[0.12] shadow-sm'
+                          : 'text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.04] border border-transparent'
                       }`}
                     >
-                      <span className="truncate pr-2">{label}</span>
-                      {isSelected && (
-                        <CheckIcon size={13} className="text-[#11ff99] shrink-0" />
+                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                        <div
+                          className={`h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected
+                              ? 'bg-orange-500/15 text-[#ff7a1a]'
+                              : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
+                          }`}
+                        >
+                          <MicIcon size={12} />
+                        </div>
+                        <span className="truncate font-medium">{label}</span>
+                      </div>
+                      {isSelected ? (
+                        <div className="h-4 w-4 rounded-full bg-[#11ff99]/15 border border-[#11ff99]/30 flex items-center justify-center text-[#11ff99] shrink-0 shadow-[0_0_8px_rgba(17,255,153,0.25)]">
+                          <CheckIcon size={11} />
+                        </div>
+                      ) : (
+                        <span className="text-[10px] font-mono text-[#55595d] group-hover:text-[#888e90] shrink-0">
+                          Select
+                        </span>
                       )}
                     </button>
                   );
@@ -196,23 +201,30 @@ export function MediaDeviceMenu({
             </div>
           </div>
 
-          {/* Speakers / Output (if supported) */}
-          <div className="pt-3 border-t border-white/[0.06]">
-            <div className="flex items-center justify-between mb-1.5 px-1">
+          {/* Speakers Section */}
+          <div className="pt-3 border-t border-white/[0.08]">
+            <div className="flex items-center justify-between mb-2 px-1">
               <div className="flex items-center gap-1.5 text-xs font-medium text-[#fcfdff]">
-                <HeadphonesIcon size={12} className="text-[#ff7a1a]" />
-                <span>Speakers</span>
+                <HeadphonesIcon size={13} className="text-[#ff7a1a]" />
+                <span>Speakers & Headphones</span>
               </div>
-              <span className="text-[10px] font-mono text-[#888e90]">
-                {audioOutputs.length > 0 ? `${audioOutputs.length} found` : 'System default'}
+              <span className="text-[10px] font-mono text-[#888e90] bg-white/[0.05] border border-white/[0.06] px-1.5 py-0.5 rounded-full">
+                {audioOutputs.length > 0 ? `${audioOutputs.length} detected` : 'System Default'}
               </span>
             </div>
 
-            <div className="space-y-0.5 max-h-32 overflow-y-auto no-scrollbar">
+            <div className="space-y-1 max-h-32 overflow-y-auto no-scrollbar">
               {audioOutputs.length === 0 ? (
-                <div className="px-2.5 py-1.5 rounded-lg bg-white/[0.04] text-xs text-[#888e90] flex items-center justify-between">
-                  <span>Default System Output</span>
-                  <CheckIcon size={13} className="text-[#11ff99]" />
+                <div className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs text-[#888e90] flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-6 w-6 rounded-lg bg-white/[0.04] text-[#888e90] flex items-center justify-center">
+                      <HeadphonesIcon size={12} />
+                    </div>
+                    <span>Default System Output</span>
+                  </div>
+                  <div className="h-4 w-4 rounded-full bg-[#11ff99]/15 border border-[#11ff99]/30 flex items-center justify-center text-[#11ff99] shrink-0">
+                    <CheckIcon size={11} />
+                  </div>
                 </div>
               ) : (
                 audioOutputs.map((device, idx) => {
@@ -227,15 +239,32 @@ export function MediaDeviceMenu({
                       key={device.deviceId || idx}
                       type="button"
                       onClick={() => onSelectAudioOutput?.(device.deviceId)}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                      className={`w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer group ${
                         isSelected
-                          ? 'bg-white/[0.08] text-[#fcfdff] font-medium'
-                          : 'text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.04]'
+                          ? 'bg-white/[0.08] text-[#fcfdff] border border-white/[0.12] shadow-sm'
+                          : 'text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.04] border border-transparent'
                       }`}
                     >
-                      <span className="truncate pr-2">{label}</span>
-                      {isSelected && (
-                        <CheckIcon size={13} className="text-[#11ff99] shrink-0" />
+                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                        <div
+                          className={`h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected
+                              ? 'bg-orange-500/15 text-[#ff7a1a]'
+                              : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
+                          }`}
+                        >
+                          <HeadphonesIcon size={12} />
+                        </div>
+                        <span className="truncate font-medium">{label}</span>
+                      </div>
+                      {isSelected ? (
+                        <div className="h-4 w-4 rounded-full bg-[#11ff99]/15 border border-[#11ff99]/30 flex items-center justify-center text-[#11ff99] shrink-0 shadow-[0_0_8px_rgba(17,255,153,0.25)]">
+                          <CheckIcon size={11} />
+                        </div>
+                      ) : (
+                        <span className="text-[10px] font-mono text-[#55595d] group-hover:text-[#888e90] shrink-0">
+                          Select
+                        </span>
                       )}
                     </button>
                   );
@@ -249,19 +278,42 @@ export function MediaDeviceMenu({
                 type="button"
                 onClick={onTestSpeaker}
                 disabled={testingSpeaker}
-                className="mt-2.5 w-full py-1.5 px-3 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.06] text-xs font-mono flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                className={`mt-2.5 w-full py-2 px-3 rounded-xl border text-xs font-mono flex items-center justify-between transition-all cursor-pointer ${
+                  testingSpeaker
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-[#11ff99] shadow-[0_0_15px_rgba(17,255,153,0.15)]'
+                    : 'bg-white/[0.03] hover:bg-orange-500/10 text-[#888e90] hover:text-[#ff7a1a] border-white/[0.08] hover:border-orange-500/30 group'
+                }`}
               >
-                {testingSpeaker ? (
-                  <>
-                    <div className="animate-spin h-3 w-3 border border-[#11ff99]/30 border-t-[#11ff99] rounded-full" />
-                    <span className="text-[#11ff99]">Playing test chime...</span>
-                  </>
-                ) : (
-                  <>
-                    <Volume2Icon size={12} />
-                    <span>Test Speakers</span>
-                  </>
-                )}
+                <div className="flex items-center gap-2">
+                  {testingSpeaker ? (
+                    <div className="flex items-end gap-0.5 h-3.5 w-4 pb-0.5">
+                      <span className="w-1 bg-[#11ff99] rounded-full animate-bounce [animation-delay:-0.3s] h-3" />
+                      <span className="w-1 bg-[#11ff99] rounded-full animate-bounce [animation-delay:-0.15s] h-2" />
+                      <span className="w-1 bg-[#11ff99] rounded-full animate-bounce h-3.5" />
+                    </div>
+                  ) : (
+                    <Volume2Icon
+                      size={13}
+                      className="text-[#888e90] group-hover:text-[#ff7a1a] transition-colors"
+                    />
+                  )}
+                  <span
+                    className={
+                      testingSpeaker ? 'text-[#11ff99] font-medium' : 'text-[#fcfdff]'
+                    }
+                  >
+                    {testingSpeaker ? 'Playing 3-tone chime...' : 'Test Speakers'}
+                  </span>
+                </div>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
+                    testingSpeaker
+                      ? 'bg-[#11ff99]/20 border-[#11ff99]/40 text-[#11ff99]'
+                      : 'bg-white/[0.06] border-white/[0.08] text-[#888e90] group-hover:text-[#ff7a1a] group-hover:border-orange-500/30'
+                  }`}
+                >
+                  {testingSpeaker ? 'Active' : 'Play Chime'}
+                </span>
               </button>
             )}
           </div>
@@ -271,13 +323,13 @@ export function MediaDeviceMenu({
       {type === 'video' && (
         <div className="space-y-3 relative z-10">
           <div>
-            <div className="flex items-center justify-between mb-1.5 px-1">
+            <div className="flex items-center justify-between mb-2 px-1">
               <div className="flex items-center gap-1.5 text-xs font-medium text-[#fcfdff]">
-                <VideoIcon size={12} className="text-[#ff7a1a]" />
+                <CameraIcon size={13} className="text-[#ff7a1a]" />
                 <span>Camera</span>
               </div>
-              <span className="text-[10px] font-mono text-[#888e90]">
-                {videoInputs.length} found
+              <span className="text-[10px] font-mono text-[#888e90] bg-white/[0.05] border border-white/[0.06] px-1.5 py-0.5 rounded-full">
+                {videoInputs.length} detected
               </span>
             </div>
 
@@ -285,17 +337,18 @@ export function MediaDeviceMenu({
               <button
                 type="button"
                 onClick={() => void onRequestPermissions()}
-                className="w-full text-left px-2.5 py-2 rounded-lg bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/20 text-orange-400 text-xs font-medium transition-colors mb-2 cursor-pointer"
+                className="w-full text-left px-3 py-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/15 border border-orange-500/25 text-orange-400 text-xs font-medium transition-colors mb-2 cursor-pointer flex items-center gap-2"
               >
-                Click to grant camera permissions
+                <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-ping" />
+                <span>Grant camera permission to see labels</span>
               </button>
             )}
 
-            <div className="space-y-0.5 max-h-48 overflow-y-auto no-scrollbar">
+            <div className="space-y-1 max-h-48 overflow-y-auto no-scrollbar">
               {videoInputs.length === 0 ? (
-                <p className="text-[11px] text-[#888e90] italic px-2 py-1">
-                  No cameras found
-                </p>
+                <div className="p-3 text-center bg-white/[0.02] border border-white/[0.04] rounded-xl">
+                  <p className="text-xs text-[#888e90]">No cameras detected</p>
+                </div>
               ) : (
                 videoInputs.map((device, idx) => {
                   const isSelected =
@@ -309,15 +362,32 @@ export function MediaDeviceMenu({
                       key={device.deviceId || idx}
                       type="button"
                       onClick={() => onSelectVideoInput?.(device.deviceId)}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                      className={`w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer group ${
                         isSelected
-                          ? 'bg-white/[0.08] text-[#fcfdff] font-medium'
-                          : 'text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.04]'
+                          ? 'bg-white/[0.08] text-[#fcfdff] border border-white/[0.12] shadow-sm'
+                          : 'text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.04] border border-transparent'
                       }`}
                     >
-                      <span className="truncate pr-2">{label}</span>
-                      {isSelected && (
-                        <CheckIcon size={13} className="text-[#11ff99] shrink-0" />
+                      <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                        <div
+                          className={`h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                            isSelected
+                              ? 'bg-orange-500/15 text-[#ff7a1a]'
+                              : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
+                          }`}
+                        >
+                          <CameraIcon size={12} />
+                        </div>
+                        <span className="truncate font-medium">{label}</span>
+                      </div>
+                      {isSelected ? (
+                        <div className="h-4 w-4 rounded-full bg-[#11ff99]/15 border border-[#11ff99]/30 flex items-center justify-center text-[#11ff99] shrink-0 shadow-[0_0_8px_rgba(17,255,153,0.25)]">
+                          <CheckIcon size={11} />
+                        </div>
+                      ) : (
+                        <span className="text-[10px] font-mono text-[#55595d] group-hover:text-[#888e90] shrink-0">
+                          Select
+                        </span>
                       )}
                     </button>
                   );

@@ -965,50 +965,41 @@ export default function MeetPage({ params }: MeetPageProps) {
       <footer className="relative z-40 h-20 border-t border-white/[0.06] px-4 sm:px-6 flex items-center justify-center bg-black/75 backdrop-blur-xl">
         <div className="flex items-center gap-3 sm:gap-4 p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-xl shadow-2xl">
           {/* Microphone Split Button */}
-          <div className={`relative ${audioMenuOpen ? 'z-50' : 'z-10'}`}>
-            <MediaDeviceMenu
-              isOpen={audioMenuOpen}
-              onClose={() => setAudioMenuOpen(false)}
-              type="audio"
-              audioInputs={mediaDevices.audioInputs}
-              audioOutputs={mediaDevices.audioOutputs}
-              selectedAudioInputId={mediaDevices.selectedAudioInputId}
-              selectedAudioOutputId={mediaDevices.selectedAudioOutputId}
-              onSelectAudioInput={mediaDevices.setSelectedAudioInputId}
-              onSelectAudioOutput={mediaDevices.setSelectedAudioOutputId}
-              onRequestPermissions={() => mediaDevices.requestPermissions(true, false)}
-              onTestSpeaker={mediaDevices.testSpeaker}
-              testingSpeaker={mediaDevices.testingSpeaker}
-            />
-            <div
-              className={`inline-flex items-center rounded-lg transition-all ${
+          <div
+            className={`inline-flex items-center rounded-xl transition-all ${
+              !isMicAllowed && !isMicOn
+                ? 'opacity-40 cursor-not-allowed bg-[#121216] border border-white/[0.06] text-[#888e90]'
+                : isMicOn
+                ? audioMenuOpen
+                  ? 'bg-[#181820] text-[#fcfdff] border border-[#ff7a1a]/50 ring-1 ring-[#ff7a1a]/40 shadow-[0_0_20px_rgba(255,122,26,0.2)]'
+                  : 'bg-[#121216] hover:bg-[#18181f] text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16] shadow-sm'
+                : audioMenuOpen
+                ? 'bg-gradient-to-r from-[#ff2047] to-[#e61239] text-white ring-2 ring-[#ff7a1a]/60 shadow-[0_0_20px_rgba(255,32,71,0.5)] border border-red-400/50'
+                : 'bg-gradient-to-r from-[#ff2047] to-[#e61239] text-white shadow-[0_0_18px_rgba(255,32,71,0.4)] border border-red-500/40'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={handleToggleMic}
+              disabled={!isMicAllowed && !isMicOn}
+              className="h-10 px-3 rounded-l-xl flex items-center justify-center hover:bg-white/[0.06] transition-all cursor-pointer disabled:cursor-not-allowed"
+              title={
                 !isMicAllowed && !isMicOn
-                  ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
+                  ? 'Microphone disabled by host'
                   : isMicOn
-                  ? 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
-                  : 'bg-[#ff2047] text-white shadow-[0_0_16px_rgba(255,32,71,0.4)]'
-              }`}
+                  ? 'Mute Microphone'
+                  : 'Unmute Microphone'
+              }
             >
-              <button
-                type="button"
-                onClick={handleToggleMic}
-                disabled={!isMicAllowed && !isMicOn}
-                className="h-10 px-2.5 sm:px-3 rounded-l-lg flex items-center justify-center hover:opacity-90 transition-all cursor-pointer disabled:cursor-not-allowed"
-                title={
-                  !isMicAllowed && !isMicOn
-                    ? 'Microphone disabled by host'
-                    : isMicOn
-                    ? 'Mute Microphone'
-                    : 'Unmute Microphone'
-                }
-              >
-                {isMicOn ? <MicIcon size={17} /> : <MicOffIcon size={17} />}
-              </button>
-              <div
-                className={`w-px h-5 ${
-                  isMicOn ? 'bg-white/[0.10]' : 'bg-white/20'
-                }`}
-              />
+              {isMicOn ? <MicIcon size={17} /> : <MicOffIcon size={17} />}
+            </button>
+            <div
+              className={`w-px h-4.5 ${
+                isMicOn ? (audioMenuOpen ? 'bg-[#ff7a1a]/40' : 'bg-white/[0.10]') : 'bg-white/20'
+              }`}
+            />
+            {/* Up-Arrow Trigger & Popover Anchor */}
+            <div className={`relative ${audioMenuOpen ? 'z-50' : ''}`}>
               <button
                 type="button"
                 data-media-menu-toggle="audio"
@@ -1016,61 +1007,72 @@ export default function MeetPage({ params }: MeetPageProps) {
                   setAudioMenuOpen((prev) => !prev);
                   setVideoMenuOpen(false);
                 }}
-                className={`h-10 px-1.5 sm:px-2 rounded-r-lg flex items-center justify-center hover:opacity-90 hover:bg-white/[0.08] transition-all cursor-pointer ${
-                  audioMenuOpen ? 'bg-white/[0.12] text-[#ff7a1a]' : ''
+                className={`h-10 px-2 rounded-r-xl flex items-center justify-center hover:bg-white/[0.08] transition-all cursor-pointer ${
+                  audioMenuOpen ? 'bg-white/[0.12] text-[#ff7a1a]' : 'text-[#888e90] hover:text-[#fcfdff]'
                 }`}
                 title="Microphone & Speaker Settings"
               >
                 <ChevronUpIcon
                   size={14}
                   className={`transition-transform duration-200 pointer-events-none ${
-                    audioMenuOpen ? 'rotate-180' : ''
+                    audioMenuOpen ? 'rotate-180 text-[#ff7a1a]' : ''
                   }`}
                 />
               </button>
+
+              <MediaDeviceMenu
+                isOpen={audioMenuOpen}
+                onClose={() => setAudioMenuOpen(false)}
+                type="audio"
+                audioInputs={mediaDevices.audioInputs}
+                audioOutputs={mediaDevices.audioOutputs}
+                selectedAudioInputId={mediaDevices.selectedAudioInputId}
+                selectedAudioOutputId={mediaDevices.selectedAudioOutputId}
+                onSelectAudioInput={mediaDevices.setSelectedAudioInputId}
+                onSelectAudioOutput={mediaDevices.setSelectedAudioOutputId}
+                onRequestPermissions={() => mediaDevices.requestPermissions(true, false)}
+                onTestSpeaker={mediaDevices.testSpeaker}
+                testingSpeaker={mediaDevices.testingSpeaker}
+              />
             </div>
           </div>
 
           {/* Camera Split Button */}
-          <div className={`relative ${videoMenuOpen ? 'z-50' : 'z-10'}`}>
-            <MediaDeviceMenu
-              isOpen={videoMenuOpen}
-              onClose={() => setVideoMenuOpen(false)}
-              type="video"
-              videoInputs={mediaDevices.videoInputs}
-              selectedVideoInputId={mediaDevices.selectedVideoInputId}
-              onSelectVideoInput={mediaDevices.setSelectedVideoInputId}
-              onRequestPermissions={() => mediaDevices.requestPermissions(false, true)}
-            />
-            <div
-              className={`inline-flex items-center rounded-lg transition-all ${
+          <div
+            className={`inline-flex items-center rounded-xl transition-all ${
+              !isVideoAllowed && !isVideoOn
+                ? 'opacity-40 cursor-not-allowed bg-[#121216] border border-white/[0.06] text-[#888e90]'
+                : isVideoOn
+                ? videoMenuOpen
+                  ? 'bg-[#181820] text-[#fcfdff] border border-[#ff7a1a]/50 ring-1 ring-[#ff7a1a]/40 shadow-[0_0_20px_rgba(255,122,26,0.2)]'
+                  : 'bg-[#121216] hover:bg-[#18181f] text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16] shadow-sm'
+                : videoMenuOpen
+                ? 'bg-gradient-to-r from-[#ff2047] to-[#e61239] text-white ring-2 ring-[#ff7a1a]/60 shadow-[0_0_20px_rgba(255,32,71,0.5)] border border-red-400/50'
+                : 'bg-gradient-to-r from-[#ff2047] to-[#e61239] text-white shadow-[0_0_18px_rgba(255,32,71,0.4)] border border-red-500/40'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={handleToggleVideo}
+              disabled={!isVideoAllowed && !isVideoOn}
+              className="h-10 px-3 rounded-l-xl flex items-center justify-center hover:bg-white/[0.06] transition-all cursor-pointer disabled:cursor-not-allowed"
+              title={
                 !isVideoAllowed && !isVideoOn
-                  ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
+                  ? 'Camera disabled by host'
                   : isVideoOn
-                  ? 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
-                  : 'bg-[#ff2047] text-white shadow-[0_0_16px_rgba(255,32,71,0.4)]'
-              }`}
+                  ? 'Turn Off Camera'
+                  : 'Turn On Camera'
+              }
             >
-              <button
-                type="button"
-                onClick={handleToggleVideo}
-                disabled={!isVideoAllowed && !isVideoOn}
-                className="h-10 px-2.5 sm:px-3 rounded-l-lg flex items-center justify-center hover:opacity-90 transition-all cursor-pointer disabled:cursor-not-allowed"
-                title={
-                  !isVideoAllowed && !isVideoOn
-                    ? 'Camera disabled by host'
-                    : isVideoOn
-                    ? 'Turn Off Camera'
-                    : 'Turn On Camera'
-                }
-              >
-                {isVideoOn ? <VideoIcon size={17} /> : <CameraIcon size={17} />}
-              </button>
-              <div
-                className={`w-px h-5 ${
-                  isVideoOn ? 'bg-white/[0.10]' : 'bg-white/20'
-                }`}
-              />
+              {isVideoOn ? <VideoIcon size={17} /> : <CameraIcon size={17} />}
+            </button>
+            <div
+              className={`w-px h-4.5 ${
+                isVideoOn ? (videoMenuOpen ? 'bg-[#ff7a1a]/40' : 'bg-white/[0.10]') : 'bg-white/20'
+              }`}
+            />
+            {/* Up-Arrow Trigger & Popover Anchor */}
+            <div className={`relative ${videoMenuOpen ? 'z-50' : ''}`}>
               <button
                 type="button"
                 data-media-menu-toggle="video"
@@ -1078,18 +1080,28 @@ export default function MeetPage({ params }: MeetPageProps) {
                   setVideoMenuOpen((prev) => !prev);
                   setAudioMenuOpen(false);
                 }}
-                className={`h-10 px-1.5 sm:px-2 rounded-r-lg flex items-center justify-center hover:opacity-90 hover:bg-white/[0.08] transition-all cursor-pointer ${
-                  videoMenuOpen ? 'bg-white/[0.12] text-[#ff7a1a]' : ''
+                className={`h-10 px-2 rounded-r-xl flex items-center justify-center hover:bg-white/[0.08] transition-all cursor-pointer ${
+                  videoMenuOpen ? 'bg-white/[0.12] text-[#ff7a1a]' : 'text-[#888e90] hover:text-[#fcfdff]'
                 }`}
                 title="Camera Settings"
               >
                 <ChevronUpIcon
                   size={14}
                   className={`transition-transform duration-200 pointer-events-none ${
-                    videoMenuOpen ? 'rotate-180' : ''
+                    videoMenuOpen ? 'rotate-180 text-[#ff7a1a]' : ''
                   }`}
                 />
               </button>
+
+              <MediaDeviceMenu
+                isOpen={videoMenuOpen}
+                onClose={() => setVideoMenuOpen(false)}
+                type="video"
+                videoInputs={mediaDevices.videoInputs}
+                selectedVideoInputId={mediaDevices.selectedVideoInputId}
+                onSelectVideoInput={mediaDevices.setSelectedVideoInputId}
+                onRequestPermissions={() => mediaDevices.requestPermissions(false, true)}
+              />
             </div>
           </div>
 
