@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import type { RoomParticipant } from '@/types/realtime';
+import { AudioWaveform } from '@/components/audio-waveform';
 import {
   UsersIcon,
   XIcon,
@@ -32,6 +33,8 @@ interface InRoomParticipantsProps {
   onMuteUser?: (userId: string, name: string) => void;
   onKickUser?: (userId: string, name: string) => void;
   onTransferHost?: (userId: string, name: string) => void;
+  localVolume?: number;
+  localFrequencyBands?: number[];
 }
 
 export function InRoomParticipants({
@@ -47,6 +50,8 @@ export function InRoomParticipants({
   onMuteUser,
   onKickUser,
   onTransferHost,
+  localVolume,
+  localFrequencyBands,
 }: InRoomParticipantsProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -247,14 +252,26 @@ export function InRoomParticipants({
                   )}
 
                   <div
-                    className={`h-6 w-6 rounded-md flex items-center justify-center border ${
+                    className={`h-6 rounded-md flex items-center justify-center border transition-all ${
                       p.isMuted
-                        ? 'bg-[#ff2047]/10 border-[#ff2047]/20 text-[#ff2047]'
-                        : 'bg-[#11ff99]/10 border-[#11ff99]/20 text-[#11ff99]'
+                        ? 'w-6 bg-[#ff2047]/10 border-[#ff2047]/20 text-[#ff2047]'
+                        : 'px-1.5 gap-1 bg-[#11ff99]/10 border-[#11ff99]/20 text-[#11ff99]'
                     }`}
                     title={p.isMuted ? 'Muted' : 'Mic Active'}
                   >
-                    {p.isMuted ? <MicOffIcon size={11} /> : <MicIcon size={11} />}
+                    {p.isMuted ? (
+                      <MicOffIcon size={11} />
+                    ) : (
+                      <>
+                        <MicIcon size={11} />
+                        <AudioWaveform
+                          isActive={true}
+                          size="xs"
+                          volume={isMe ? localVolume : undefined}
+                          frequencyBands={isMe ? localFrequencyBands : undefined}
+                        />
+                      </>
+                    )}
                   </div>
 
                   <div

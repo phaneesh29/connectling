@@ -1,0 +1,160 @@
+'use client';
+
+import { useState, useEffect, useRef } from 'react';
+
+export interface UseLocalAudioLevelOptions {
+  isEnabled: boolean; // e.g. hasEntered && isMicOn
+  deviceId?: string;
+}
+
+export interface LocalAudioLevelState {
+  volume: number; // 0 - 100
+  isSpeaking: boolean;
+  frequencyBands: number[]; // 5 frequency bands (0 - 100 each)
+}
+
+export function useLocalAudioLevel({
+  isEnabled,
+  deviceId,
+}: UseLocalAudioLevelOptions): LocalAudioLevelState {
+  const [volume, setVolume] = useState(0);
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [frequencyBands, setFrequencyBands] = useState<number[]>([0, 0, 0, 0, 0]);
+
+  const streamRef = useRef<MediaStream | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+  const lastSpeakingTimeRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!isEnabled) {
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+        void audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      setVolume(0);
+      setIsSpeaking(false);
+      setFrequencyBands([0, 0, 0, 0, 0]);
+      return;
+    }
+
+    if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const startAudioAnalysis = async () => {
+      try {
+        const constraints: MediaStreamConstraints = {
+          audio:
+            deviceId && deviceId !== 'default'
+              ? { deviceId: { exact: deviceId } }
+              : true,
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        if (isCancelled) {
+          stream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
+        streamRef.current = stream;
+
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        const audioCtx = new AudioCtx();
+        audioCtxRef.current = audioCtx;
+
+        if (audioCtx.state === 'suspended') {
+          void audioCtx.resume();
+        }
+
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 64; // 32 frequency bins, lightweight and fast
+        analyser.smoothingTimeConstant = 0.35;
+
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        const processAudio = () => {
+          if (isCancelled) return;
+
+          analyser.getByteFrequencyData(dataArray);
+
+          // Calculate average volume
+          let sum = 0;
+          for (let i = 0; i < dataArray.length; i++) {
+            sum += dataArray[i];
+          }
+          const avg = sum / dataArray.length;
+          // Normalize to 0-100
+          const normalizedVol = Math.min(100, Math.round((avg / 128) * 100));
+
+          // Compute 5 frequency bands: bass, low-mid, mid, upper-mid, treble
+          const b0 = Math.min(100, Math.round(((dataArray[1] + dataArray[2]) / 2 / 160) * 100));
+          const b1 = Math.min(100, Math.round(((dataArray[3] + dataArray[4]) / 2 / 150) * 100));
+          const b2 = Math.min(100, Math.round(((dataArray[5] + dataArray[6] + dataArray[7]) / 3 / 140) * 100));
+          const b3 = Math.min(100, Math.round(((dataArray[8] + dataArray[9] + dataArray[10]) / 3 / 130) * 100));
+          const b4 = Math.min(100, Math.round(((dataArray[11] + dataArray[12] + dataArray[13]) / 3 / 120) * 100));
+
+          const speakingNow = normalizedVol > 5;
+          const now = Date.now();
+
+          if (speakingNow) {
+            lastSpeakingTimeRef.current = now;
+            setIsSpeaking(true);
+          } else if (now - lastSpeakingTimeRef.current > 350) {
+            setIsSpeaking(false);
+          }
+
+          setVolume(normalizedVol);
+          setFrequencyBands([b0, b1, b2, b3, b4]);
+
+          animFrameRef.current = requestAnimationFrame(processAudio);
+        };
+
+        animFrameRef.current = requestAnimationFrame(processAudio);
+      } catch (err) {
+        console.warn('Live audio analysis could not be started:', err);
+        setVolume(0);
+        setIsSpeaking(false);
+        setFrequencyBands([0, 0, 0, 0, 0]);
+      }
+    };
+
+    void startAudioAnalysis();
+
+    return () => {
+      isCancelled = true;
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+        animFrameRef.current = null;
+      }
+      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
+        void audioCtxRef.current.close().catch(() => {});
+        audioCtxRef.current = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      setVolume(0);
+      setIsSpeaking(false);
+      setFrequencyBands([0, 0, 0, 0, 0]);
+    };
+  }, [isEnabled, deviceId]);
+
+  return { volume, isSpeaking, frequencyBands };
+}

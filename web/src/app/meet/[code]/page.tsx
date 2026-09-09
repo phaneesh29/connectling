@@ -36,7 +36,9 @@ import { InRoomParticipants } from '@/components/in-room-participants';
 import { TransferHostModal } from '@/components/transfer-host-modal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { MediaDeviceMenu } from '@/components/media-device-menu';
+import { AudioWaveform, AudioRipple, AudioTileBadge } from '@/components/audio-waveform';
 import { useMediaDevices } from '@/hooks/use-media-devices';
+import { useLocalAudioLevel } from '@/hooks/use-local-audio-level';
 import type { ChatMessage, RoomParticipant } from '@/types/realtime';
 
 interface MeetPageProps {
@@ -399,6 +401,11 @@ export default function MeetPage({ params }: MeetPageProps) {
   const isVideoAllowed = isHost || settings?.videoForAll !== false;
   const isScreenShareAllowed = isHost || settings?.screenShareForAll !== false;
   const isChatAllowed = settings?.allowChat !== false;
+
+  const localAudio = useLocalAudioLevel({
+    isEnabled: hasEntered && isMicOn && isMicAllowed,
+    deviceId: mediaDevices.selectedAudioInputId,
+  });
 
   const handleSendMessage = (text: string) => {
     if (!isChatAllowed && !isHost) {
@@ -788,46 +795,115 @@ export default function MeetPage({ params }: MeetPageProps) {
           }`}
         >
           {/* Local User Card */}
-          <div className="relative bg-[#0a0a0c] border border-white/[0.12] rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl group min-h-[220px]">
+          <div
+            className={`relative bg-[#0a0a0c] rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl group min-h-[220px] transition-all duration-300 ${
+              isMicOn && localAudio.isSpeaking
+                ? 'border border-[#11ff99]/50 ring-2 ring-[#11ff99]/40 shadow-[0_0_35px_rgba(17,255,153,0.18)]'
+                : isMicOn
+                ? 'border border-[#11ff99]/25 ring-1 ring-[#11ff99]/15'
+                : 'border border-white/[0.12]'
+            }`}
+          >
             {isVideoOn ? (
-              <div className="w-full h-full bg-gradient-to-b from-[#0e0e12] to-[#06060a] flex flex-col items-center justify-center p-6 text-center space-y-3">
-                <div className="h-20 w-20 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
-                  {session?.user.image ? (
-                    <Image
-                      src={session.user.image}
-                      alt={session.user.name || 'User'}
-                      width={80}
-                      height={80}
-                      unoptimized
-                      referrerPolicy="no-referrer"
-                      className="h-full w-full rounded-full object-cover"
-                    />
-                  ) : (
-                    <span className="font-serif text-2xl text-[#fcfdff]">{session?.user.name?.charAt(0) || 'U'}</span>
-                  )}
+              <div className="w-full h-full bg-gradient-to-b from-[#0e0e12] to-[#06060a] flex flex-col items-center justify-center p-6 text-center space-y-3 relative">
+                <div className="relative">
+                  <AudioRipple isActive={isMicOn} isSpeaking={localAudio.isSpeaking} size="lg" />
+                  <div
+                    className={`h-20 w-20 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden shadow-2xl relative z-10 transition-all ${
+                      isMicOn && localAudio.isSpeaking ? 'ring-2 ring-emerald-400/90' : ''
+                    }`}
+                  >
+                    {session?.user.image ? (
+                      <Image
+                        src={session.user.image}
+                        alt={session.user.name || 'User'}
+                        width={80}
+                        height={80}
+                        unoptimized
+                        referrerPolicy="no-referrer"
+                        className="h-full w-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <span className="font-serif text-2xl text-[#fcfdff]">{session?.user.name?.charAt(0) || 'U'}</span>
+                    )}
+                  </div>
                 </div>
-                <div className="space-y-0.5">
+                <div className="space-y-0.5 relative z-10">
                   <p className="text-xs font-medium text-[#fcfdff]">{session?.user.name} (You)</p>
                   <p className="text-[10px] font-mono text-[#11ff99]">Camera Feed Online</p>
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center gap-2">
-                <div className="h-14 w-14 rounded-full bg-[#101012] border border-white/[0.08] text-[#888e90] flex items-center justify-center">
-                  <CameraIcon size={20} />
+              <div className="relative flex flex-col items-center justify-center gap-2.5">
+                <div className="relative">
+                  <AudioRipple isActive={isMicOn} isSpeaking={localAudio.isSpeaking} size="md" />
+                  <div
+                    className={`h-14 w-14 rounded-full bg-[#101012] border border-white/[0.08] text-[#888e90] flex items-center justify-center relative z-10 transition-all ${
+                      isMicOn && localAudio.isSpeaking ? 'ring-2 ring-emerald-400/90 text-emerald-300' : ''
+                    }`}
+                  >
+                    <CameraIcon size={20} />
+                  </div>
                 </div>
-                <p className="text-[11px] font-mono text-[#888e90]">Camera muted</p>
+                {isMicOn ? (
+                  <div
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border relative z-10 transition-all ${
+                      localAudio.isSpeaking
+                        ? 'bg-[#11ff99]/15 border-[#11ff99]/40 text-[#11ff99] shadow-[0_0_12px_rgba(17,255,153,0.2)]'
+                        : 'bg-white/[0.04] border-white/[0.08] text-[#888e90]'
+                    }`}
+                  >
+                    <AudioWaveform
+                      isActive={isMicOn}
+                      size="xs"
+                      volume={localAudio.volume}
+                      frequencyBands={localAudio.frequencyBands}
+                    />
+                    <span className="text-[10px] font-mono font-medium">
+                      {localAudio.isSpeaking ? 'Speaking' : 'Mic active'}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-[11px] font-mono text-[#888e90] relative z-10">Camera muted</p>
+                )}
               </div>
             )}
 
-            <div className="absolute bottom-3 left-3 bg-[#0a0a0c]/80 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 text-[#fcfdff] border border-white/[0.10]">
-              {isMicOn ? <MicIcon size={13} className="text-[#11ff99]" /> : <MicOffIcon size={13} className="text-[#ff2047]" />}
+            {/* Audio Waveforms in bottom-left Name Badge */}
+            <div className="absolute bottom-3 left-3 bg-[#0a0a0c]/85 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 text-[#fcfdff] border border-white/[0.10] z-20 shadow-md">
+              {isMicOn ? (
+                <div className="flex items-center gap-1.5">
+                  <MicIcon
+                    size={13}
+                    className={localAudio.isSpeaking ? 'text-[#11ff99]' : 'text-emerald-400/70'}
+                  />
+                  <AudioWaveform
+                    isActive={isMicOn}
+                    size="xs"
+                    volume={localAudio.volume}
+                    frequencyBands={localAudio.frequencyBands}
+                  />
+                </div>
+              ) : (
+                <MicOffIcon size={13} className="text-[#ff2047]" />
+              )}
               <span className="text-xs">{session?.user.name}</span>
               {isHost && (
                 <span className="text-[9px] font-mono bg-white/10 text-[#fcfdff] px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">
                   HOST
                 </span>
               )}
+            </div>
+
+            {/* Floating Audio Waveform Badge at bottom-right of tile */}
+            <div className="absolute bottom-3 right-3 z-20">
+              <AudioTileBadge
+                isActive={isMicOn}
+                label={localAudio.isSpeaking ? 'LIVE' : 'MIC'}
+                size="xs"
+                volume={localAudio.volume}
+                frequencyBands={localAudio.frequencyBands}
+              />
             </div>
           </div>
 
@@ -836,16 +912,26 @@ export default function MeetPage({ params }: MeetPageProps) {
             const isOtherHost = p.userId === room.hostId;
             const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'U';
             const isVideoActive = p.isVideoOn ?? true;
+            const isSpeaking = !p.isMuted;
 
             return (
               <div
                 key={p.userId}
-                className="relative bg-[#0a0a0c] border border-white/[0.12] rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl group min-h-[220px]"
+                className={`relative bg-[#0a0a0c] rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl group min-h-[220px] transition-all duration-300 ${
+                  isSpeaking
+                    ? 'border border-[#11ff99]/40 ring-1 ring-[#11ff99]/30 shadow-[0_0_30px_rgba(17,255,153,0.12)]'
+                    : 'border border-white/[0.12]'
+                }`}
               >
                 {isVideoActive ? (
-                  <div className="w-full h-full bg-gradient-to-b from-[#0e0e12] to-[#06060a] flex flex-col items-center justify-center p-6 text-center space-y-3">
+                  <div className="w-full h-full bg-gradient-to-b from-[#0e0e12] to-[#06060a] flex flex-col items-center justify-center p-6 text-center space-y-3 relative">
                     <div className="relative">
-                      <div className="h-20 w-20 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden shadow-2xl">
+                      <AudioRipple isActive={isSpeaking} size="lg" />
+                      <div
+                        className={`h-20 w-20 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden shadow-2xl relative z-10 transition-all ${
+                          isSpeaking ? 'ring-2 ring-emerald-400/80' : ''
+                        }`}
+                      >
                         {p.image ? (
                           <Image
                             src={p.image}
@@ -861,22 +947,36 @@ export default function MeetPage({ params }: MeetPageProps) {
                         )}
                       </div>
                       {isOtherHost && (
-                        <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#ffc53d] text-black flex items-center justify-center shadow-md">
+                        <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#ffc53d] text-black flex items-center justify-center shadow-md z-20">
                           <StarIcon size={11} />
                         </span>
                       )}
                     </div>
-                    <div className="space-y-0.5">
+                    <div className="space-y-0.5 relative z-10">
                       <p className="text-xs font-medium text-[#fcfdff]">{p.name}</p>
                       <p className="text-[10px] font-mono text-[#11ff99]">Connected</p>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <div className="h-14 w-14 rounded-full bg-[#101012] border border-white/[0.08] text-[#888e90] flex items-center justify-center">
-                      <CameraIcon size={20} />
+                  <div className="relative flex flex-col items-center justify-center gap-2.5">
+                    <div className="relative">
+                      <AudioRipple isActive={isSpeaking} size="md" />
+                      <div
+                        className={`h-14 w-14 rounded-full bg-[#101012] border border-white/[0.08] text-[#888e90] flex items-center justify-center relative z-10 transition-all ${
+                          isSpeaking ? 'ring-2 ring-emerald-400/80 text-emerald-300' : ''
+                        }`}
+                      >
+                        <CameraIcon size={20} />
+                      </div>
                     </div>
-                    <p className="text-[11px] font-mono text-[#888e90]">Camera muted</p>
+                    {isSpeaking ? (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#11ff99]/10 border border-[#11ff99]/25 text-[#11ff99] relative z-10">
+                        <AudioWaveform isActive={true} size="xs" />
+                        <span className="text-[10px] font-mono font-medium">Speaking</span>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] font-mono text-[#888e90] relative z-10">Camera muted</p>
+                    )}
                   </div>
                 )}
 
@@ -921,11 +1021,15 @@ export default function MeetPage({ params }: MeetPageProps) {
                   </div>
                 )}
 
-                <div className="absolute bottom-3 left-3 bg-[#0a0a0c]/80 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 text-[#fcfdff] border border-white/[0.10]">
-                  {p.isMuted ? (
-                    <MicOffIcon size={13} className="text-[#ff2047]" />
+                {/* Bottom-Left Name Badge with Waveform */}
+                <div className="absolute bottom-3 left-3 bg-[#0a0a0c]/85 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 text-[#fcfdff] border border-white/[0.10] z-20 shadow-md">
+                  {isSpeaking ? (
+                    <div className="flex items-center gap-1.5">
+                      <MicIcon size={13} className="text-[#11ff99]" />
+                      <AudioWaveform isActive={true} size="xs" />
+                    </div>
                   ) : (
-                    <MicIcon size={13} className="text-[#11ff99]" />
+                    <MicOffIcon size={13} className="text-[#ff2047]" />
                   )}
                   <span className="text-xs">{p.name}</span>
                   {isOtherHost && (
@@ -933,6 +1037,11 @@ export default function MeetPage({ params }: MeetPageProps) {
                       HOST
                     </span>
                   )}
+                </div>
+
+                {/* Floating Audio Waveform Badge at bottom-right of tile */}
+                <div className="absolute bottom-3 right-3 z-20">
+                  <AudioTileBadge isActive={isSpeaking} label="LIVE" size="xs" />
                 </div>
               </div>
             );
@@ -1318,6 +1427,8 @@ export default function MeetPage({ params }: MeetPageProps) {
         onMuteUser={isHost ? handleRemoteMute : undefined}
         onKickUser={isHost ? handleKickUser : undefined}
         onTransferHost={isHost ? requestTransferHost : undefined}
+        localVolume={localAudio.volume}
+        localFrequencyBands={localAudio.frequencyBands}
       />
 
       {/* Transfer Host & Leave Modal */}

@@ -91,6 +91,71 @@ body {
   animation: soundwave 1.0s ease-in-out 0.1s infinite;
 }
 
+/* Multi-frequency Audio Waveform Bar Keyframes */
+@keyframes soundwave-bar-1 {
+  0%, 100% { height: 20%; opacity: 0.5; }
+  50% { height: 85%; opacity: 1; }
+}
+@keyframes soundwave-bar-2 {
+  0%, 100% { height: 35%; opacity: 0.6; }
+  25% { height: 100%; opacity: 1; }
+  75% { height: 45%; opacity: 0.7; }
+}
+@keyframes soundwave-bar-3 {
+  0%, 100% { height: 15%; opacity: 0.5; }
+  60% { height: 95%; opacity: 1; }
+}
+@keyframes soundwave-bar-4 {
+  0%, 100% { height: 30%; opacity: 0.6; }
+  40% { height: 75%; opacity: 1; }
+  85% { height: 90%; opacity: 1; }
+}
+@keyframes soundwave-bar-5 {
+  0%, 100% { height: 18%; opacity: 0.5; }
+  55% { height: 80%; opacity: 1; }
+}
+
+.animate-wave-bar-1 {
+  animation: soundwave-bar-1 0.75s ease-in-out infinite alternate;
+}
+.animate-wave-bar-2 {
+  animation: soundwave-bar-2 0.55s ease-in-out infinite alternate 0.1s;
+}
+.animate-wave-bar-3 {
+  animation: soundwave-bar-3 0.85s ease-in-out infinite alternate 0.2s;
+}
+.animate-wave-bar-4 {
+  animation: soundwave-bar-4 0.65s ease-in-out infinite alternate 0.05s;
+}
+.animate-wave-bar-5 {
+  animation: soundwave-bar-5 0.95s ease-in-out infinite alternate 0.15s;
+}
+
+/* Audio Ripple Waves (Concentric sound waves expanding from avatar in tile) */
+@keyframes audio-ripple-pulse {
+  0% {
+    transform: scale(0.92);
+    opacity: 0.75;
+  }
+  50% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
+.animate-audio-ripple-1 {
+  animation: audio-ripple-pulse 2.2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+.animate-audio-ripple-2 {
+  animation: audio-ripple-pulse 2.2s cubic-bezier(0, 0.2, 0.8, 1) 0.7s infinite;
+}
+.animate-audio-ripple-3 {
+  animation: audio-ripple-pulse 2.2s cubic-bezier(0, 0.2, 0.8, 1) 1.4s infinite;
+}
+
 /* Pulse speaker ring */
 @keyframes speakerRing {
   0% {

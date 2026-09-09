@@ -38,7 +38,9 @@ import { InRoomParticipants } from '@/components/in-room-participants';
 import { TransferHostModal } from '@/components/transfer-host-modal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { MediaDeviceMenu } from '@/components/media-device-menu';
+import { AudioWaveform, AudioRipple, AudioTileBadge } from '@/components/audio-waveform';
 import { useMediaDevices } from '@/hooks/use-media-devices';
+import { useLocalAudioLevel } from '@/hooks/use-local-audio-level';
 import type { ChatMessage, RoomParticipant } from '@/types/realtime';
 
 interface StageTileGradient {
@@ -609,6 +611,12 @@ export default function TalkPage({ params }: TalkPageProps) {
   const isChatAllowed = settings?.allowChat !== false;
   const isRaiseHandAllowed = settings?.allowRaiseHand !== false;
 
+  const isLocalMicActive = Boolean(room) && !isMuted && isSpeaker;
+  const localAudio = useLocalAudioLevel({
+    isEnabled: isLocalMicActive,
+    deviceId: mediaDevices.selectedAudioInputId,
+  });
+
   const handleSendMessage = (text: string) => {
     if (!isChatAllowed && !isHost) {
       setRoomToast({ text: 'Chat is disabled by the host', type: 'leave' });
@@ -1125,7 +1133,9 @@ export default function TalkPage({ params }: TalkPageProps) {
             const isMe = p.userId === session?.user?.id;
             const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'U';
             const gradient = getStageTileGradient(p.userId, isPHost);
-            const isSpeaking = !p.isMuted;
+            const isSpeaking = isMe
+              ? isLocalMicActive && localAudio.isSpeaking
+              : !p.isMuted;
 
             return (
               <div
@@ -1181,9 +1191,27 @@ export default function TalkPage({ params }: TalkPageProps) {
                   </div>
                 )}
 
+                {/* Stage Tile Floating Waveform Badge when speaking */}
+                {isSpeaking && (
+                  <div className="absolute top-2.5 left-2.5 z-20">
+                    <AudioTileBadge
+                      isActive={true}
+                      label=""
+                      size="xs"
+                      volume={isMe ? localAudio.volume : undefined}
+                      frequencyBands={isMe ? localAudio.frequencyBands : undefined}
+                    />
+                  </div>
+                )}
+
                 <div className="relative z-10">
+                  <AudioRipple
+                    isActive={isMe ? isLocalMicActive : isSpeaking}
+                    isSpeaking={isMe ? localAudio.isSpeaking : isSpeaking}
+                    size="md"
+                  />
                   <div
-                    className={`h-16 w-16 rounded-full bg-[#121216] border border-white/[0.10] flex items-center justify-center overflow-hidden shadow-lg transition-transform duration-200 group-hover:scale-[1.02] ${
+                    className={`h-16 w-16 rounded-full bg-[#121216] border border-white/[0.10] flex items-center justify-center overflow-hidden shadow-lg transition-transform duration-200 group-hover:scale-[1.02] relative z-10 ${
                       isSpeaking ? 'ring-2 ring-emerald-400/80 ring-offset-2 ring-offset-[#09090b]' : ''
                     }`}
                   >
@@ -1217,8 +1245,17 @@ export default function TalkPage({ params }: TalkPageProps) {
                     </span>
                   )}
 
-                  <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#101014] border border-white/[0.14] flex items-center justify-center">
-                    {p.isMuted ? (
+                  <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#101014] border border-white/[0.14] flex items-center justify-center z-10">
+                    {isMe ? (
+                      isMuted ? (
+                        <MicOffIcon size={10} className="text-[#888e90]" />
+                      ) : (
+                        <MicIcon
+                          size={10}
+                          className={localAudio.isSpeaking ? 'text-[#11ff99]' : 'text-emerald-400/70'}
+                        />
+                      )
+                    ) : p.isMuted ? (
                       <MicOffIcon size={10} className="text-[#888e90]" />
                     ) : (
                       <MicIcon size={10} className="text-[#11ff99]" />
@@ -1236,9 +1273,23 @@ export default function TalkPage({ params }: TalkPageProps) {
                       Stage Host
                     </span>
                   ) : isSpeaking ? (
-                    <span className="text-[10px] font-mono text-[#11ff99] uppercase tracking-wider block font-medium">
-                      Speaking
-                    </span>
+                    <div className="flex items-center justify-center gap-1.5 text-[#11ff99]">
+                      <AudioWaveform
+                        isActive={true}
+                        size="xs"
+                        volume={isMe ? localAudio.volume : undefined}
+                        frequencyBands={isMe ? localAudio.frequencyBands : undefined}
+                      />
+                      <span className="text-[10px] font-mono uppercase tracking-wider block font-semibold">
+                        Speaking
+                      </span>
+                      <AudioWaveform
+                        isActive={true}
+                        size="xs"
+                        volume={isMe ? localAudio.volume : undefined}
+                        frequencyBands={isMe ? localAudio.frequencyBands : undefined}
+                      />
+                    </div>
                   ) : p.canSpeak || (isMe && (participant?.role === 'speaker' || grantedSpeaker)) ? (
                     <span className="text-[10px] font-mono text-[#ffc53d] uppercase tracking-wider block font-medium">
                       Speaker
@@ -1867,6 +1918,8 @@ export default function TalkPage({ params }: TalkPageProps) {
         onMuteUser={isHost ? handleRemoteMute : undefined}
         onKickUser={isHost ? handleKickUser : undefined}
         onTransferHost={isHost ? requestTransferHost : undefined}
+        localVolume={localAudio.volume}
+        localFrequencyBands={localAudio.frequencyBands}
       />
 
       {confirmModal && (
