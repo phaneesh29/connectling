@@ -36,7 +36,8 @@ export const getRealtimeServer = (): RealtimeServer => {
 
 const fetchRoomParticipants = async (
   io: RealtimeServer,
-  roomCode: string
+  roomCode: string,
+  excludeUserId?: string
 ): Promise<RoomParticipant[]> => {
   const roomChannel = `room:${roomCode}`;
   const sockets = await io.in(roomChannel).fetchSockets();
@@ -45,7 +46,7 @@ const fetchRoomParticipants = async (
   for (const s of sockets) {
     const data = s.data;
     const u = data?.user;
-    if (u?.id && !map.has(u.id)) {
+    if (u?.id && u.id !== excludeUserId && !map.has(u.id)) {
       map.set(u.id, {
         userId: u.id,
         name: u.name,
@@ -93,12 +94,13 @@ const kickParticipantAcrossCluster = async (
 
 export const notifyUserLeftRoom = async (
   userId: string,
-  roomCode: string
+  roomCode: string,
+  userName?: string
 ): Promise<void> => {
   if (!ioInstance) return;
   const roomChannel = `room:${roomCode}`;
 
-  let departingName = 'Participant';
+  let departingName = userName || 'Participant';
   for (const socket of ioInstance.sockets.sockets.values()) {
     if (socket.data?.user?.id === userId) {
       if (socket.data?.user?.name) {
@@ -117,7 +119,7 @@ export const notifyUserLeftRoom = async (
     name: departingName,
   });
 
-  const participants = await fetchRoomParticipants(ioInstance, roomCode);
+  const participants = await fetchRoomParticipants(ioInstance, roomCode, userId);
   ioInstance.in(roomChannel).emit('room:roster', { participants });
 
   logger.info(
@@ -449,7 +451,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
 
         await socket.leave(roomChannel);
 
-        const participants = await fetchRoomParticipants(io, roomCode);
+        const participants = await fetchRoomParticipants(io, roomCode, user.id);
         io.in(roomChannel).emit('room:roster', { participants });
 
         logger.info(

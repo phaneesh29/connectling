@@ -190,10 +190,10 @@ export const roomService = {
     };
   },
 
-  leaveRoom: async (userId: string, code: string) => {
+  leaveRoom: async (userId: string, code: string, userName?: string) => {
     const normalized = normalizeRoomCode(code);
     try {
-      await notifyUserLeftRoom(userId, normalized);
+      await notifyUserLeftRoom(userId, normalized, userName);
     } catch (err) {
       logger.error({ err, userId, code }, 'Error notifying realtime gateway on room leave');
     }

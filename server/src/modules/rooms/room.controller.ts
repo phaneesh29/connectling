@@ -45,8 +45,9 @@ export const joinRoomHandler = async (req: Request, res: Response): Promise<void
 
 export const leaveRoomHandler = async (req: Request, res: Response): Promise<void> => {
   const userId = req.user!.id;
+  const userName = req.user?.name;
   const { code } = req.params as RoomCodeParam;
-  const result = await roomService.leaveRoom(userId, code);
+  const result = await roomService.leaveRoom(userId, code, userName);
 
   res.status(200).json({
     success: true,
