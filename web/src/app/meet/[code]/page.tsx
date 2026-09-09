@@ -146,6 +146,10 @@ export default function MeetPage({ params }: MeetPageProps) {
       try {
         const res = await roomsApi.joinRoom(codeToJoin, { passcode: enteredPasscode });
         if (res.data) {
+          if (res.data.room.type === 'audio') {
+            router.replace(`/talk/${codeToJoin}`);
+            return;
+          }
           setRoom(res.data.room);
           setSettings(res.data.settings);
           setParticipant(res.data.participant);
@@ -164,7 +168,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         setLoading(false);
       }
     },
-    []
+    [router]
   );
 
   useEffect(() => {
@@ -178,6 +182,10 @@ export default function MeetPage({ params }: MeetPageProps) {
         .joinRoom(code)
         .then((res) => {
           if (!ignore && res.data) {
+            if (res.data.room.type === 'audio') {
+              router.replace(`/talk/${code}`);
+              return;
+            }
             setRoom(res.data.room);
             setSettings(res.data.settings);
             setParticipant(res.data.participant);
@@ -202,8 +210,9 @@ export default function MeetPage({ params }: MeetPageProps) {
     }
     return () => {
       ignore = true;
+      joinedCodeRef.current = null;
     };
-  }, [currentUserId, code]);
+  }, [currentUserId, code, router]);
 
   const roomId = room?.id;
   const roomCode = room?.code;

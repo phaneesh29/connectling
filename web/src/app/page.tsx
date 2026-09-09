@@ -95,6 +95,10 @@ export default function DashboardPage() {
     }
   };
 
+  useEffect(() => {
+    setJoining(false);
+  }, []);
+
   const cleanRoomCode = (input: string) => {
     let clean = input.trim();
     if (clean.includes('/')) {
@@ -104,22 +108,42 @@ export default function DashboardPage() {
     return clean.replace(/[^a-z0-9-]/gi, '').toLowerCase();
   };
 
-  const handleJoin = (e: React.FormEvent) => {
+  const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const code = cleanRoomCode(codeInput);
+    const raw = codeInput.trim();
+    const code = cleanRoomCode(raw);
     if (!code) return;
 
+    let target = activeMode === 'meet' ? `/meet/${code}` : `/talk/${code}`;
+    if (raw.includes('/talk/')) {
+      target = `/talk/${code}`;
+    } else if (raw.includes('/meet/')) {
+      target = `/meet/${code}`;
+    }
+
     if (!session) {
-      router.push(`/login?callbackURL=${encodeURIComponent(`/${activeMode === 'meet' ? 'meet' : 'talk'}/${code}`)}`);
+      router.push(`/login?callbackURL=${encodeURIComponent(target)}`);
       return;
     }
 
     setJoining(true);
-    if (activeMode === 'meet') {
-      router.push(`/meet/${code}`);
-    } else {
-      router.push(`/talk/${code}`);
+
+    try {
+      const probePromise = roomsApi.getRoom(code);
+      const timeoutPromise = new Promise<{ data?: { type?: string } }>((resolve) =>
+        setTimeout(() => resolve({}), 300)
+      );
+      const res = await Promise.race([probePromise, timeoutPromise]);
+      if (res.data?.type === 'audio') {
+        target = `/talk/${code}`;
+      } else if (res.data?.type === 'meet') {
+        target = `/meet/${code}`;
+      }
+    } catch {
+      // Fallback to detected target
     }
+
+    router.push(target);
   };
 
   const openCreateModal = (type: 'meet' | 'audio') => {
