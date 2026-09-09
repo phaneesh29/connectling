@@ -117,6 +117,7 @@ export default function MeetPage({ params }: MeetPageProps) {
   const knownParticipantsRef = useRef<Set<string>>(new Set());
   const currentUserId = session?.user?.id;
   const currentUserIdRef = useRef(currentUserId);
+  const webrtcRef = useRef<ReturnType<typeof useWebRTC> | null>(null);
 
   useEffect(() => {
     chatOpenRef.current = chatOpen;
@@ -296,6 +297,9 @@ export default function MeetPage({ params }: MeetPageProps) {
 
     const handleExit = () => {
       try {
+        webrtcRef.current?.stopMediaTracks();
+      } catch {}
+      try {
         const socket = getSocket();
         if (socket.connected) {
           socket.emit('room:leave', { roomCode: code });
@@ -438,6 +442,8 @@ export default function MeetPage({ params }: MeetPageProps) {
     };
 
     const handleKicked = ({ message }: { message: string }) => {
+      setIsRoomEnded(true);
+      webrtcRef.current?.stopMediaTracks();
       setConfirmModal({
         isOpen: true,
         title: 'Removed from Space',
@@ -456,6 +462,7 @@ export default function MeetPage({ params }: MeetPageProps) {
 
     const handleRoomEnded = ({ message }: { message?: string }) => {
       setIsRoomEnded(true);
+      webrtcRef.current?.stopMediaTracks();
       playLeaveChime();
       setConfirmModal({
         isOpen: true,
@@ -633,6 +640,15 @@ export default function MeetPage({ params }: MeetPageProps) {
       setRoomToast({ text: msg, type: 'leave' });
     },
   });
+
+  webrtcRef.current = webrtc;
+
+  // Ensure camera, mic, and screen share are stopped when component unmounts
+  useEffect(() => {
+    return () => {
+      webrtcRef.current?.stopMediaTracks();
+    };
+  }, []);
 
   const localAudio = useLocalAudioLevel({
     isEnabled: isInRoom && isMicOn && isMicAllowed,
@@ -863,6 +879,8 @@ export default function MeetPage({ params }: MeetPageProps) {
 
   const handleLeave = async () => {
     setLeaving(true);
+    setIsRoomEnded(true);
+    webrtcRef.current?.stopMediaTracks();
     if (room) {
       try {
         await roomsApi.leaveRoom(room.code);
@@ -877,6 +895,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     if (!room) return;
     setEnding(true);
     setIsRoomEnded(true);
+    webrtcRef.current?.stopMediaTracks();
     try {
       await roomsApi.endRoom(room.code);
       router.push('/');

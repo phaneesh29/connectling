@@ -49,12 +49,24 @@ export function useLocalAudioLevel({
 
     let ownStreamCreated = false;
 
+    // If an external stream prop is provided, do NOT open a duplicate getUserMedia mic session.
+    // Simply wait for the external stream to arrive with active audio tracks.
+    if (externalStream !== undefined) {
+      if (!externalStream || externalStream.getAudioTracks().length === 0) {
+        setVolume(0);
+        setIsSpeaking(false);
+        setFrequencyBands([0, 0, 0, 0, 0]);
+        return;
+      }
+    }
+
     const startAudioAnalysis = async () => {
       try {
         let stream: MediaStream;
 
         if (externalStream && externalStream.getAudioTracks().length > 0) {
           stream = externalStream;
+          ownStreamCreated = false;
         } else {
           const constraints: MediaStreamConstraints = {
             audio:
@@ -74,7 +86,11 @@ export function useLocalAudioLevel({
 
         if (isCancelled) {
           if (ownStreamCreated) {
-            stream.getTracks().forEach((t) => t.stop());
+            stream.getTracks().forEach((t) => {
+              try {
+                t.stop();
+              } catch {}
+            });
           }
           return;
         }
@@ -161,9 +177,16 @@ export function useLocalAudioLevel({
         audioCtxRef.current = null;
       }
       if (streamRef.current && ownStreamCreated) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current.getTracks().forEach((track) => {
+          try {
+            track.stop();
+          } catch {}
+        });
         streamRef.current = null;
       }
+      setVolume(0);
+      setIsSpeaking(false);
+      setFrequencyBands([0, 0, 0, 0, 0]);
     };
   }, [isEnabled, deviceId, externalStream]);
 

@@ -197,6 +197,7 @@ export default function TalkPage({ params }: TalkPageProps) {
   const knownParticipantsRef = useRef<Set<string>>(new Set());
   const currentUserId = session?.user?.id;
   const currentUserIdRef = useRef(currentUserId);
+  const webrtcRef = useRef<ReturnType<typeof useWebRTC> | null>(null);
 
   useEffect(() => {
     chatOpenRef.current = chatOpen;
@@ -341,6 +342,9 @@ export default function TalkPage({ params }: TalkPageProps) {
     }, 15000);
 
     const handleExit = () => {
+      try {
+        webrtcRef.current?.stopMediaTracks();
+      } catch {}
       try {
         const socket = getSocket();
         if (socket.connected) {
@@ -561,6 +565,10 @@ export default function TalkPage({ params }: TalkPageProps) {
     };
 
     const handleKicked = ({ message }: { message: string }) => {
+      setIsRoomEnded(true);
+      try {
+        webrtcRef.current?.stopMediaTracks();
+      } catch {}
       setConfirmModal({
         isOpen: true,
         title: 'Removed from Stage',
@@ -579,6 +587,9 @@ export default function TalkPage({ params }: TalkPageProps) {
 
     const handleRoomEnded = ({ message }: { message?: string }) => {
       setIsRoomEnded(true);
+      try {
+        webrtcRef.current?.stopMediaTracks();
+      } catch {}
       playLeaveChime();
       setConfirmModal({
         isOpen: true,
@@ -740,6 +751,15 @@ export default function TalkPage({ params }: TalkPageProps) {
       setRoomToast({ text: msg, type: 'leave' });
     },
   });
+
+  webrtcRef.current = webrtc;
+
+  // Ensure mic is stopped when component unmounts
+  useEffect(() => {
+    return () => {
+      webrtcRef.current?.stopMediaTracks();
+    };
+  }, []);
 
   const localAudio = useLocalAudioLevel({
     isEnabled: isLocalMicActive,
@@ -1012,6 +1032,8 @@ export default function TalkPage({ params }: TalkPageProps) {
 
   const handleLeave = async () => {
     setLeaving(true);
+    setIsRoomEnded(true);
+    webrtcRef.current?.stopMediaTracks();
     if (room) {
       try {
         await roomsApi.leaveRoom(room.code);
@@ -1026,6 +1048,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     if (!room) return;
     setEnding(true);
     setIsRoomEnded(true);
+    webrtcRef.current?.stopMediaTracks();
     try {
       await roomsApi.endRoom(room.code);
       router.push('/');

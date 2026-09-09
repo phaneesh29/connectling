@@ -33,6 +33,7 @@ export interface UseWebRTCReturn {
   attachMediaElement: (userId: string, el: HTMLMediaElement | null) => void;
   attachLocalVideo: (el: HTMLVideoElement | null) => void;
   refreshLocalMedia: () => Promise<void>;
+  stopMediaTracks: () => void;
 }
 
 // Production-ready public STUN servers
@@ -115,6 +116,12 @@ export function useWebRTC({
   const mediaTypeRef = useRef(mediaType);
   const onScreenShareEndedRef = useRef(onScreenShareEnded);
   const onErrorRef = useRef(onError);
+  const enabledRef = useRef(enabled);
+  const isDestroyedRef = useRef(false);
+
+  useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
 
   useEffect(() => {
     isMicOnRef.current = isMicOn;
@@ -480,9 +487,67 @@ export function useWebRTC({
     [updateRemoteStreamsState]
   );
 
+  // Synchronously stop all local media tracks (camera, mic, screen share, tab audio) and clean up
+  const stopAllMediaTracks = useCallback(() => {
+    isDestroyedRef.current = true;
+
+    // Stop screen share track and shared audio track if active
+    if (screenTrackRef.current) {
+      try {
+        screenTrackRef.current.stop();
+      } catch {}
+      screenTrackRef.current = null;
+    }
+    if (displayAudioTrackRef.current) {
+      try {
+        displayAudioTrackRef.current.stop();
+      } catch {}
+      displayAudioTrackRef.current = null;
+    }
+    if (audioMixerContextRef.current) {
+      try {
+        audioMixerContextRef.current.close().catch(() => {});
+      } catch {}
+      audioMixerContextRef.current = null;
+    }
+
+    // Stop camera track if preserved separately from localStream
+    if (cameraVideoTrackRef.current) {
+      try {
+        cameraVideoTrackRef.current.stop();
+      } catch {}
+      cameraVideoTrackRef.current = null;
+    }
+
+    // Stop local tracks & release devices
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => {
+        try {
+          track.stop();
+        } catch {}
+      });
+      localStreamRef.current = null;
+    }
+
+    if (localVideoElRef.current) {
+      localVideoElRef.current.srcObject = null;
+    }
+
+    // Clean up all active peers
+    for (const [uid] of peersRef.current.entries()) {
+      closePeer(uid);
+    }
+
+    setLocalStream(null);
+    setIsConnected(false);
+  }, [closePeer]);
+
   // Acquire or refresh local media stream
   const acquireLocalMedia = useCallback(async () => {
     if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      return;
+    }
+    if (isDestroyedRef.current || !enabledRef.current) {
       return;
     }
 
@@ -565,6 +630,25 @@ export function useWebRTC({
         cameraVideoTrackRef.current = videoTrack;
       }
 
+      // If hook was destroyed or disabled while getUserMedia was awaiting, stop all newly acquired tracks immediately
+      if (isDestroyedRef.current || !enabledRef.current) {
+        stream.getTracks().forEach((track) => {
+          try {
+            track.stop();
+          } catch {}
+        });
+        return;
+      }
+
+      // If an existing localStream had tracks, stop old tracks before replacing
+      if (localStreamRef.current && localStreamRef.current !== stream) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          try {
+            track.stop();
+          } catch {}
+        });
+      }
+
       localStreamRef.current = stream;
       setLocalStream(stream);
 
@@ -596,8 +680,12 @@ export function useWebRTC({
 
   // Main lifecycle: Initialize WebRTC and subscribe to socket signaling
   useEffect(() => {
-    if (!enabled || !currentUserId || !roomCode) return;
+    if (!enabled || !currentUserId || !roomCode) {
+      stopAllMediaTracks();
+      return;
+    }
 
+    isDestroyedRef.current = false;
     let isMounted = true;
 
     void acquireLocalMedia();
@@ -728,7 +816,6 @@ export function useWebRTC({
     socket.on('room:roster', handleRoster);
     socket.on('room:user-left', handleUserLeft);
 
-    const peers = peersRef.current;
     return () => {
       isMounted = false;
       socket.off('webrtc:signal', handleSignal);
@@ -736,41 +823,9 @@ export function useWebRTC({
       socket.off('room:roster', handleRoster);
       socket.off('room:user-left', handleUserLeft);
 
-      // Clean up all active peers
-      for (const [uid] of peers.entries()) {
-        closePeer(uid);
-      }
-
-      // Stop screen share track and shared audio track if active
-      if (screenTrackRef.current) {
-        screenTrackRef.current.stop();
-        screenTrackRef.current = null;
-      }
-      if (displayAudioTrackRef.current) {
-        displayAudioTrackRef.current.stop();
-        displayAudioTrackRef.current = null;
-      }
-      if (audioMixerContextRef.current) {
-        audioMixerContextRef.current.close().catch(() => {});
-        audioMixerContextRef.current = null;
-      }
-
-      // Stop local tracks & release devices
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => track.stop());
-        localStreamRef.current = null;
-      }
-
-      // Explicitly stop camera track if preserved separately from localStream
-      if (cameraVideoTrackRef.current) {
-        cameraVideoTrackRef.current.stop();
-        cameraVideoTrackRef.current = null;
-      }
-
-      setLocalStream(null);
-      setIsConnected(false);
+      stopAllMediaTracks();
     };
-  }, [enabled, currentUserId, roomCode, acquireLocalMedia, getOrCreatePeer, closePeer]);
+  }, [enabled, currentUserId, roomCode, acquireLocalMedia, getOrCreatePeer, closePeer, stopAllMediaTracks]);
 
   // Handle selected audio input (microphone) switching
   useEffect(() => {
@@ -790,8 +845,12 @@ export function useWebRTC({
         };
 
         const newStream = await navigator.mediaDevices.getUserMedia({ audio: constraints });
-        if (isCancelled) {
-          newStream.getTracks().forEach((t) => t.stop());
+        if (isCancelled || isDestroyedRef.current || !enabledRef.current) {
+          newStream.getTracks().forEach((t) => {
+            try {
+              t.stop();
+            } catch {}
+          });
           return;
         }
 
@@ -848,8 +907,12 @@ export function useWebRTC({
         };
 
         const newStream = await navigator.mediaDevices.getUserMedia({ video: constraints });
-        if (isCancelled) {
-          newStream.getTracks().forEach((t) => t.stop());
+        if (isCancelled || isDestroyedRef.current || !enabledRef.current) {
+          newStream.getTracks().forEach((t) => {
+            try {
+              t.stop();
+            } catch {}
+          });
           return;
         }
 
@@ -925,6 +988,15 @@ export function useWebRTC({
                 : {}),
             };
             const tempStream = await navigator.mediaDevices.getUserMedia({ video: constraints });
+            if (isDestroyedRef.current || !enabledRef.current || !isVideoOnRef.current) {
+              tempStream.getTracks().forEach((t) => {
+                try {
+                  t.stop();
+                } catch {}
+              });
+              return;
+            }
+
             const newTrack = tempStream.getVideoTracks()[0];
             if (!newTrack) return;
 
@@ -982,6 +1054,15 @@ export function useWebRTC({
             displayStream = await navigator.mediaDevices.getDisplayMedia({
               video: { cursor: 'always' } as MediaTrackConstraints,
             });
+          }
+
+          if (isDestroyedRef.current || !enabledRef.current || !isScreenSharingRef.current) {
+            displayStream.getTracks().forEach((t) => {
+              try {
+                t.stop();
+              } catch {}
+            });
+            return;
           }
 
           const screenTrack = displayStream.getVideoTracks()[0];
@@ -1163,5 +1244,6 @@ export function useWebRTC({
     attachMediaElement,
     attachLocalVideo,
     refreshLocalMedia: acquireLocalMedia,
+    stopMediaTracks: stopAllMediaTracks,
   };
 }
