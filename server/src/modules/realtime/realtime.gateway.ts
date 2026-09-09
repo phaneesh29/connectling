@@ -33,8 +33,6 @@ export const getRealtimeServer = (): RealtimeServer => {
   return ioInstance;
 };
 
-const kickedUsersByRoom = new Map<string, Set<string>>();
-
 const fetchRoomParticipants = async (
   io: RealtimeServer,
   roomCode: string
@@ -85,13 +83,6 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
 
     socket.on('room:join', async ({ roomCode, isMuted, isVideoOn, handRaised }) => {
       try {
-        const normalized = normalizeRoomCode(roomCode);
-        const kicked = kickedUsersByRoom.get(normalized);
-        if (kicked?.has(user.id)) {
-          socket.emit('room:kicked', { message: 'You have been removed from this space by the host.' });
-          return;
-        }
-
         const roomChannel = `room:${roomCode}`;
         await socket.join(roomChannel);
         socket.data.currentRoomCode = roomCode;
@@ -269,13 +260,6 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
           socket.emit('error:message', { message: 'Only the host can remove participants.' });
           return;
         }
-
-        let kicked = kickedUsersByRoom.get(normalized);
-        if (!kicked) {
-          kicked = new Set();
-          kickedUsersByRoom.set(normalized, kicked);
-        }
-        kicked.add(targetUserId);
 
         const roomChannel = `room:${roomCode}`;
         const sockets = await io.in(roomChannel).fetchSockets();
