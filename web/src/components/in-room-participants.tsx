@@ -32,6 +32,7 @@ interface InRoomParticipantsProps {
   onGrantMic?: (userId: string, name: string) => void;
   onRevokeMic?: (userId: string, name: string) => void;
   onMuteUser?: (userId: string, name: string) => void;
+  onUnmuteUser?: (userId: string, name: string) => void;
   onKickUser?: (userId: string, name: string) => void;
   onTransferHost?: (userId: string, name: string) => void;
   localVolume?: number;
@@ -51,6 +52,7 @@ export function InRoomParticipants({
   onGrantMic,
   onRevokeMic,
   onMuteUser,
+  onUnmuteUser,
   onKickUser,
   onTransferHost,
   localVolume,
@@ -220,6 +222,29 @@ export function InRoomParticipants({
                           <MicOffIcon size={9} />
                           <span>Mute</span>
                         </button>
+                      ) : onUnmuteUser && (roomType === 'meet' || p.canSpeak) ? (
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => onUnmuteUser(p.userId, p.name)}
+                            className="px-1.5 py-0.5 rounded-md bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-[9px] font-mono flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+                            title="Ask participant to unmute"
+                          >
+                            <MicIcon size={9} />
+                            <span>Ask Unmute</span>
+                          </button>
+                          {p.canSpeak && onRevokeMic && (
+                            <button
+                              type="button"
+                              onClick={() => onRevokeMic(p.userId, p.name)}
+                              className="px-1.5 py-0.5 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[9px] font-mono flex items-center gap-1 transition-all active:scale-95 cursor-pointer"
+                              title="Revoke speaking access"
+                            >
+                              <MicOffIcon size={9} />
+                              <span>Revoke</span>
+                            </button>
+                          )}
+                        </div>
                       ) : p.canSpeak && onRevokeMic ? (
                         <button
                           type="button"

@@ -415,6 +415,40 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       }
     });
 
+    socket.on('room:request-unmute', async ({ roomCode, targetUserId }) => {
+      try {
+        const normalized = normalizeRoomCode(roomCode);
+        const foundRoom = await db.query.room.findFirst({
+          where: eq(room.code, normalized),
+          columns: { hostId: true },
+        });
+
+        if (!foundRoom || foundRoom.hostId !== user.id) {
+          socket.emit('error:message', { message: 'Only the host can ask participants to unmute.' });
+          return;
+        }
+
+        const roomChannel = `room:${roomCode}`;
+        // Ensure user has speaking permission across the cluster if on a stage
+        updateParticipantStateAcrossCluster(io, targetUserId, {
+          canSpeak: true,
+          handRaised: false,
+        });
+
+        io.in(roomChannel).emit('room:unmute-requested', {
+          targetUserId,
+          hostName: user.name || 'Host',
+        });
+
+        const participants = await fetchRoomParticipants(io, roomCode);
+        io.in(roomChannel).emit('room:roster', { participants });
+
+        logger.info({ hostId: user.id, targetUserId, roomCode }, 'Host requested user to unmute');
+      } catch (err) {
+        logger.error({ err, hostId: user.id, targetUserId, roomCode }, 'Error requesting user unmute');
+      }
+    });
+
     socket.on('room:kick-user', async ({ roomCode, targetUserId }) => {
       try {
         const normalized = normalizeRoomCode(roomCode);

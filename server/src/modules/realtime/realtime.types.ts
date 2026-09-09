@@ -26,6 +26,7 @@ export interface ClientToServerEvents {
   'room:grant-mic': (payload: { roomCode: string; targetUserId: string }) => void;
   'room:revoke-mic': (payload: { roomCode: string; targetUserId: string }) => void;
   'room:mute-user': (payload: { roomCode: string; targetUserId: string }) => void;
+  'room:request-unmute': (payload: { roomCode: string; targetUserId: string }) => void;
   'room:kick-user': (payload: { roomCode: string; targetUserId: string }) => void;
   'room:transfer-host': (payload: { roomCode: string; newHostUserId: string }) => void;
   'chat:message': (payload: { roomCode: string; text: string }) => void;
@@ -87,6 +88,7 @@ export interface ServerToClientEvents {
   'room:mic-granted': (payload: { targetUserId: string; byUserId: string }) => void;
   'room:mic-revoked': (payload: { targetUserId: string }) => void;
   'room:user-muted': (payload: { targetUserId: string; byHost: boolean }) => void;
+  'room:unmute-requested': (payload: { targetUserId: string; hostName: string }) => void;
   'room:kicked': (payload: { message: string }) => void;
   'room:user-kicked': (payload: { targetUserId: string; targetName: string }) => void;
   'room:host-transferred': (payload: { previousHostId: string; newHostId: string; newHostName: string }) => void;

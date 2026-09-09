@@ -638,6 +638,43 @@ export default function TalkPage({ params }: TalkPageProps) {
       handleIncomingReactionRef.current(data);
     };
 
+    const handleUnmuteRequested = ({
+      targetUserId,
+      hostName,
+    }: {
+      targetUserId: string;
+      hostName: string;
+    }) => {
+      if (targetUserId === currentUserIdRef.current) {
+        playJoinChime();
+        setGrantedSpeaker(true);
+        setConfirmModal({
+          isOpen: true,
+          title: 'Host Asked You to Unmute',
+          description: `${hostName || 'The host'} has asked you to unmute your microphone. Would you like to turn your microphone on?`,
+          confirmText: 'Unmute Mic',
+          cancelText: 'Stay Muted',
+          variant: 'primary',
+          onConfirm: () => {
+            setConfirmModal(null);
+            setIsMuted(false);
+            const socket = getSocket();
+            socket.emit('room:media-toggle', {
+              roomCode: code,
+              isMuted: false,
+            });
+            setRoomToast({ text: 'Microphone unmuted', type: 'join' });
+            setTimeout(() => {
+              setRoomToast((curr) => (curr?.text === 'Microphone unmuted' ? null : curr));
+            }, 3000);
+          },
+          onCancel: () => {
+            setConfirmModal(null);
+          },
+        });
+      }
+    };
+
     socket.on('chat:new-message', handleNewMessage);
     socket.on('room:roster', handleRoster);
     socket.on('room:user-joined', handleUserJoined);
@@ -647,6 +684,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     socket.on('room:mic-granted', handleMicGranted);
     socket.on('room:mic-revoked', handleMicRevoked);
     socket.on('room:user-muted', handleUserMuted);
+    socket.on('room:unmute-requested', handleUnmuteRequested);
     socket.on('room:kicked', handleKicked);
     socket.on('room:user-kicked', handleUserKicked);
     socket.on('room:host-transferred', handleHostTransferred);
@@ -663,6 +701,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       socket.off('room:mic-granted', handleMicGranted);
       socket.off('room:mic-revoked', handleMicRevoked);
       socket.off('room:user-muted', handleUserMuted);
+      socket.off('room:unmute-requested', handleUnmuteRequested);
       socket.off('room:kicked', handleKicked);
       socket.off('room:user-kicked', handleUserKicked);
       socket.off('room:host-transferred', handleHostTransferred);
@@ -806,6 +845,22 @@ export default function TalkPage({ params }: TalkPageProps) {
     });
     setTimeout(() => {
       setRoomToast((curr) => (curr?.text?.startsWith('Muted ') ? null : curr));
+    }, 3000);
+  };
+
+  const handleRequestUnmute = (targetUserId: string, targetName: string) => {
+    if (!isHost) return;
+    const socket = getSocket();
+    socket.emit('room:request-unmute', {
+      roomCode: code,
+      targetUserId,
+    });
+    setRoomToast({
+      text: `Asked ${targetName} to unmute`,
+      type: 'join',
+    });
+    setTimeout(() => {
+      setRoomToast((curr) => (curr?.text?.startsWith('Asked ') ? null : curr));
     }, 3000);
   };
 
@@ -1265,7 +1320,19 @@ export default function TalkPage({ params }: TalkPageProps) {
                 {/* Host Hover Action Buttons (Mute / Make Host / Kick) */}
                 {isHost && !isPHost && (
                   <div className="absolute top-2.5 right-2.5 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 flex items-center gap-1 z-30 transition-opacity">
-                    {!p.isMuted && (
+                    {p.isMuted ? (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRequestUnmute(p.userId, p.name);
+                        }}
+                        className="h-6 w-6 rounded-md bg-black/80 hover:bg-emerald-500/20 text-emerald-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer"
+                        title={`Ask ${p.name} to unmute`}
+                      >
+                        <MicIcon size={10} />
+                      </button>
+                    ) : (
                       <button
                         type="button"
                         onClick={(e) => {
@@ -1453,18 +1520,32 @@ export default function TalkPage({ params }: TalkPageProps) {
                           <span>Mute</span>
                         </button>
                       ) : p.canSpeak ? (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRevokeMic(p.userId, p.name);
-                          }}
-                          className="w-full py-0.5 px-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer"
-                          title="Revoke speaking access"
-                        >
-                          <MicOffIcon size={11} />
-                          <span>Revoke Mic</span>
-                        </button>
+                        <div className="flex items-center gap-1.5 w-full">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRequestUnmute(p.userId, p.name);
+                            }}
+                            className="flex-1 py-0.5 px-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer"
+                            title="Ask speaker to unmute"
+                          >
+                            <MicIcon size={11} />
+                            <span>Ask Unmute</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRevokeMic(p.userId, p.name);
+                            }}
+                            className="py-0.5 px-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer"
+                            title="Revoke speaking access"
+                          >
+                            <MicOffIcon size={11} />
+                            <span>Revoke</span>
+                          </button>
+                        </div>
                       ) : (
                         <button
                           type="button"
@@ -2052,6 +2133,7 @@ export default function TalkPage({ params }: TalkPageProps) {
         onGrantMic={isHost ? handleGrantMic : undefined}
         onRevokeMic={isHost ? handleRevokeMic : undefined}
         onMuteUser={isHost ? handleRemoteMute : undefined}
+        onUnmuteUser={isHost ? handleRequestUnmute : undefined}
         onKickUser={isHost ? handleKickUser : undefined}
         onTransferHost={isHost ? requestTransferHost : undefined}
         localVolume={localAudio.volume}

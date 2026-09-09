@@ -535,12 +535,50 @@ export default function MeetPage({ params }: MeetPageProps) {
       handleIncomingReactionRef.current(data);
     };
 
+    const handleUnmuteRequested = ({
+      targetUserId,
+      hostName,
+    }: {
+      targetUserId: string;
+      hostName: string;
+    }) => {
+      if (targetUserId === currentUserIdRef.current) {
+        playJoinChime();
+        setConfirmModal({
+          isOpen: true,
+          title: 'Host Asked You to Unmute',
+          description: `${hostName || 'The host'} has asked you to unmute your microphone. Would you like to turn your microphone on?`,
+          confirmText: 'Unmute Mic',
+          cancelText: 'Stay Muted',
+          variant: 'primary',
+          onConfirm: () => {
+            setConfirmModal(null);
+            setIsMicOn(true);
+            const socket = getSocket();
+            socket.emit('room:media-toggle', {
+              roomCode: code,
+              isMuted: false,
+              isVideoOn: isVideoOnRef.current,
+            });
+            setRoomToast({ text: 'Microphone unmuted', type: 'join' });
+            setTimeout(() => {
+              setRoomToast((curr) => (curr?.text === 'Microphone unmuted' ? null : curr));
+            }, 3000);
+          },
+          onCancel: () => {
+            setConfirmModal(null);
+          },
+        });
+      }
+    };
+
     socket.on('chat:new-message', handleNewMessage);
     socket.on('room:roster', handleRoster);
     socket.on('room:user-joined', handleUserJoined);
     socket.on('room:user-left', handleUserLeft);
     socket.on('room:settings-updated', handleSettingsUpdated);
     socket.on('room:user-muted', handleUserMuted);
+    socket.on('room:unmute-requested', handleUnmuteRequested);
     socket.on('room:kicked', handleKicked);
     socket.on('room:user-kicked', handleUserKicked);
     socket.on('room:host-transferred', handleHostTransferred);
@@ -555,6 +593,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       socket.off('room:user-left', handleUserLeft);
       socket.off('room:settings-updated', handleSettingsUpdated);
       socket.off('room:user-muted', handleUserMuted);
+      socket.off('room:unmute-requested', handleUnmuteRequested);
       socket.off('room:kicked', handleKicked);
       socket.off('room:user-kicked', handleUserKicked);
       socket.off('room:host-transferred', handleHostTransferred);
@@ -709,6 +748,22 @@ export default function MeetPage({ params }: MeetPageProps) {
     });
     setTimeout(() => {
       setRoomToast((curr) => (curr?.text?.startsWith('Muted ') ? null : curr));
+    }, 3000);
+  };
+
+  const handleRequestUnmute = (targetUserId: string, targetName: string) => {
+    if (!isHost) return;
+    const socket = getSocket();
+    socket.emit('room:request-unmute', {
+      roomCode: code,
+      targetUserId,
+    });
+    setRoomToast({
+      text: `Asked ${targetName} to unmute`,
+      type: 'join',
+    });
+    setTimeout(() => {
+      setRoomToast((curr) => (curr?.text?.startsWith('Asked ') ? null : curr));
     }, 3000);
   };
 
@@ -1240,19 +1295,39 @@ export default function MeetPage({ params }: MeetPageProps) {
         )}
 
         {/* Host Moderation Controls on Video Card */}
-        {isHost && !isOtherHost && !isCompact && (
-          <div className="absolute top-3 right-3 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 flex items-center gap-1.5 z-30 transition-opacity">
-            {!p.isMuted && (
+        {isHost && !isOtherHost && (
+          <div
+            className={`absolute ${
+              isCompact ? 'top-1.5 right-1.5 gap-1' : 'top-3 right-3 gap-1.5'
+            } opacity-80 sm:opacity-0 sm:group-hover:opacity-100 flex items-center z-30 transition-opacity`}
+          >
+            {p.isMuted ? (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRequestUnmute(p.userId, p.name);
+                }}
+                className={`${
+                  isCompact ? 'h-6 w-6 rounded-md' : 'h-7 w-7 rounded-lg'
+                } bg-black/80 hover:bg-emerald-500/20 text-emerald-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md`}
+                title={`Ask ${p.name} to unmute`}
+              >
+                <MicIcon size={isCompact ? 10 : 12} />
+              </button>
+            ) : (
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   handleRemoteMute(p.userId, p.name);
                 }}
-                className="h-7 w-7 rounded-lg bg-black/80 hover:bg-amber-500/20 text-amber-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md"
+                className={`${
+                  isCompact ? 'h-6 w-6 rounded-md' : 'h-7 w-7 rounded-lg'
+                } bg-black/80 hover:bg-amber-500/20 text-amber-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md`}
                 title={`Mute ${p.name}`}
               >
-                <MicOffIcon size={12} />
+                <MicOffIcon size={isCompact ? 10 : 12} />
               </button>
             )}
             <button
@@ -1261,10 +1336,12 @@ export default function MeetPage({ params }: MeetPageProps) {
                 e.stopPropagation();
                 requestTransferHost(p.userId, p.name);
               }}
-              className="h-7 w-7 rounded-lg bg-black/80 hover:bg-amber-500/20 text-[#888e90] hover:text-amber-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md"
+              className={`${
+                isCompact ? 'h-6 w-6 rounded-md' : 'h-7 w-7 rounded-lg'
+              } bg-black/80 hover:bg-amber-500/20 text-[#888e90] hover:text-amber-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md`}
               title={`Make ${p.name} the host`}
             >
-              <StarIcon size={12} />
+              <StarIcon size={isCompact ? 10 : 12} />
             </button>
             <button
               type="button"
@@ -1272,10 +1349,12 @@ export default function MeetPage({ params }: MeetPageProps) {
                 e.stopPropagation();
                 handleKickUser(p.userId, p.name);
               }}
-              className="h-7 w-7 rounded-lg bg-black/80 hover:bg-red-500/20 text-[#888e90] hover:text-red-400 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md"
+              className={`${
+                isCompact ? 'h-6 w-6 rounded-md' : 'h-7 w-7 rounded-lg'
+              } bg-black/80 hover:bg-red-500/20 text-[#888e90] hover:text-red-400 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md`}
               title={`Remove ${p.name} from space`}
             >
-              <LogOutIcon size={12} />
+              <LogOutIcon size={isCompact ? 10 : 12} />
             </button>
           </div>
         )}
@@ -1902,6 +1981,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         onCopyLink={handleCopyLink}
         copied={copied}
         onMuteUser={isHost ? handleRemoteMute : undefined}
+        onUnmuteUser={isHost ? handleRequestUnmute : undefined}
         onKickUser={isHost ? handleKickUser : undefined}
         onTransferHost={isHost ? requestTransferHost : undefined}
         localVolume={localAudio.volume}
