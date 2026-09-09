@@ -97,6 +97,8 @@ export function useWebRTC({
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenTrackRef = useRef<MediaStreamTrack | null>(null);
   const cameraVideoTrackRef = useRef<MediaStreamTrack | null>(null);
+  const displayAudioTrackRef = useRef<MediaStreamTrack | null>(null);
+  const audioMixerContextRef = useRef<AudioContext | null>(null);
   const peersRef = useRef<Map<string, PeerConnectionEntry>>(new Map());
   const mediaElementsRef = useRef<Map<string, HTMLMediaElement>>(new Map());
   const localVideoElRef = useRef<HTMLVideoElement | null>(null);
@@ -736,10 +738,18 @@ export function useWebRTC({
         closePeer(uid);
       }
 
-      // Stop screen share track if active
+      // Stop screen share track and shared audio track if active
       if (screenTrackRef.current) {
         screenTrackRef.current.stop();
         screenTrackRef.current = null;
+      }
+      if (displayAudioTrackRef.current) {
+        displayAudioTrackRef.current.stop();
+        displayAudioTrackRef.current = null;
+      }
+      if (audioMixerContextRef.current) {
+        audioMixerContextRef.current.close().catch(() => {});
+        audioMixerContextRef.current = null;
       }
 
       // Stop local tracks & release devices
@@ -948,7 +958,7 @@ export function useWebRTC({
     }
   }, [isVideoOn, mediaType]);
 
-  // Handle screen sharing toggle
+  // Handle screen sharing toggle with audio support (microphone + tab/system audio mixing)
   useEffect(() => {
     if (mediaType !== 'meet') return;
 
@@ -959,15 +969,26 @@ export function useWebRTC({
             throw new Error('Screen sharing not supported in this browser');
           }
 
-          const displayStream = await navigator.mediaDevices.getDisplayMedia({
-            video: { cursor: 'always' } as MediaTrackConstraints,
-            audio: true,
-          });
+          let displayStream: MediaStream;
+          try {
+            displayStream = await navigator.mediaDevices.getDisplayMedia({
+              video: { cursor: 'always' } as MediaTrackConstraints,
+              audio: true,
+            });
+          } catch {
+            displayStream = await navigator.mediaDevices.getDisplayMedia({
+              video: { cursor: 'always' } as MediaTrackConstraints,
+            });
+          }
 
           const screenTrack = displayStream.getVideoTracks()[0];
           if (!screenTrack) return;
 
           screenTrackRef.current = screenTrack;
+
+          // Check if system or tab audio was shared
+          const displayAudioTrack = displayStream.getAudioTracks()[0] || null;
+          displayAudioTrackRef.current = displayAudioTrack;
 
           // When user clicks the browser's native "Stop Sharing" floating button
           screenTrack.onended = () => {
@@ -980,13 +1001,73 @@ export function useWebRTC({
           localStreamRef.current = previewStream;
           setLocalStream(previewStream);
 
-          // Replace track across all peer connections
+          // Replace video track across all peer connections
           for (const [, entry] of peersRef.current.entries()) {
             const sender = getVideoSender(entry.pc);
             if (sender) {
               void sender.replaceTrack(screenTrack);
             } else {
               entry.pc.addTrack(screenTrack, previewStream);
+            }
+          }
+
+          // Handle audio: mix mic + tab audio if display audio was captured, otherwise ensure mic is active
+          const micTrack = localStreamRef.current?.getAudioTracks()[0];
+          let audioTrackToSend: MediaStreamTrack | null = micTrack ?? null;
+
+          if (displayAudioTrack) {
+            displayAudioTrack.onended = () => {
+              if (displayAudioTrackRef.current === displayAudioTrack) {
+                displayAudioTrackRef.current = null;
+              }
+              if (audioMixerContextRef.current) {
+                audioMixerContextRef.current.close().catch(() => {});
+                audioMixerContextRef.current = null;
+              }
+              const currentMic = localStreamRef.current?.getAudioTracks()[0];
+              if (currentMic) {
+                for (const [, entry] of peersRef.current.entries()) {
+                  const aSender = getAudioSender(entry.pc);
+                  if (aSender) {
+                    void aSender.replaceTrack(currentMic);
+                  }
+                }
+              }
+            };
+
+            try {
+              const AudioCtx =
+                window.AudioContext ||
+                (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+              const ctx = new AudioCtx();
+              audioMixerContextRef.current = ctx;
+              if (ctx.state === 'suspended') void ctx.resume();
+
+              const dest = ctx.createMediaStreamDestination();
+              if (micTrack && micTrack.readyState === 'live') {
+                const micSource = ctx.createMediaStreamSource(new MediaStream([micTrack]));
+                micSource.connect(dest);
+              }
+              const displaySource = ctx.createMediaStreamSource(new MediaStream([displayAudioTrack]));
+              displaySource.connect(dest);
+
+              const mixedTrack = dest.stream.getAudioTracks()[0];
+              if (mixedTrack) {
+                audioTrackToSend = mixedTrack;
+              }
+            } catch (mixErr) {
+              console.warn('Could not mix display audio, transmitting display audio track directly:', mixErr);
+              audioTrackToSend = displayAudioTrack;
+            }
+          }
+
+          // Ensure all active peer connections send audio
+          if (audioTrackToSend) {
+            for (const [, entry] of peersRef.current.entries()) {
+              const aSender = getAudioSender(entry.pc);
+              if (aSender) {
+                void aSender.replaceTrack(audioTrackToSend);
+              }
             }
           }
 
@@ -1004,6 +1085,27 @@ export function useWebRTC({
       if (screenTrackRef.current) {
         screenTrackRef.current.stop();
         screenTrackRef.current = null;
+      }
+
+      if (displayAudioTrackRef.current) {
+        displayAudioTrackRef.current.stop();
+        displayAudioTrackRef.current = null;
+      }
+      if (audioMixerContextRef.current) {
+        audioMixerContextRef.current.close().catch(() => {});
+        audioMixerContextRef.current = null;
+      }
+
+      // Restore original mic track on all audio senders
+      const originalMicTrack = localStreamRef.current?.getAudioTracks()[0];
+      if (originalMicTrack) {
+        originalMicTrack.enabled = isMicOnRef.current;
+        for (const [, entry] of peersRef.current.entries()) {
+          const aSender = getAudioSender(entry.pc);
+          if (aSender) {
+            void aSender.replaceTrack(originalMicTrack);
+          }
+        }
       }
 
       const cameraTrack = cameraVideoTrackRef.current;

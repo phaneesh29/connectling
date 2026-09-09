@@ -29,6 +29,7 @@ import {
   StarIcon,
   ChevronUpIcon,
 } from '@animateicons/react/lucide';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import { getSocket } from '@/lib/socket';
 import { playJoinChime, playLeaveChime } from '@/lib/chime';
 import { InRoomChat } from '@/components/in-room-chat';
@@ -70,6 +71,9 @@ export default function MeetPage({ params }: MeetPageProps) {
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [filmstripCollapsed, setFilmstripCollapsed] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const presentationRef = useRef<HTMLDivElement>(null);
   const [copied, setCopied] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [updatingSettings, setUpdatingSettings] = useState(false);
@@ -138,6 +142,120 @@ export default function MeetPage({ params }: MeetPageProps) {
   useEffect(() => {
     currentUserIdRef.current = currentUserId;
   }, [currentUserId]);
+
+  const checkIsNativeFs = useCallback(() => {
+    if (typeof document === 'undefined') return false;
+    const doc = document as unknown as {
+      fullscreenElement?: Element;
+      webkitFullscreenElement?: Element;
+      mozFullScreenElement?: Element;
+      msFullscreenElement?: Element;
+    };
+    return Boolean(
+      doc.fullscreenElement ||
+      doc.webkitFullscreenElement ||
+      doc.mozFullScreenElement ||
+      doc.msFullscreenElement
+    );
+  }, []);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(checkIsNativeFs());
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    document.addEventListener('webkitfullscreenchange', handleFsChange);
+    document.addEventListener('mozfullscreenchange', handleFsChange);
+    document.addEventListener('MSFullscreenChange', handleFsChange);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFsChange);
+      document.removeEventListener('webkitfullscreenchange', handleFsChange);
+      document.removeEventListener('mozfullscreenchange', handleFsChange);
+      document.removeEventListener('MSFullscreenChange', handleFsChange);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [checkIsNativeFs]);
+
+  const toggleFullscreen = async () => {
+    const doc = document as unknown as {
+      fullscreenElement?: Element;
+      webkitFullscreenElement?: Element;
+      mozFullScreenElement?: Element;
+      msFullscreenElement?: Element;
+      exitFullscreen?: () => Promise<void>;
+      webkitExitFullscreen?: () => void;
+      mozCancelFullScreen?: () => void;
+      msExitFullscreen?: () => void;
+    };
+
+    const isCurrentlyFs = Boolean(
+      doc.fullscreenElement ||
+      doc.webkitFullscreenElement ||
+      doc.mozFullScreenElement ||
+      doc.msFullscreenElement ||
+      isFullscreen
+    );
+
+    if (isCurrentlyFs) {
+      setIsFullscreen(false);
+      try {
+        if (doc.exitFullscreen) {
+          await doc.exitFullscreen();
+        } else if (doc.webkitExitFullscreen) {
+          doc.webkitExitFullscreen();
+        } else if (doc.mozCancelFullScreen) {
+          doc.mozCancelFullScreen();
+        } else if (doc.msExitFullscreen) {
+          doc.msExitFullscreen();
+        }
+      } catch {
+        // Ignored
+      }
+      return;
+    }
+
+    const elem = presentationRef.current as unknown as {
+      requestFullscreen?: () => Promise<void>;
+      webkitRequestFullscreen?: () => void;
+      mozRequestFullScreen?: () => void;
+      msRequestFullscreen?: () => void;
+      querySelector?: (s: string) => HTMLVideoElement | null;
+    } | null;
+
+    if (!elem) {
+      setIsFullscreen(true);
+      return;
+    }
+
+    try {
+      if (elem.requestFullscreen) {
+        await elem.requestFullscreen();
+      } else if (elem.webkitRequestFullscreen) {
+        elem.webkitRequestFullscreen();
+      } else if (elem.mozRequestFullScreen) {
+        elem.mozRequestFullScreen();
+      } else if (elem.msRequestFullscreen) {
+        elem.msRequestFullscreen();
+      } else {
+        const vid = elem.querySelector?.('video') as unknown as { webkitEnterFullscreen?: () => void };
+        if (vid?.webkitEnterFullscreen) {
+          vid.webkitEnterFullscreen();
+        }
+      }
+    } catch (err) {
+      console.warn('Native requestFullscreen could not be used, using theater fullscreen:', err);
+    }
+
+    setIsFullscreen(true);
+  };
 
   useEffect(() => {
     if (!sessionPending && !session) {
@@ -918,7 +1036,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         key="local-tile"
         className={`relative bg-[#0a0a0c] overflow-hidden flex items-center justify-center shadow-2xl group transition-all duration-300 ${
           isCompact
-            ? 'rounded-xl aspect-video w-48 sm:w-56 lg:w-full min-h-[110px] lg:min-h-[135px] shrink-0'
+            ? 'rounded-xl aspect-video w-40 sm:w-44 lg:w-full min-h-[90px] lg:min-h-[105px] shrink-0'
             : 'rounded-2xl min-h-[220px] w-full h-full'
         } ${
           isMicOn && localAudio.isSpeaking
@@ -1080,7 +1198,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         key={p.userId}
         className={`relative bg-[#0a0a0c] overflow-hidden flex items-center justify-center shadow-2xl group transition-all duration-300 ${
           isCompact
-            ? 'rounded-xl aspect-video w-48 sm:w-56 lg:w-full min-h-[110px] lg:min-h-[135px] shrink-0'
+            ? 'rounded-xl aspect-video w-40 sm:w-44 lg:w-full min-h-[90px] lg:min-h-[105px] shrink-0'
             : 'rounded-2xl min-h-[220px] w-full h-full'
         } ${
           isSpeaking
@@ -1088,14 +1206,10 @@ export default function MeetPage({ params }: MeetPageProps) {
             : 'border border-white/[0.12]'
         }`}
       >
-        {/* Live WebRTC Remote Video & Audio elements */}
+        {/* Live WebRTC Remote Video */}
         <RemoteVideo
           stream={remoteStream}
           isVideoActive={isVideoActive}
-          audioOutputId={mediaDevices.selectedAudioOutputId}
-        />
-        <RemoteAudio
-          stream={remoteStream}
           audioOutputId={mediaDevices.selectedAudioOutputId}
         />
 
@@ -1315,11 +1429,22 @@ export default function MeetPage({ params }: MeetPageProps) {
         </div>
       </header>
 
-      <main className="flex-1 p-3 sm:p-5 overflow-hidden flex items-center justify-center">
+      <main
+        className={`flex-1 overflow-hidden flex items-center justify-center transition-all duration-300 ${
+          isAnyoneScreenSharing ? 'p-1 sm:p-2.5 w-full h-[calc(100vh-8.5rem)]' : 'p-3 sm:p-5'
+        }`}
+      >
         {isAnyoneScreenSharing ? (
-          <div className="w-full max-w-7xl flex flex-col lg:flex-row gap-3 sm:gap-4 h-full max-h-[78vh] lg:max-h-[80vh]">
+          <div className="w-full h-full min-h-0 flex flex-col lg:flex-row gap-2 sm:gap-3 items-stretch">
             {/* Big Spotlight Presentation Stage (Google Meet style) */}
-            <div className="flex-1 min-h-[280px] sm:min-h-[360px] lg:min-h-0 bg-[#050508] rounded-2xl overflow-hidden relative flex items-center justify-center border border-white/[0.14] shadow-2xl group">
+            <div
+              ref={presentationRef}
+              className={`bg-[#050508] overflow-hidden flex items-center justify-center shadow-2xl group transition-all duration-300 ${
+                isFullscreen
+                  ? 'fixed inset-0 z-[100] w-screen h-screen rounded-none border-0'
+                  : 'flex-1 min-h-0 w-full h-full rounded-2xl border border-white/[0.14] relative'
+              }`}
+            >
               {isScreenSharing ? (
                 <LocalVideo
                   stream={webrtc.localStream}
@@ -1336,34 +1461,81 @@ export default function MeetPage({ params }: MeetPageProps) {
               ) : null}
 
               {/* Presenter Top-Left Status Pill */}
-              <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-[#0a0a0c]/85 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/[0.12] shadow-xl text-xs font-medium text-[#fcfdff] pointer-events-auto">
+              <div className="absolute top-3 left-3 sm:top-4 sm:left-4 z-20 flex items-center gap-2 bg-[#0a0a0c]/85 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/[0.12] shadow-xl text-xs font-medium text-[#fcfdff] pointer-events-auto">
                 <span className="h-2 w-2 rounded-full bg-[#11ff99] animate-pulse" />
                 <MonitorIcon size={14} className="text-[#ff7a1a]" />
-                <span className="font-mono text-[11px] font-semibold tracking-wide">
-                  {isScreenSharing ? 'You are presenting to everyone' : `${remotePresenter?.name || 'Participant'} is presenting`}
+                <span className="font-mono text-[11px] font-semibold tracking-wide truncate max-w-[150px] sm:max-w-xs">
+                  {isScreenSharing ? 'You are presenting' : `${remotePresenter?.name || 'Participant'} is presenting`}
                 </span>
               </div>
 
-              {/* Quick Stop Sharing Button (for Local Presenter) */}
-              {isScreenSharing && (
-                <div className="absolute top-4 right-4 z-20 pointer-events-auto">
+              {/* Top-Right Presentation Controls Bar */}
+              <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20 flex items-center gap-2 pointer-events-auto">
+                {/* Toggle Filmstrip Tiles */}
+                <button
+                  type="button"
+                  onClick={() => setFilmstripCollapsed(!filmstripCollapsed)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0a0a0c]/85 hover:bg-[#141418] text-[#fcfdff] border border-white/[0.14] text-xs font-medium transition-all shadow-xl active:scale-95 cursor-pointer backdrop-blur-md"
+                  title={filmstripCollapsed ? 'Show participant tiles' : 'Hide participant tiles'}
+                >
+                  {filmstripCollapsed ? (
+                    <>
+                      <UsersIcon size={13} className="text-[#ff7a1a]" />
+                      <span className="text-[11px] font-mono">Show Tiles ({Math.max(1, participants.length)})</span>
+                    </>
+                  ) : (
+                    <>
+                      <UsersIcon size={13} className="text-[#888e90]" />
+                      <span className="text-[11px] font-mono hidden sm:inline">Hide Tiles</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Fullscreen toggle button */}
+                <button
+                  type="button"
+                  onClick={toggleFullscreen}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-all shadow-xl active:scale-95 cursor-pointer backdrop-blur-md ${
+                    isFullscreen
+                      ? 'bg-orange-500/20 text-[#ff7a1a] border-orange-500/40 shadow-sm'
+                      : 'bg-[#0a0a0c]/85 hover:bg-[#141418] text-[#fcfdff] border-white/[0.14]'
+                  }`}
+                  title={isFullscreen ? 'Exit Fullscreen (Esc)' : 'Enter Fullscreen'}
+                >
+                  {isFullscreen ? (
+                    <>
+                      <Minimize2 size={13} className="text-[#ff7a1a]" />
+                      <span className="text-[11px] font-mono">Exit Fullscreen</span>
+                    </>
+                  ) : (
+                    <>
+                      <Maximize2 size={13} />
+                      <span className="text-[11px] font-mono hidden sm:inline">Fullscreen</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Quick Stop Sharing Button (for Local Presenter) */}
+                {isScreenSharing && (
                   <button
                     type="button"
                     onClick={handleToggleScreenShare}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 border border-red-500/40 text-xs font-medium transition-all shadow-xl active:scale-95 cursor-pointer"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 border border-red-500/40 text-xs font-medium transition-all shadow-xl active:scale-95 cursor-pointer backdrop-blur-md"
                   >
                     <XIcon size={13} />
-                    <span>Stop Presenting</span>
+                    <span className="text-[11px] font-mono">Stop Presenting</span>
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             {/* Sidebar Filmstrip of Participant Tiles */}
-            <div className="w-full lg:w-72 xl:w-80 flex lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto lg:overflow-x-hidden shrink-0 max-h-[78vh] pb-2 lg:pb-0 scrollbar-thin">
-              {renderLocalTile(true)}
-              {otherParticipants.map((p) => renderParticipantTile(p, true))}
-            </div>
+            {!filmstripCollapsed && (
+              <div className="w-full lg:w-44 xl:w-52 flex lg:flex-col gap-2 overflow-x-auto lg:overflow-y-auto lg:overflow-x-hidden shrink-0 max-h-full pb-2 lg:pb-0 scrollbar-thin">
+                {renderLocalTile(true)}
+                {otherParticipants.map((p) => renderParticipantTile(p, true))}
+              </div>
+            )}
           </div>
         ) : (
           <div
@@ -1827,6 +1999,21 @@ export default function MeetPage({ params }: MeetPageProps) {
           onCancel={confirmModal.onCancel}
         />
       )}
+
+      {/* Permanent Audio Sinks for all remote participants */}
+      {/* Mounted continuously so audio never cuts out regardless of presentation mode, fullscreen, or collapse */}
+      <div className="sr-only pointer-events-none" aria-hidden="true">
+        {otherParticipants.map((p) => {
+          const stream = webrtc.remoteStreams.get(p.userId);
+          return (
+            <RemoteAudio
+              key={`permanent-audio-${p.userId}`}
+              stream={stream}
+              audioOutputId={mediaDevices.selectedAudioOutputId}
+            />
+          );
+        })}
+      </div>
 
       {/* Floating Reactions Stream */}
       <FloatingReactions reactions={floatingReactions} />
