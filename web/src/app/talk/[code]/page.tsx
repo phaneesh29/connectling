@@ -1332,10 +1332,10 @@ export default function TalkPage({ params }: TalkPageProps) {
         </div>
       </main>
 
-      <footer className="h-20 border-t border-white/[0.06] px-4 sm:px-6 flex items-center justify-center bg-black/75 backdrop-blur-xl">
+      <footer className="relative z-40 h-20 border-t border-white/[0.06] px-4 sm:px-6 flex items-center justify-center bg-black/75 backdrop-blur-xl">
         <div className="flex items-center gap-3 sm:gap-4 p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-xl shadow-2xl">
           {isSpeaker ? (
-            <div className="relative">
+            <div className={`relative ${audioMenuOpen ? 'z-50' : 'z-10'}`}>
               <MediaDeviceMenu
                 isOpen={audioMenuOpen}
                 onClose={() => setAudioMenuOpen(false)}
@@ -1413,7 +1413,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 <span>{handRaised ? 'Hand Raised' : 'Request Mic'}</span>
               </button>
 
-              <div className="relative">
+              <div className={`relative ${audioMenuOpen ? 'z-50' : 'z-10'}`}>
                 <MediaDeviceMenu
                   isOpen={audioMenuOpen}
                   onClose={() => setAudioMenuOpen(false)}

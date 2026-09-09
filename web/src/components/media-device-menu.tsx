@@ -81,6 +81,34 @@ export function MediaDeviceMenu({
     };
   }, [isOpen, onClose, type]);
 
+  // Adjust horizontal offset to keep inside viewport on small screens / edge positions
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const adjustPosition = () => {
+      if (!menuRef.current) return;
+      // Reset first to measure natural center position
+      menuRef.current.style.transform = 'translateX(-50%)';
+      const naturalRect = menuRef.current.getBoundingClientRect();
+      const padding = 12;
+
+      if (naturalRect.left < padding) {
+        const offset = padding - naturalRect.left;
+        menuRef.current.style.transform = `translateX(calc(-50% + ${offset}px))`;
+      } else if (naturalRect.right > window.innerWidth - padding) {
+        const offset = naturalRect.right - (window.innerWidth - padding);
+        menuRef.current.style.transform = `translateX(calc(-50% - ${offset}px))`;
+      }
+    };
+
+    const raf = requestAnimationFrame(adjustPosition);
+    window.addEventListener('resize', adjustPosition);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', adjustPosition);
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const hasAudioPermissions = audioInputs.some((d) => Boolean(d.label));
@@ -89,7 +117,7 @@ export function MediaDeviceMenu({
   return (
     <div
       ref={menuRef}
-      className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-72 sm:w-80 max-w-[calc(100vw-24px)] bg-[#0a0a0c] border border-white/[0.12] rounded-2xl p-4 shadow-2xl text-[#fcfdff] z-50 backdrop-blur-xl animate-in zoom-in-95 fade-in duration-150 overflow-hidden"
+      className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-72 sm:w-80 max-w-[calc(100vw-24px)] max-h-[min(480px,calc(100vh-100px))] overflow-y-auto no-scrollbar bg-[#0a0a0c] border border-white/[0.16] rounded-2xl p-4 shadow-[0_25px_60px_rgba(0,0,0,0.95)] text-[#fcfdff] z-50 backdrop-blur-2xl animate-in zoom-in-95 fade-in duration-150 ring-1 ring-white/10"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Top Ambient Glow */}
