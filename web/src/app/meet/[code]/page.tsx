@@ -905,6 +905,360 @@ export default function MeetPage({ params }: MeetPageProps) {
   const otherParticipants = participants.filter((p) => p.userId !== session?.user?.id);
   const isLocalVideoLive = Boolean((isVideoOn || isScreenSharing) && webrtc.localStream);
 
+  // Presenter detection for Google Meet style focused screen share
+  const remotePresenter = otherParticipants.find((p) => p.isScreenSharing);
+  const isAnyoneScreenSharing = Boolean(isScreenSharing || remotePresenter);
+
+  const renderLocalTile = (isCompact: boolean) => {
+    const isPresenting = isScreenSharing;
+    const showVideo = isLocalVideoLive && !isPresenting;
+
+    return (
+      <div
+        key="local-tile"
+        className={`relative bg-[#0a0a0c] overflow-hidden flex items-center justify-center shadow-2xl group transition-all duration-300 ${
+          isCompact
+            ? 'rounded-xl aspect-video w-48 sm:w-56 lg:w-full min-h-[110px] lg:min-h-[135px] shrink-0'
+            : 'rounded-2xl min-h-[220px] w-full h-full'
+        } ${
+          isMicOn && localAudio.isSpeaking
+            ? 'border border-[#11ff99]/50 ring-2 ring-[#11ff99]/40 shadow-[0_0_35px_rgba(17,255,153,0.18)]'
+            : isMicOn
+            ? 'border border-[#11ff99]/25 ring-1 ring-[#11ff99]/15'
+            : 'border border-white/[0.12]'
+        }`}
+      >
+        {/* Hand Raised Badge on Local Tile */}
+        {handRaised && (
+          <div className="absolute top-2.5 left-2.5 bg-[#0e0c0a]/90 border border-[#FF9933]/50 text-[#FF9933] rounded-full px-2 py-0.5 text-xs font-bold flex items-center gap-1 shadow-[0_0_16px_rgba(255,153,51,0.3)] ring-1 ring-[#FF9933]/40 z-30 animate-bounce">
+            <span className="text-xs">✋</span>
+            {!isCompact && (
+              <span className="text-[10px] font-mono tracking-wider uppercase font-extrabold hidden sm:inline">Hand Raised</span>
+            )}
+          </div>
+        )}
+
+        {/* Reaction Badge on Local Tile */}
+        <ReactionBadge
+          emoji={tileReactions[session?.user?.id || '']?.emoji}
+          className="absolute top-2.5 right-2.5"
+        />
+
+        {/* Live WebRTC Local Video Preview */}
+        <LocalVideo
+          stream={webrtc.localStream}
+          isActive={showVideo}
+          isMirrored={isVideoOn && !isScreenSharing}
+        />
+
+        {showVideo ? (
+          <div className="w-full h-full relative z-10 flex flex-col justify-between p-3 pointer-events-none">
+            <div className="flex items-center justify-between">
+              <div />
+              {isHost && (
+                <span
+                  className="h-4.5 w-4.5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 pointer-events-auto"
+                  title="Meeting Host (You)"
+                >
+                  <StarIcon size={10} className="fill-black/30" />
+                </span>
+              )}
+            </div>
+            <div />
+          </div>
+        ) : (
+          <div className="relative flex flex-col items-center justify-center gap-2 z-10">
+            <div className="relative">
+              <AudioRipple isActive={isMicOn} isSpeaking={localAudio.isSpeaking} size={isCompact ? 'sm' : 'md'} />
+              <div
+                className={`${
+                  isCompact ? 'h-10 w-10 text-xs' : 'h-14 w-14'
+                } rounded-full bg-[#101012] border border-white/[0.08] text-[#888e90] flex items-center justify-center relative z-10 transition-all ${
+                  isMicOn && localAudio.isSpeaking ? 'ring-2 ring-emerald-400/90 text-emerald-300' : ''
+                }`}
+              >
+                {session?.user.image ? (
+                  <Image
+                    src={session.user.image}
+                    alt={session.user.name || 'User'}
+                    width={isCompact ? 40 : 56}
+                    height={isCompact ? 40 : 56}
+                    unoptimized
+                    referrerPolicy="no-referrer"
+                    className="h-full w-full rounded-full object-cover"
+                  />
+                ) : (
+                  <CameraIcon size={isCompact ? 16 : 20} />
+                )}
+              </div>
+              {isHost && (
+                <span
+                  className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 z-30"
+                  title="Meeting Host (You)"
+                >
+                  <StarIcon size={9} className="fill-black/30" />
+                </span>
+              )}
+            </div>
+            {isPresenting ? (
+              <p className="text-[10px] font-mono text-[#ff7a1a] font-medium flex items-center gap-1">
+                <MonitorIcon size={11} />
+                <span>Presenting</span>
+              </p>
+            ) : isMicOn ? (
+              <p className="text-[10px] font-mono text-[#11ff99] relative z-10 font-medium flex items-center gap-1">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full bg-[#11ff99] ${
+                    localAudio.isSpeaking ? 'animate-ping' : 'opacity-70'
+                  }`}
+                />
+                <span>{localAudio.isSpeaking ? 'Speaking' : 'Mic active'}</span>
+              </p>
+            ) : (
+              <p className="text-[10px] font-mono text-[#888e90] relative z-10">Camera muted</p>
+            )}
+          </div>
+        )}
+
+        {/* Bottom Name & Mic Badge */}
+        <div
+          className={`absolute bottom-2.5 left-2.5 bg-[#0a0a0c]/85 backdrop-blur-md ${
+            isCompact ? 'px-2 py-1' : 'px-3 py-1.5'
+          } rounded-full text-xs font-medium flex items-center gap-1.5 text-[#fcfdff] border transition-all duration-200 z-20 shadow-lg ${
+            isMicOn && localAudio.isSpeaking
+              ? 'border-[#11ff99]/40 ring-1 ring-[#11ff99]/30'
+              : 'border-white/[0.10]'
+          }`}
+        >
+          {isMicOn ? (
+            <div className="flex items-center gap-1">
+              <MicIcon
+                size={11}
+                className={localAudio.isSpeaking ? 'text-[#11ff99]' : 'text-emerald-400/70'}
+              />
+              {!isCompact && (
+                <AudioWaveform
+                  isActive={isMicOn}
+                  size="xs"
+                  barCount={3}
+                  volume={localAudio.volume}
+                  frequencyBands={localAudio.frequencyBands}
+                />
+              )}
+            </div>
+          ) : (
+            <MicOffIcon size={11} className="text-[#ff2047]" />
+          )}
+          <span className="text-[11px] truncate max-w-[90px] sm:max-w-[120px]">{session?.user.name}</span>
+          {isHost && (
+            <span className="text-[8px] font-mono bg-white/10 text-[#fcfdff] px-1 py-0.2 rounded uppercase tracking-wider font-semibold">
+              HOST
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderParticipantTile = (p: RoomParticipant, isCompact: boolean) => {
+    const isOtherHost = p.userId === room.hostId;
+    const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'U';
+    const remoteStream = webrtc.remoteStreams.get(p.userId);
+    const hasRemoteVideoTrack = Boolean(
+      remoteStream &&
+        remoteStream.getVideoTracks().some((t) => t.readyState === 'live' && t.enabled)
+    );
+    const isThisPresenter = Boolean(p.isScreenSharing);
+    const isVideoActive = Boolean(
+      !isCompact && p.isScreenSharing ? true : (p.isVideoOn ?? true) && hasRemoteVideoTrack && (!isCompact || !isThisPresenter)
+    );
+    const remoteAudio = webrtc.remoteAudioLevels[p.userId];
+    const isSpeaking = remoteAudio ? remoteAudio.isSpeaking : !p.isMuted;
+
+    return (
+      <div
+        key={p.userId}
+        className={`relative bg-[#0a0a0c] overflow-hidden flex items-center justify-center shadow-2xl group transition-all duration-300 ${
+          isCompact
+            ? 'rounded-xl aspect-video w-48 sm:w-56 lg:w-full min-h-[110px] lg:min-h-[135px] shrink-0'
+            : 'rounded-2xl min-h-[220px] w-full h-full'
+        } ${
+          isSpeaking
+            ? 'border border-[#11ff99]/40 ring-1 ring-[#11ff99]/30 shadow-[0_0_30px_rgba(17,255,153,0.12)]'
+            : 'border border-white/[0.12]'
+        }`}
+      >
+        {/* Live WebRTC Remote Video & Audio elements */}
+        <RemoteVideo
+          stream={remoteStream}
+          isVideoActive={isVideoActive}
+          audioOutputId={mediaDevices.selectedAudioOutputId}
+        />
+        <RemoteAudio
+          stream={remoteStream}
+          audioOutputId={mediaDevices.selectedAudioOutputId}
+        />
+
+        {/* Hand Raised & Reaction Badges on Other Participant Tile */}
+        <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-30">
+          {p.handRaised && (
+            <div className="bg-[#0e0c0a]/90 border border-[#FF9933]/50 text-[#FF9933] rounded-full px-2 py-0.5 text-xs font-bold flex items-center gap-1 shadow-[0_0_16px_rgba(255,153,51,0.3)] ring-1 ring-[#FF9933]/40 animate-bounce">
+              <span className="text-xs">✋</span>
+              {!isCompact && (
+                <span className="text-[10px] font-mono tracking-wider uppercase font-extrabold hidden sm:inline">Hand Raised</span>
+              )}
+            </div>
+          )}
+          <ReactionBadge emoji={tileReactions[p.userId]?.emoji} />
+        </div>
+
+        {isVideoActive ? (
+          <div className="w-full h-full relative z-10 flex flex-col justify-between p-3 pointer-events-none">
+            <div className="flex items-center justify-between">
+              <div />
+              {isOtherHost && (
+                <span
+                  className="h-4.5 w-4.5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 pointer-events-auto"
+                  title="Meeting Host"
+                >
+                  <StarIcon size={10} className="fill-black/30" />
+                </span>
+              )}
+            </div>
+            {!isCompact && p.isScreenSharing && (
+              <div className="self-center bg-black/70 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-[10px] font-mono text-[#11ff99] flex items-center gap-1.5 shadow-lg pointer-events-auto">
+                <MonitorIcon size={11} />
+                <span>{p.name?.split(' ')[0] || 'User'} is presenting</span>
+              </div>
+            )}
+            <div />
+          </div>
+        ) : (
+          <div className="relative flex flex-col items-center justify-center gap-2 z-10">
+            <div className="relative">
+              <AudioRipple isActive={isSpeaking} size={isCompact ? 'sm' : 'md'} />
+              <div
+                className={`${
+                  isCompact ? 'h-10 w-10 text-xs' : 'h-14 w-14'
+                } rounded-full bg-[#101012] border border-white/[0.08] text-[#888e90] flex items-center justify-center relative z-10 transition-all ${
+                  isSpeaking ? 'ring-2 ring-emerald-400/80 text-emerald-300' : ''
+                }`}
+              >
+                {p.image ? (
+                  <Image
+                    src={p.image}
+                    alt={p.name || 'Participant'}
+                    width={isCompact ? 40 : 56}
+                    height={isCompact ? 40 : 56}
+                    unoptimized
+                    referrerPolicy="no-referrer"
+                    className="h-full w-full rounded-full object-cover"
+                  />
+                ) : (
+                  <span className={`font-serif ${isCompact ? 'text-sm' : 'text-xl'} text-[#fcfdff]`}>{initial}</span>
+                )}
+              </div>
+              {isOtherHost && (
+                <span
+                  className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 z-30"
+                  title="Meeting Host"
+                >
+                  <StarIcon size={9} className="fill-black/30" />
+                </span>
+              )}
+            </div>
+            {isThisPresenter ? (
+              <p className="text-[10px] font-mono text-[#ff7a1a] font-medium flex items-center gap-1">
+                <MonitorIcon size={11} />
+                <span>Presenting</span>
+              </p>
+            ) : isSpeaking ? (
+              <p className="text-[10px] font-mono text-[#11ff99] relative z-10 font-medium flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#11ff99] opacity-80" />
+                <span>Speaking</span>
+              </p>
+            ) : (
+              <p className="text-[10px] font-mono text-[#888e90] relative z-10">Camera muted</p>
+            )}
+          </div>
+        )}
+
+        {/* Host Moderation Controls on Video Card */}
+        {isHost && !isOtherHost && !isCompact && (
+          <div className="absolute top-3 right-3 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 flex items-center gap-1.5 z-30 transition-opacity">
+            {!p.isMuted && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRemoteMute(p.userId, p.name);
+                }}
+                className="h-7 w-7 rounded-lg bg-black/80 hover:bg-amber-500/20 text-amber-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md"
+                title={`Mute ${p.name}`}
+              >
+                <MicOffIcon size={12} />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                requestTransferHost(p.userId, p.name);
+              }}
+              className="h-7 w-7 rounded-lg bg-black/80 hover:bg-amber-500/20 text-[#888e90] hover:text-amber-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md"
+              title={`Make ${p.name} the host`}
+            >
+              <StarIcon size={12} />
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleKickUser(p.userId, p.name);
+              }}
+              className="h-7 w-7 rounded-lg bg-black/80 hover:bg-red-500/20 text-[#888e90] hover:text-red-400 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md"
+              title={`Remove ${p.name} from space`}
+            >
+              <LogOutIcon size={12} />
+            </button>
+          </div>
+        )}
+
+        {/* Bottom Name & Mic Badge */}
+        <div
+          className={`absolute bottom-2.5 left-2.5 bg-[#0a0a0c]/85 backdrop-blur-md ${
+            isCompact ? 'px-2 py-1' : 'px-3 py-1.5'
+          } rounded-full text-xs font-medium flex items-center gap-1.5 text-[#fcfdff] border transition-all duration-200 z-20 shadow-lg ${
+            isSpeaking
+              ? 'border-[#11ff99]/40 ring-1 ring-[#11ff99]/30'
+              : 'border-white/[0.10]'
+          }`}
+        >
+          {isSpeaking ? (
+            <div className="flex items-center gap-1">
+              <MicIcon size={11} className="text-[#11ff99]" />
+              {!isCompact && (
+                <span className="flex items-center gap-0.5">
+                  <span className="w-0.5 h-2 bg-[#11ff99] rounded-full animate-pulse" />
+                  <span className="w-0.5 h-3 bg-[#11ff99] rounded-full animate-pulse delay-75" />
+                  <span className="w-0.5 h-1.5 bg-[#11ff99] rounded-full animate-pulse delay-150" />
+                </span>
+              )}
+            </div>
+          ) : (
+            <MicOffIcon size={11} className="text-[#ff2047]" />
+          )}
+          <span className="text-[11px] truncate max-w-[90px] sm:max-w-[120px]">{p.name}</span>
+          {isOtherHost && (
+            <span className="text-[8px] font-mono bg-white/10 text-[#fcfdff] px-1 py-0.2 rounded uppercase tracking-wider font-semibold">
+              HOST
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="flex flex-col h-screen bg-black text-[#fcfdff] select-none ambient-glow-meet">
       {roomToast && (
@@ -961,353 +1315,94 @@ export default function MeetPage({ params }: MeetPageProps) {
         </div>
       </header>
 
-      <main className="flex-1 p-4 sm:p-6 overflow-y-auto flex items-center justify-center">
-        <div
-          className={`w-full max-w-5xl grid gap-4 h-full max-h-[72vh] ${
-            otherParticipants.length === 0
-              ? 'grid-cols-1 md:grid-cols-2'
-              : otherParticipants.length === 1
-              ? 'grid-cols-1 md:grid-cols-2'
-              : otherParticipants.length <= 3
-              ? 'grid-cols-1 sm:grid-cols-2'
-              : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-          }`}
-        >
-          {/* Local User Card */}
-          <div
-            className={`relative bg-[#0a0a0c] rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl group min-h-[220px] transition-all duration-300 ${
-              isMicOn && localAudio.isSpeaking
-                ? 'border border-[#11ff99]/50 ring-2 ring-[#11ff99]/40 shadow-[0_0_35px_rgba(17,255,153,0.18)]'
-                : isMicOn
-                ? 'border border-[#11ff99]/25 ring-1 ring-[#11ff99]/15'
-                : 'border border-white/[0.12]'
-            }`}
-          >
-            {/* Hand Raised Badge on Local Tile */}
-            {handRaised && (
-              <div className="absolute top-3 left-3 bg-[#0e0c0a]/90 border border-[#FF9933]/50 text-[#FF9933] rounded-full px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 shadow-[0_0_16px_rgba(255,153,51,0.3)] ring-1 ring-[#FF9933]/40 z-30 animate-bounce">
-                <span className="text-sm">✋</span>
-                <span className="text-[10px] font-mono tracking-wider uppercase font-extrabold hidden sm:inline">Hand Raised</span>
-              </div>
-            )}
+      <main className="flex-1 p-3 sm:p-5 overflow-hidden flex items-center justify-center">
+        {isAnyoneScreenSharing ? (
+          <div className="w-full max-w-7xl flex flex-col lg:flex-row gap-3 sm:gap-4 h-full max-h-[78vh] lg:max-h-[80vh]">
+            {/* Big Spotlight Presentation Stage (Google Meet style) */}
+            <div className="flex-1 min-h-[280px] sm:min-h-[360px] lg:min-h-0 bg-[#050508] rounded-2xl overflow-hidden relative flex items-center justify-center border border-white/[0.14] shadow-2xl group">
+              {isScreenSharing ? (
+                <LocalVideo
+                  stream={webrtc.localStream}
+                  isActive={true}
+                  isMirrored={false}
+                  className="w-full h-full object-contain absolute inset-0 z-0 bg-[#050508]"
+                />
+              ) : remotePresenter ? (
+                <RemoteVideo
+                  stream={webrtc.remoteStreams.get(remotePresenter.userId)}
+                  isVideoActive={true}
+                  className="w-full h-full object-contain absolute inset-0 z-0 bg-[#050508]"
+                />
+              ) : null}
 
-            {/* Reaction Badge on Local Tile */}
-            <ReactionBadge
-              emoji={tileReactions[session?.user?.id || '']?.emoji}
-              className="absolute top-3 right-3"
-            />
-
-            {/* Live WebRTC Local Video Preview */}
-            <LocalVideo
-              stream={webrtc.localStream}
-              isActive={isLocalVideoLive}
-            />
-
-            {isLocalVideoLive ? (
-              <div className="w-full h-full relative z-10 flex flex-col justify-between p-4 pointer-events-none">
-                <div className="flex items-center justify-between">
-                  <div />
-                  {isHost && (
-                    <span
-                      className="h-5 w-5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 pointer-events-auto"
-                      title="Meeting Host (You)"
-                    >
-                      <StarIcon size={11} className="fill-black/30" />
-                    </span>
-                  )}
-                </div>
-                {isScreenSharing && (
-                  <div className="self-center bg-black/70 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-[10px] font-mono text-[#11ff99] flex items-center gap-1.5 shadow-lg pointer-events-auto">
-                    <MonitorIcon size={11} />
-                    <span>Sharing your screen</span>
-                  </div>
-                )}
-                <div />
-              </div>
-            ) : (
-              <div className="relative flex flex-col items-center justify-center gap-2.5 z-10">
-                <div className="relative">
-                  <AudioRipple isActive={isMicOn} isSpeaking={localAudio.isSpeaking} size="md" />
-                  <div
-                    className={`h-14 w-14 rounded-full bg-[#101012] border border-white/[0.08] text-[#888e90] flex items-center justify-center relative z-10 transition-all ${
-                      isMicOn && localAudio.isSpeaking ? 'ring-2 ring-emerald-400/90 text-emerald-300' : ''
-                    }`}
-                  >
-                    {session?.user.image ? (
-                      <Image
-                        src={session.user.image}
-                        alt={session.user.name || 'User'}
-                        width={56}
-                        height={56}
-                        unoptimized
-                        referrerPolicy="no-referrer"
-                        className="h-full w-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <CameraIcon size={20} />
-                    )}
-                  </div>
-                  {isHost && (
-                    <span
-                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 z-30"
-                      title="Meeting Host (You)"
-                    >
-                      <StarIcon size={11} className="fill-black/30" />
-                    </span>
-                  )}
-                </div>
-                {isMicOn ? (
-                  <p className="text-[11px] font-mono text-[#11ff99] relative z-10 font-medium flex items-center gap-1.5">
-                    <span
-                      className={`h-1.5 w-1.5 rounded-full bg-[#11ff99] ${
-                        localAudio.isSpeaking ? 'animate-ping' : 'opacity-70'
-                      }`}
-                    />
-                    <span>{localAudio.isSpeaking ? 'Speaking' : 'Mic active'}</span>
-                  </p>
-                ) : (
-                  <p className="text-[11px] font-mono text-[#888e90] relative z-10">Camera muted</p>
-                )}
-              </div>
-            )}
-
-            {/* Single Unified Voice Indicator in bottom-left Name Badge */}
-            <div
-              className={`absolute bottom-3 left-3 bg-[#0a0a0c]/85 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 text-[#fcfdff] border transition-all duration-200 z-20 shadow-lg ${
-                isMicOn && localAudio.isSpeaking
-                  ? 'border-[#11ff99]/40 ring-1 ring-[#11ff99]/30'
-                  : 'border-white/[0.10]'
-              }`}
-            >
-              {isMicOn ? (
-                <div className="flex items-center gap-1.5">
-                  <MicIcon
-                    size={13}
-                    className={localAudio.isSpeaking ? 'text-[#11ff99]' : 'text-emerald-400/70'}
-                  />
-                  <AudioWaveform
-                    isActive={isMicOn}
-                    size="xs"
-                    barCount={3}
-                    volume={localAudio.volume}
-                    frequencyBands={localAudio.frequencyBands}
-                  />
-                </div>
-              ) : (
-                <MicOffIcon size={13} className="text-[#ff2047]" />
-              )}
-              <span className="text-xs">{session?.user.name}</span>
-              {isHost && (
-                <span className="text-[9px] font-mono bg-white/10 text-[#fcfdff] px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">
-                  HOST
+              {/* Presenter Top-Left Status Pill */}
+              <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-[#0a0a0c]/85 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/[0.12] shadow-xl text-xs font-medium text-[#fcfdff] pointer-events-auto">
+                <span className="h-2 w-2 rounded-full bg-[#11ff99] animate-pulse" />
+                <MonitorIcon size={14} className="text-[#ff7a1a]" />
+                <span className="font-mono text-[11px] font-semibold tracking-wide">
+                  {isScreenSharing ? 'You are presenting to everyone' : `${remotePresenter?.name || 'Participant'} is presenting`}
                 </span>
+              </div>
+
+              {/* Quick Stop Sharing Button (for Local Presenter) */}
+              {isScreenSharing && (
+                <div className="absolute top-4 right-4 z-20 pointer-events-auto">
+                  <button
+                    type="button"
+                    onClick={handleToggleScreenShare}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 border border-red-500/40 text-xs font-medium transition-all shadow-xl active:scale-95 cursor-pointer"
+                  >
+                    <XIcon size={13} />
+                    <span>Stop Presenting</span>
+                  </button>
+                </div>
               )}
+            </div>
+
+            {/* Sidebar Filmstrip of Participant Tiles */}
+            <div className="w-full lg:w-72 xl:w-80 flex lg:flex-col gap-3 overflow-x-auto lg:overflow-y-auto lg:overflow-x-hidden shrink-0 max-h-[78vh] pb-2 lg:pb-0 scrollbar-thin">
+              {renderLocalTile(true)}
+              {otherParticipants.map((p) => renderParticipantTile(p, true))}
             </div>
           </div>
+        ) : (
+          <div
+            className={`w-full max-w-5xl grid gap-4 h-full max-h-[72vh] ${
+              otherParticipants.length === 0
+                ? 'grid-cols-1 md:grid-cols-2'
+                : otherParticipants.length === 1
+                ? 'grid-cols-1 md:grid-cols-2'
+                : otherParticipants.length <= 3
+                ? 'grid-cols-1 sm:grid-cols-2'
+                : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+            }`}
+          >
+            {renderLocalTile(false)}
+            {otherParticipants.map((p) => renderParticipantTile(p, false))}
 
-          {/* Other Connected Participants */}
-          {otherParticipants.map((p) => {
-            const isOtherHost = p.userId === room.hostId;
-            const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'U';
-            const remoteStream = webrtc.remoteStreams.get(p.userId);
-            const hasRemoteVideoTrack = Boolean(
-              remoteStream &&
-                remoteStream.getVideoTracks().some((t) => t.readyState === 'live' && t.enabled)
-            );
-            const isVideoActive = Boolean(
-              p.isScreenSharing || ((p.isVideoOn ?? true) && hasRemoteVideoTrack)
-            );
-            const remoteAudio = webrtc.remoteAudioLevels[p.userId];
-            const isSpeaking = remoteAudio ? remoteAudio.isSpeaking : !p.isMuted;
-            const remoteVolume = remoteAudio?.volume;
-
-            return (
-              <div
-                key={p.userId}
-                className={`relative bg-[#0a0a0c] rounded-2xl overflow-hidden flex items-center justify-center shadow-2xl group min-h-[220px] transition-all duration-300 ${
-                  isSpeaking
-                    ? 'border border-[#11ff99]/40 ring-1 ring-[#11ff99]/30 shadow-[0_0_30px_rgba(17,255,153,0.12)]'
-                    : 'border border-white/[0.12]'
-                }`}
-              >
-                {/* Live WebRTC Remote Video & Audio elements */}
-                <RemoteVideo
-                  stream={remoteStream}
-                  isVideoActive={isVideoActive}
-                  audioOutputId={mediaDevices.selectedAudioOutputId}
-                />
-                <RemoteAudio
-                  stream={remoteStream}
-                  audioOutputId={mediaDevices.selectedAudioOutputId}
-                />
-
-                {/* Hand Raised & Reaction Badges on Other Participant Tile */}
-                <div className="absolute top-3 left-3 flex items-center gap-2 z-30">
-                  {p.handRaised && (
-                    <div className="bg-[#0e0c0a]/90 border border-[#FF9933]/50 text-[#FF9933] rounded-full px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 shadow-[0_0_16px_rgba(255,153,51,0.3)] ring-1 ring-[#FF9933]/40 animate-bounce">
-                      <span className="text-sm">✋</span>
-                      <span className="text-[10px] font-mono tracking-wider uppercase font-extrabold hidden sm:inline">Hand Raised</span>
-                    </div>
-                  )}
-                  <ReactionBadge
-                    emoji={tileReactions[p.userId]?.emoji}
-                  />
+            {/* If No Other Participants Yet: Show Waiting Tile */}
+            {otherParticipants.length === 0 && (
+              <div className="relative bg-[#0a0a0c] border border-white/[0.08] rounded-2xl overflow-hidden flex flex-col items-center justify-center p-6 text-center space-y-4 shadow-2xl min-h-[220px]">
+                <div className="h-16 w-16 rounded-full bg-[#101012] border border-white/[0.10] flex items-center justify-center text-[#888e90]">
+                  <UsersIcon size={24} />
                 </div>
-
-                {isVideoActive ? (
-                  <div className="w-full h-full relative z-10 flex flex-col justify-between p-4 pointer-events-none">
-                    <div className="flex items-center justify-between">
-                      <div />
-                      {isOtherHost && (
-                        <span
-                          className="h-5 w-5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 pointer-events-auto"
-                          title="Meeting Host"
-                        >
-                          <StarIcon size={11} className="fill-black/30" />
-                        </span>
-                      )}
-                    </div>
-                    {p.isScreenSharing && (
-                      <div className="self-center bg-black/70 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-[10px] font-mono text-[#11ff99] flex items-center gap-1.5 shadow-lg pointer-events-auto">
-                        <MonitorIcon size={11} />
-                        <span>{p.name?.split(' ')[0] || 'User'} is presenting</span>
-                      </div>
-                    )}
-                    <div />
-                  </div>
-                ) : (
-                  <div className="relative flex flex-col items-center justify-center gap-2.5 z-10">
-                    <div className="relative">
-                      <AudioRipple isActive={isSpeaking} size="md" />
-                      <div
-                        className={`h-14 w-14 rounded-full bg-[#101012] border border-white/[0.08] text-[#888e90] flex items-center justify-center relative z-10 transition-all ${
-                          isSpeaking ? 'ring-2 ring-emerald-400/80 text-emerald-300' : ''
-                        }`}
-                      >
-                        {p.image ? (
-                          <Image
-                            src={p.image}
-                            alt={p.name || 'Participant'}
-                            width={56}
-                            height={56}
-                            unoptimized
-                            referrerPolicy="no-referrer"
-                            className="h-full w-full rounded-full object-cover"
-                          />
-                        ) : (
-                          <span className="font-serif text-xl text-[#fcfdff]">{initial}</span>
-                        )}
-                      </div>
-                      {isOtherHost && (
-                        <span
-                          className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 z-30"
-                          title="Meeting Host"
-                        >
-                          <StarIcon size={11} className="fill-black/30" />
-                        </span>
-                      )}
-                    </div>
-                    {isSpeaking ? (
-                      <p className="text-[11px] font-mono text-[#11ff99] relative z-10 font-medium flex items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#11ff99] opacity-80" />
-                        <span>Speaking</span>
-                      </p>
-                    ) : (
-                      <p className="text-[11px] font-mono text-[#888e90] relative z-10">Camera muted</p>
-                    )}
-                  </div>
-                )}
-
-                {/* Host Moderation Controls on Video Card */}
-                {isHost && !isOtherHost && (
-                  <div className="absolute top-3 right-3 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 flex items-center gap-1.5 z-30 transition-opacity">
-                    {!p.isMuted && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoteMute(p.userId, p.name);
-                        }}
-                        className="h-7 w-7 rounded-lg bg-black/80 hover:bg-amber-500/20 text-amber-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md"
-                        title={`Mute ${p.name}`}
-                      >
-                        <MicOffIcon size={12} />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        requestTransferHost(p.userId, p.name);
-                      }}
-                      className="h-7 w-7 rounded-lg bg-black/80 hover:bg-amber-500/20 text-[#888e90] hover:text-amber-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md"
-                      title={`Make ${p.name} the host`}
-                    >
-                      <StarIcon size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleKickUser(p.userId, p.name);
-                      }}
-                      className="h-7 w-7 rounded-lg bg-black/80 hover:bg-red-500/20 text-[#888e90] hover:text-red-400 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md"
-                      title={`Remove ${p.name} from space`}
-                    >
-                      <LogOutIcon size={12} />
-                    </button>
-                  </div>
-                )}
-
-                {/* Single Unified Voice Indicator in bottom-left Name Badge */}
-                <div
-                  className={`absolute bottom-3 left-3 bg-[#0a0a0c]/85 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 text-[#fcfdff] border transition-all duration-200 z-20 shadow-lg ${
-                    isSpeaking
-                      ? 'border-[#11ff99]/40 ring-1 ring-[#11ff99]/30'
-                      : 'border-white/[0.10]'
-                  }`}
+                <div className="space-y-1">
+                  <h3 className="font-serif-headline text-base font-normal text-[#fcfdff]">Awaiting Collaborators</h3>
+                  <p className="text-xs text-[#888e90] max-w-xs font-mono">
+                    Share space link or ID <span className="text-[#fcfdff] font-semibold">{room.code}</span>
+                  </p>
+                </div>
+                <button
+                  onClick={handleCopyLink}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#101012] hover:bg-[#18181c] text-xs font-medium rounded-lg transition-colors text-[#fcfdff] border border-white/[0.10]"
                 >
-                  {isSpeaking ? (
-                    <div className="flex items-center gap-1.5">
-                      <MicIcon size={13} className="text-[#11ff99]" />
-                      <AudioWaveform isActive={true} size="xs" barCount={3} volume={remoteVolume} />
-                    </div>
-                  ) : (
-                    <MicOffIcon size={13} className="text-[#ff2047]" />
-                  )}
-                  <span className="text-xs">{p.name}</span>
-                  {isOtherHost && (
-                    <span className="text-[9px] font-mono bg-white/10 text-[#fcfdff] px-1.5 py-0.5 rounded uppercase tracking-wider font-semibold">
-                      HOST
-                    </span>
-                  )}
-                </div>
+                  {copied ? <CheckIcon size={13} className="text-[#11ff99]" /> : <CopyIcon size={13} />}
+                  <span>{copied ? 'Copied Link' : 'Copy Space Invite'}</span>
+                </button>
               </div>
-            );
-          })}
-
-          {/* If No Other Participants Yet: Show Waiting Tile */}
-          {otherParticipants.length === 0 && (
-            <div className="relative bg-[#0a0a0c] border border-white/[0.08] rounded-2xl overflow-hidden flex flex-col items-center justify-center p-6 text-center space-y-4 shadow-2xl min-h-[220px]">
-              <div className="h-16 w-16 rounded-full bg-[#101012] border border-white/[0.10] flex items-center justify-center text-[#888e90]">
-                <UsersIcon size={24} />
-              </div>
-              <div className="space-y-1">
-                <h3 className="font-serif-headline text-base font-normal text-[#fcfdff]">Awaiting Collaborators</h3>
-                <p className="text-xs text-[#888e90] max-w-xs font-mono">
-                  Share space link or ID <span className="text-[#fcfdff] font-semibold">{room.code}</span>
-                </p>
-              </div>
-              <button
-                onClick={handleCopyLink}
-                className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#101012] hover:bg-[#18181c] text-xs font-medium rounded-lg transition-colors text-[#fcfdff] border border-white/[0.10]"
-              >
-                {copied ? <CheckIcon size={13} className="text-[#11ff99]" /> : <CopyIcon size={13} />}
-                <span>{copied ? 'Copied Link' : 'Copy Space Invite'}</span>
-              </button>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </main>
 
       <footer className="relative z-40 h-20 border-t border-white/[0.06] px-4 sm:px-6 flex items-center justify-center bg-black/75 backdrop-blur-xl">
