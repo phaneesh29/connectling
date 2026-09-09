@@ -906,7 +906,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           >
             {/* Hand Raised Badge on Local Tile */}
             {handRaised && (
-              <div className="absolute top-3 left-3 bg-[#ffc53d] text-black rounded-full px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 shadow-[0_0_20px_rgba(255,197,61,0.6)] ring-2 ring-amber-400/60 z-30 animate-bounce">
+              <div className="absolute top-3 left-3 bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 text-white rounded-full px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 shadow-[0_0_20px_rgba(99,102,241,0.7)] ring-2 ring-indigo-400/80 z-30 animate-bounce">
                 <span className="text-sm">✋</span>
                 <span className="text-[10px] font-mono tracking-wider uppercase font-extrabold hidden sm:inline">Hand Raised</span>
               </div>
@@ -941,6 +941,14 @@ export default function MeetPage({ params }: MeetPageProps) {
                       <span className="font-serif text-2xl text-[#fcfdff]">{session?.user.name?.charAt(0) || 'U'}</span>
                     )}
                   </div>
+                  {isHost && (
+                    <span
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 z-30"
+                      title="Meeting Host (You)"
+                    >
+                      <StarIcon size={11} className="fill-black/30" />
+                    </span>
+                  )}
                 </div>
                 <div className="space-y-0.5 relative z-10">
                   <p className="text-xs font-medium text-[#fcfdff]">{session?.user.name} (You)</p>
@@ -958,6 +966,14 @@ export default function MeetPage({ params }: MeetPageProps) {
                   >
                     <CameraIcon size={20} />
                   </div>
+                  {isHost && (
+                    <span
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 z-30"
+                      title="Meeting Host (You)"
+                    >
+                      <StarIcon size={11} className="fill-black/30" />
+                    </span>
+                  )}
                 </div>
                 {isMicOn ? (
                   <p className="text-[11px] font-mono text-[#11ff99] relative z-10 font-medium flex items-center gap-1.5">
@@ -1027,7 +1043,7 @@ export default function MeetPage({ params }: MeetPageProps) {
                 {/* Hand Raised & Reaction Badges on Other Participant Tile */}
                 <div className="absolute top-3 left-3 flex items-center gap-2 z-30">
                   {p.handRaised && (
-                    <div className="bg-[#ffc53d] text-black rounded-full px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 shadow-[0_0_20px_rgba(255,197,61,0.6)] ring-2 ring-amber-400/60 animate-bounce">
+                    <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 text-white rounded-full px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 shadow-[0_0_20px_rgba(99,102,241,0.7)] ring-2 ring-indigo-400/80 animate-bounce">
                       <span className="text-sm">✋</span>
                       <span className="text-[10px] font-mono tracking-wider uppercase font-extrabold hidden sm:inline">Hand Raised</span>
                     </div>
@@ -1061,8 +1077,11 @@ export default function MeetPage({ params }: MeetPageProps) {
                         )}
                       </div>
                       {isOtherHost && (
-                        <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#ffc53d] text-black flex items-center justify-center shadow-md z-20">
-                          <StarIcon size={11} />
+                        <span
+                          className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 z-30"
+                          title="Meeting Host"
+                        >
+                          <StarIcon size={11} className="fill-black/30" />
                         </span>
                       )}
                     </div>
@@ -1082,6 +1101,14 @@ export default function MeetPage({ params }: MeetPageProps) {
                       >
                         <CameraIcon size={20} />
                       </div>
+                      {isOtherHost && (
+                        <span
+                          className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 z-30"
+                          title="Meeting Host"
+                        >
+                          <StarIcon size={11} className="fill-black/30" />
+                        </span>
+                      )}
                     </div>
                     {isSpeaking ? (
                       <p className="text-[11px] font-mono text-[#11ff99] relative z-10 font-medium flex items-center gap-1.5">
@@ -1362,8 +1389,8 @@ export default function MeetPage({ params }: MeetPageProps) {
               !isRaiseHandAllowed && !handRaised
                 ? 'opacity-40 cursor-not-allowed bg-[#121216] text-[#888e90] border border-white/[0.06]'
                 : handRaised
-                ? 'bg-[#ffc53d] text-black shadow-[0_0_16px_rgba(255,197,61,0.5)] ring-2 ring-amber-400/50 font-semibold'
-                : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08] hover:border-white/[0.16]'
+                ? 'bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-[0_0_18px_rgba(99,102,241,0.5)] ring-2 ring-indigo-400/80 font-semibold active:scale-95'
+                : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08] hover:border-indigo-500/40'
             }`}
             title={handRaised ? 'Lower Hand' : 'Raise Hand (Show presence / ask question)'}
           >
@@ -1374,7 +1401,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           {/* Emoji Reactions Picker */}
           <ReactionPicker
             onSelectReaction={handleSendReaction}
-            accentColor="orange"
+            accentColor="rose"
           />
 
           <button

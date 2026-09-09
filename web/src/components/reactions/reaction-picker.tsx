@@ -18,13 +18,13 @@ export const AVAILABLE_REACTIONS: ReactionOption[] = [
 
 interface ReactionPickerProps {
   onSelectReaction: (emoji: string) => void;
-  accentColor?: 'orange' | 'amber';
+  accentColor?: 'rose' | 'pink' | 'orange' | 'amber';
   className?: string;
 }
 
 export function ReactionPicker({
   onSelectReaction,
-  accentColor = 'orange',
+  accentColor = 'rose',
   className = '',
 }: ReactionPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -58,14 +58,16 @@ export function ReactionPicker({
   const activeColorClasses =
     accentColor === 'amber'
       ? 'bg-amber-500/20 text-[#f59e0b] border-amber-500/40 shadow-amber-500/20'
-      : 'bg-orange-500/20 text-[#ff7a1a] border-orange-500/40 shadow-orange-500/20';
+      : accentColor === 'orange'
+      ? 'bg-orange-500/20 text-[#ff7a1a] border-orange-500/40 shadow-orange-500/20'
+      : 'bg-rose-500/20 text-rose-400 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.3)] ring-1 ring-rose-500/30';
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
       {/* Floating Reaction Bar Popover (Directly above the button) */}
       {isOpen && (
         <div
-          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3.5 z-50 flex items-center gap-1.5 p-1.5 bg-[#0e0e12]/95 border border-white/[0.14] rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
+          className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3.5 z-50 flex items-center gap-1.5 p-1.5 bg-[#0e0e14]/95 border border-rose-500/30 rounded-2xl shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150"
           role="dialog"
           aria-label="Send a reaction"
         >
@@ -85,7 +87,7 @@ export function ReactionPicker({
           ))}
 
           {/* Bottom Caret indicator */}
-          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#0e0e12] border-r border-b border-white/[0.14] rotate-45 pointer-events-none" />
+          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#0e0e14] border-r border-b border-rose-500/30 rotate-45 pointer-events-none" />
         </div>
       )}
 
@@ -93,16 +95,16 @@ export function ReactionPicker({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`relative h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
+        className={`relative h-10 w-10 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
           isOpen
             ? `${activeColorClasses} border shadow-sm scale-105`
-            : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08] hover:border-white/[0.16]'
+            : 'bg-[#101012] hover:bg-[#18181c] text-[#888e90] hover:text-rose-400 border border-white/[0.08] hover:border-rose-500/30'
         }`}
         title="Send Reaction"
         aria-label="Send Reaction"
         aria-expanded={isOpen}
       >
-        <SmileIcon size={17} className="transition-transform duration-200" />
+        <SmileIcon size={17} className={`transition-transform duration-200 ${isOpen ? 'text-rose-400' : 'text-[#888e90]'}`} />
       </button>
     </div>
   );

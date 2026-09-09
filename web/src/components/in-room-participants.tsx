@@ -146,13 +146,16 @@ export function InRoomParticipants({
                       </div>
                     )}
                     {isHost && (
-                      <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-[#ffc53d] text-black flex items-center justify-center shadow-md">
-                        <StarIcon size={8} />
+                      <span
+                        className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_8px_rgba(245,158,11,0.5)] ring-1 ring-amber-300/80 z-20"
+                        title="Host"
+                      >
+                        <StarIcon size={8} className="fill-black/30" />
                       </span>
                     )}
                     {p.handRaised && (
                       <span
-                        className="absolute -top-1 -left-1 h-4 w-4 rounded-full bg-[#ffc53d] text-black flex items-center justify-center shadow-md animate-bounce text-[9px] leading-none z-10"
+                        className="absolute -top-1 -left-1 h-4 w-4 rounded-full bg-gradient-to-r from-indigo-500 to-blue-600 text-white flex items-center justify-center shadow-[0_0_10px_rgba(99,102,241,0.5)] animate-bounce text-[9px] leading-none z-20 ring-1 ring-indigo-400/80"
                         title="Hand Raised"
                       >
                         ✋
@@ -178,7 +181,7 @@ export function InRoomParticipants({
                         <span className="text-[9px] font-mono text-[#888e90]">Participant</span>
                       )}
                       {p.handRaised && (
-                        <span className="text-[9px] font-mono text-[#ffc53d] flex items-center gap-1 font-semibold animate-pulse bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                        <span className="text-[9px] font-mono text-indigo-300 flex items-center gap-1 font-semibold animate-pulse bg-indigo-500/15 px-1.5 py-0.5 rounded border border-indigo-500/30">
                           <span>✋</span>
                           <span>Hand Raised</span>
                         </span>
@@ -195,7 +198,7 @@ export function InRoomParticipants({
                         <button
                           type="button"
                           onClick={() => onGrantMic?.(p.userId, p.name)}
-                          className="px-2 py-0.5 rounded-md bg-[#ffc53d] hover:bg-[#ffc53d]/90 text-black text-[10px] font-semibold flex items-center gap-1 shadow-sm transition-all animate-pulse active:scale-95 cursor-pointer"
+                          className="px-2 py-0.5 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-semibold flex items-center gap-1 shadow-sm transition-all animate-pulse active:scale-95 cursor-pointer"
                           title="Allow participant to speak"
                         >
                           <MicIcon size={10} />

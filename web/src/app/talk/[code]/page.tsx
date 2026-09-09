@@ -1260,14 +1260,17 @@ export default function TalkPage({ params }: TalkPageProps) {
                   </div>
 
                   {isPHost && (
-                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-[#ffc53d] text-black flex items-center justify-center shadow-md">
-                      <StarIcon size={11} />
+                    <span
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 z-30"
+                      title="Stage Host"
+                    >
+                      <StarIcon size={11} className="fill-black/30" />
                     </span>
                   )}
 
                   {((isMe && handRaised) || p.handRaised) && (
                     <span
-                      className="absolute -top-1 -left-1 h-6 w-6 rounded-full bg-[#ffc53d] text-black flex items-center justify-center animate-bounce shadow-lg ring-2 ring-amber-400/60 z-20 text-xs leading-none"
+                      className="absolute -top-1 -left-1 h-6 w-6 rounded-full bg-gradient-to-r from-indigo-500 to-blue-600 text-white flex items-center justify-center animate-bounce shadow-[0_0_14px_rgba(99,102,241,0.6)] ring-2 ring-indigo-400/80 z-30 text-xs leading-none"
                       title={`${p.name} raised hand`}
                     >
                       ✋
@@ -1354,7 +1357,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                             e.stopPropagation();
                             handleGrantMic(p.userId, p.name);
                           }}
-                          className="w-full py-1 px-2 rounded-lg bg-[#ffc53d] hover:bg-[#ffc53d]/90 text-black text-[11px] font-semibold flex items-center justify-center gap-1 shadow-[0_0_12px_rgba(255,197,61,0.5)] transition-all animate-pulse active:scale-95 cursor-pointer"
+                          className="w-full py-1 px-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold flex items-center justify-center gap-1 shadow-[0_0_12px_rgba(99,102,241,0.5)] transition-all animate-pulse active:scale-95 cursor-pointer"
                           title="Allow participant to speak"
                         >
                           <MicIcon size={12} />
@@ -1536,8 +1539,8 @@ export default function TalkPage({ params }: TalkPageProps) {
               !isRaiseHandAllowed && !handRaised
                 ? 'opacity-40 cursor-not-allowed bg-[#121216] text-[#888e90] border border-white/[0.06]'
                 : handRaised
-                ? 'bg-[#ffc53d] text-black shadow-[0_0_16px_rgba(255,197,61,0.5)] ring-2 ring-amber-400/50 font-semibold'
-                : 'bg-[#121216] hover:bg-[#18181f] text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
+                ? 'bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-[0_0_18px_rgba(99,102,241,0.5)] ring-2 ring-indigo-400/80 font-semibold active:scale-95'
+                : 'bg-[#121216] hover:bg-[#18181f] text-[#fcfdff] border border-white/[0.10] hover:border-indigo-500/40'
             }`}
             title={
               !isRaiseHandAllowed && !handRaised
@@ -1556,7 +1559,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           {/* Emoji Reactions Picker */}
           <ReactionPicker
             onSelectReaction={handleSendReaction}
-            accentColor="amber"
+            accentColor="rose"
           />
 
           <button
