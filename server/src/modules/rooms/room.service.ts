@@ -14,6 +14,8 @@ import type {
   JoinRoomInput,
   UpdateRoomSettingsInput,
 } from './room.validation.js';
+import { notifyUserLeftRoom } from '../realtime/realtime.gateway.js';
+import { logger } from '../../utils/logger.js';
 
 export const roomService = {
   createRoom: async (userId: string, input: CreateRoomInput) => {
@@ -188,7 +190,13 @@ export const roomService = {
     };
   },
 
-  leaveRoom: async (_userId: string, _code: string) => {
+  leaveRoom: async (userId: string, code: string) => {
+    const normalized = normalizeRoomCode(code);
+    try {
+      await notifyUserLeftRoom(userId, normalized);
+    } catch (err) {
+      logger.error({ err, userId, code }, 'Error notifying realtime gateway on room leave');
+    }
     return { success: true };
   },
 

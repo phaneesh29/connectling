@@ -314,22 +314,34 @@ export default function TalkPage({ params }: TalkPageProps) {
       }
     }, 15000);
 
-    const onBeforeUnload = () => {
+    const handleExit = () => {
+      try {
+        const socket = getSocket();
+        if (socket.connected) {
+          socket.emit('room:leave', { roomCode: code });
+          socket.disconnect();
+        }
+      } catch {}
+
       const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000';
-      fetch(`${apiUrl}/api/v1/rooms/${roomCode}/leave`, {
-        method: 'POST',
-        credentials: 'include',
-        keepalive: true,
-      });
+      try {
+        fetch(`${apiUrl}/api/v1/rooms/${roomCode}/leave`, {
+          method: 'POST',
+          credentials: 'include',
+          keepalive: true,
+        });
+      } catch {}
     };
 
-    window.addEventListener('beforeunload', onBeforeUnload);
+    window.addEventListener('pagehide', handleExit);
+    window.addEventListener('beforeunload', handleExit);
 
     return () => {
       clearInterval(interval);
-      window.removeEventListener('beforeunload', onBeforeUnload);
+      window.removeEventListener('pagehide', handleExit);
+      window.removeEventListener('beforeunload', handleExit);
     };
-  }, [roomId, roomCode]);
+  }, [roomId, roomCode, code]);
 
   // Connect WebSocket and listen for in-room ephemeral messages
   useEffect(() => {

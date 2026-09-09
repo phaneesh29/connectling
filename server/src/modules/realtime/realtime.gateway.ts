@@ -91,6 +91,41 @@ const kickParticipantAcrossCluster = async (
   io.serverSideEmit('participant:kick', userId, roomCode, message);
 };
 
+export const notifyUserLeftRoom = async (
+  userId: string,
+  roomCode: string
+): Promise<void> => {
+  if (!ioInstance) return;
+  const roomChannel = `room:${roomCode}`;
+
+  let departingName = 'Participant';
+  for (const socket of ioInstance.sockets.sockets.values()) {
+    if (socket.data?.user?.id === userId) {
+      if (socket.data?.user?.name) {
+        departingName = socket.data.user.name;
+      }
+      socket.data.currentRoomCode = undefined;
+      await socket.leave(roomChannel);
+      socket.disconnect(true);
+    }
+  }
+
+  ioInstance.serverSideEmit('participant:leave', userId, roomCode);
+
+  ioInstance.to(roomChannel).emit('room:user-left', {
+    userId,
+    name: departingName,
+  });
+
+  const participants = await fetchRoomParticipants(ioInstance, roomCode);
+  ioInstance.in(roomChannel).emit('room:roster', { participants });
+
+  logger.info(
+    { userId, roomCode, remaining: participants.length },
+    'User departed space via instant HTTP leave signal'
+  );
+};
+
 export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
   const corsOrigin = env.CORS_ORIGIN.includes(',')
     ? env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
@@ -112,8 +147,8 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       credentials: true,
     },
     transports: ['websocket'],
-    pingTimeout: 20000,
-    pingInterval: 10000,
+    pingTimeout: 5000,
+    pingInterval: 3000,
   });
 
   io.on('participant:update', (userId, updates) => {
@@ -131,6 +166,17 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         socket.emit('room:kicked', { message });
         socket.data.currentRoomCode = undefined;
         await socket.leave(roomChannel);
+      }
+    }
+  });
+
+  io.on('participant:leave', async (userId, roomCode) => {
+    const roomChannel = `room:${roomCode}`;
+    for (const socket of io.sockets.sockets.values()) {
+      if (socket.data?.user?.id === userId) {
+        socket.data.currentRoomCode = undefined;
+        await socket.leave(roomChannel);
+        socket.disconnect(true);
       }
     }
   });
@@ -423,6 +469,13 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       const roomCode = socket.data.currentRoomCode;
       if (roomCode) {
         void handleLeave(roomCode);
+      } else {
+        for (const r of socket.rooms) {
+          if (r.startsWith('room:')) {
+            const extracted = r.slice(5);
+            void handleLeave(extracted);
+          }
+        }
       }
     });
 
