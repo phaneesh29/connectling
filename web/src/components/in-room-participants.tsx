@@ -15,7 +15,6 @@ import {
   CheckIcon,
   StarIcon,
   SearchIcon,
-  HandCoinsIcon,
   LogOutIcon,
 } from '@animateicons/react/lucide';
 
@@ -151,6 +150,14 @@ export function InRoomParticipants({
                         <StarIcon size={8} />
                       </span>
                     )}
+                    {p.handRaised && (
+                      <span
+                        className="absolute -top-1 -left-1 h-4 w-4 rounded-full bg-[#ffc53d] text-black flex items-center justify-center shadow-md animate-bounce text-[9px] leading-none z-10"
+                        title="Hand Raised"
+                      >
+                        ✋
+                      </span>
+                    )}
                   </div>
 
                   <div className="min-w-0">
@@ -165,15 +172,16 @@ export function InRoomParticipants({
                         <span className="text-[9px] font-mono uppercase tracking-wider text-[#f59e0b] font-semibold">
                           Host
                         </span>
-                      ) : p.handRaised ? (
-                        <span className="text-[9px] font-mono text-[#ffc53d] flex items-center gap-1 font-medium animate-pulse">
-                          <HandCoinsIcon size={10} />
-                          <span>Hand Raised</span>
-                        </span>
                       ) : p.canSpeak ? (
                         <span className="text-[9px] font-mono text-[#11ff99] font-medium">Speaker</span>
                       ) : (
                         <span className="text-[9px] font-mono text-[#888e90]">Participant</span>
+                      )}
+                      {p.handRaised && (
+                        <span className="text-[9px] font-mono text-[#ffc53d] flex items-center gap-1 font-semibold animate-pulse bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                          <span>✋</span>
+                          <span>Hand Raised</span>
+                        </span>
                       )}
                     </div>
                   </div>
@@ -183,15 +191,15 @@ export function InRoomParticipants({
                   {/* Host direct actions: Mic, Mute, Make Host, Kick */}
                   {currentUserId === hostId && !isHost && (
                     <div className="flex items-center gap-1">
-                      {p.handRaised ? (
+                      {p.handRaised && !p.canSpeak ? (
                         <button
                           type="button"
                           onClick={() => onGrantMic?.(p.userId, p.name)}
                           className="px-2 py-0.5 rounded-md bg-[#ffc53d] hover:bg-[#ffc53d]/90 text-black text-[10px] font-semibold flex items-center gap-1 shadow-sm transition-all animate-pulse active:scale-95 cursor-pointer"
-                          title="Unmute and allow to speak"
+                          title="Allow participant to speak"
                         >
                           <MicIcon size={10} />
-                          <span>Unmute</span>
+                          <span>Allow Mic</span>
                         </button>
                       ) : !p.isMuted ? (
                         <button

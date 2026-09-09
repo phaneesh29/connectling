@@ -102,6 +102,8 @@ export default function MeetPage({ params }: MeetPageProps) {
   const chatOpenRef = useRef(chatOpen);
   const isMicOnRef = useRef(isMicOn);
   const isVideoOnRef = useRef(isVideoOn);
+  const [handRaised, setHandRaised] = useState(false);
+  const handRaisedRef = useRef(handRaised);
   const joinedCodeRef = useRef<string | null>(null);
   const knownParticipantsRef = useRef<Set<string>>(new Set());
   const currentUserId = session?.user?.id;
@@ -115,6 +117,10 @@ export default function MeetPage({ params }: MeetPageProps) {
     isMicOnRef.current = isMicOn;
     isVideoOnRef.current = isVideoOn;
   }, [isMicOn, isVideoOn]);
+
+  useEffect(() => {
+    handRaisedRef.current = handRaised;
+  }, [handRaised]);
 
   const roomHostId = room?.hostId;
   const roomHostIdRef = useRef(roomHostId);
@@ -252,6 +258,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       roomCode: code,
       isMuted: !isMicOnRef.current,
       isVideoOn: isVideoOnRef.current,
+      handRaised: handRaisedRef.current,
     });
 
     const handleNewMessage = (msg: ChatMessage) => {
@@ -403,6 +410,26 @@ export default function MeetPage({ params }: MeetPageProps) {
       }, 4000);
     };
 
+    const handleHandRaised = ({
+      userId,
+      name,
+      handRaised: isRaised,
+    }: {
+      userId: string;
+      name: string;
+      handRaised: boolean;
+    }) => {
+      if (isRaised) {
+        setRoomToast({ text: `${name} raised their hand ✋`, type: 'join' });
+        setTimeout(() => {
+          setRoomToast((curr) => (curr?.text?.includes('raised their hand') ? null : curr));
+        }, 3500);
+      }
+      setParticipants((prev) =>
+        prev.map((p) => (p.userId === userId ? { ...p, handRaised: isRaised } : p))
+      );
+    };
+
     socket.on('chat:new-message', handleNewMessage);
     socket.on('room:roster', handleRoster);
     socket.on('room:user-joined', handleUserJoined);
@@ -413,6 +440,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     socket.on('room:user-kicked', handleUserKicked);
     socket.on('room:host-transferred', handleHostTransferred);
     socket.on('room:reaction', handleIncomingReaction);
+    socket.on('room:hand-raised', handleHandRaised);
 
     return () => {
       socket.off('chat:new-message', handleNewMessage);
@@ -425,6 +453,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       socket.off('room:user-kicked', handleUserKicked);
       socket.off('room:host-transferred', handleHostTransferred);
       socket.off('room:reaction', handleIncomingReaction);
+      socket.off('room:hand-raised', handleHandRaised);
       socket.emit('room:leave', { roomCode: code });
     };
   }, [roomId, code, router, handleIncomingReaction]);
@@ -434,6 +463,7 @@ export default function MeetPage({ params }: MeetPageProps) {
   const isVideoAllowed = isHost || settings?.videoForAll !== false;
   const isScreenShareAllowed = isHost || settings?.screenShareForAll !== false;
   const isChatAllowed = settings?.allowChat !== false;
+  const isRaiseHandAllowed = isHost || settings?.allowRaiseHand !== false;
 
   const isInRoom = Boolean(room) && !passcodeRequired;
   const localAudio = useLocalAudioLevel({
@@ -455,6 +485,26 @@ export default function MeetPage({ params }: MeetPageProps) {
     if (socket.connected) {
       socket.emit('room:reaction', { roomCode: code, emoji });
     }
+  };
+
+  const handleToggleHandRaise = () => {
+    if (!isRaiseHandAllowed && !handRaised) {
+      setRoomToast({ text: 'Hand raise disabled by the host', type: 'leave' });
+      return;
+    }
+    const next = !handRaised;
+    setHandRaised(next);
+    const socket = getSocket();
+    if (socket.connected) {
+      socket.emit('room:raise-hand', { roomCode: code, handRaised: next });
+    }
+    setRoomToast({
+      text: next ? 'Hand raised ✋ (showing presence)' : 'Hand lowered',
+      type: next ? 'join' : 'leave',
+    });
+    setTimeout(() => {
+      setRoomToast((curr) => (curr?.text?.includes('Hand') ? null : curr));
+    }, 2500);
   };
 
   const handleToggleMic = () => {
@@ -845,6 +895,14 @@ export default function MeetPage({ params }: MeetPageProps) {
                 : 'border border-white/[0.12]'
             }`}
           >
+            {/* Hand Raised Badge on Local Tile */}
+            {handRaised && (
+              <div className="absolute top-3 left-3 bg-[#ffc53d] text-black rounded-full px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 shadow-[0_0_20px_rgba(255,197,61,0.6)] ring-2 ring-amber-400/60 z-30 animate-bounce">
+                <span className="text-sm">✋</span>
+                <span className="text-[10px] font-mono tracking-wider uppercase font-extrabold hidden sm:inline">Hand Raised</span>
+              </div>
+            )}
+
             {/* Reaction Badge on Local Tile */}
             <ReactionBadge
               emoji={tileReactions[session?.user?.id || '']?.emoji}
@@ -957,11 +1015,18 @@ export default function MeetPage({ params }: MeetPageProps) {
                     : 'border border-white/[0.12]'
                 }`}
               >
-                {/* Reaction Badge on Other Participant Tile */}
-                <ReactionBadge
-                  emoji={tileReactions[p.userId]?.emoji}
-                  className="absolute top-3 left-3"
-                />
+                {/* Hand Raised & Reaction Badges on Other Participant Tile */}
+                <div className="absolute top-3 left-3 flex items-center gap-2 z-30">
+                  {p.handRaised && (
+                    <div className="bg-[#ffc53d] text-black rounded-full px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 shadow-[0_0_20px_rgba(255,197,61,0.6)] ring-2 ring-amber-400/60 animate-bounce">
+                      <span className="text-sm">✋</span>
+                      <span className="text-[10px] font-mono tracking-wider uppercase font-extrabold hidden sm:inline">Hand Raised</span>
+                    </div>
+                  )}
+                  <ReactionBadge
+                    emoji={tileReactions[p.userId]?.emoji}
+                  />
+                </div>
 
                 {isVideoActive ? (
                   <div className="w-full h-full bg-gradient-to-b from-[#0e0e12] to-[#06060a] flex flex-col items-center justify-center p-6 text-center space-y-3 relative">
@@ -1277,6 +1342,24 @@ export default function MeetPage({ params }: MeetPageProps) {
             }
           >
             <MonitorIcon size={17} />
+          </button>
+
+          {/* Universal Raise Hand Button */}
+          <button
+            type="button"
+            onClick={handleToggleHandRaise}
+            disabled={!isRaiseHandAllowed && !handRaised}
+            className={`h-10 px-3 rounded-xl flex items-center gap-1.5 font-medium text-xs transition-all cursor-pointer ${
+              !isRaiseHandAllowed && !handRaised
+                ? 'opacity-40 cursor-not-allowed bg-[#121216] text-[#888e90] border border-white/[0.06]'
+                : handRaised
+                ? 'bg-[#ffc53d] text-black shadow-[0_0_16px_rgba(255,197,61,0.5)] ring-2 ring-amber-400/50 font-semibold'
+                : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08] hover:border-white/[0.16]'
+            }`}
+            title={handRaised ? 'Lower Hand' : 'Raise Hand (Show presence / ask question)'}
+          >
+            <span className="text-base leading-none">✋</span>
+            <span className="hidden sm:inline">{handRaised ? 'Hand Raised' : 'Raise Hand'}</span>
           </button>
 
           {/* Emoji Reactions Picker */}

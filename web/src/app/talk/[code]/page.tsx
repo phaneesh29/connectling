@@ -419,11 +419,11 @@ export default function TalkPage({ params }: TalkPageProps) {
         setHandRaised(isRaised);
       }
 
-      if (isHostRef.current && isRaised && userId !== currentUserIdRef.current) {
+      if (isRaised && userId !== currentUserIdRef.current) {
         playJoinChime();
-        setRoomToast({ text: `${name} requested to speak`, type: 'join' });
+        setRoomToast({ text: `${name} raised their hand ✋`, type: 'join' });
         setTimeout(() => {
-          setRoomToast((curr) => (curr?.text === `${name} requested to speak` ? null : curr));
+          setRoomToast((curr) => (curr?.text === `${name} raised their hand ✋` ? null : curr));
         }, 4000);
       }
     };
@@ -628,7 +628,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     grantedSpeaker ||
     Boolean(myRosterParticipant?.canSpeak);
   const isChatAllowed = settings?.allowChat !== false;
-  const isRaiseHandAllowed = settings?.allowRaiseHand !== false;
+  const isRaiseHandAllowed = isHost || settings?.allowRaiseHand !== false;
 
   const isLocalMicActive = Boolean(room) && !isMuted && isSpeaker;
   const localAudio = useLocalAudioLevel({
@@ -668,7 +668,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
   const handleToggleHandRaise = () => {
     if (!isRaiseHandAllowed && !handRaised) {
-      setRoomToast({ text: 'Mic requests are disabled by the host', type: 'leave' });
+      setRoomToast({ text: 'Hand raise disabled by the host', type: 'leave' });
       return;
     }
     const next = !handRaised;
@@ -679,7 +679,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       handRaised: next,
     });
     setRoomToast({
-      text: next ? 'Hand raised — waiting for host to unmute' : 'Hand lowered',
+      text: next ? 'Hand raised ✋ (showing presence)' : 'Hand lowered',
       type: next ? 'join' : 'leave',
     });
     setTimeout(() => {
@@ -1050,7 +1050,7 @@ export default function TalkPage({ params }: TalkPageProps) {
   );
 
   const pendingHandRaisesCount = participants.filter(
-    (p) => p.handRaised && p.userId !== room.hostId
+    (p) => p.handRaised && !p.canSpeak && p.userId !== room.hostId
   ).length;
 
   return (
@@ -1258,10 +1258,10 @@ export default function TalkPage({ params }: TalkPageProps) {
 
                   {((isMe && handRaised) || p.handRaised) && (
                     <span
-                      className="absolute -top-1 -left-1 h-6 w-6 rounded-full bg-[#ffc53d] text-black flex items-center justify-center animate-bounce shadow-lg ring-2 ring-amber-400/60 z-20"
-                      title={`${p.name} requested to speak`}
+                      className="absolute -top-1 -left-1 h-6 w-6 rounded-full bg-[#ffc53d] text-black flex items-center justify-center animate-bounce shadow-lg ring-2 ring-amber-400/60 z-20 text-xs leading-none"
+                      title={`${p.name} raised hand`}
                     >
-                      <HandCoinsIcon size={12} />
+                      ✋
                     </span>
                   )}
 
@@ -1338,7 +1338,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                   {/* Host Direct Unmute / Remote Mute / Speaker Controls on Participant Tile */}
                   {isHost && !isPHost && (
                     <div className="pt-2 flex justify-center w-full">
-                      {p.handRaised ? (
+                      {p.handRaised && !p.canSpeak ? (
                         <button
                           type="button"
                           onClick={(e) => {
@@ -1346,7 +1346,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                             handleGrantMic(p.userId, p.name);
                           }}
                           className="w-full py-1 px-2 rounded-lg bg-[#ffc53d] hover:bg-[#ffc53d]/90 text-black text-[11px] font-semibold flex items-center justify-center gap-1 shadow-[0_0_12px_rgba(255,197,61,0.5)] transition-all animate-pulse active:scale-95 cursor-pointer"
-                          title="Unmute and allow participant to speak"
+                          title="Allow participant to speak"
                         >
                           <MicIcon size={12} />
                           <span>Allow to Speak</span>
@@ -1484,64 +1484,65 @@ export default function TalkPage({ params }: TalkPageProps) {
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-2">
+            <div className={`relative ${audioMenuOpen ? 'z-50' : 'z-10'}`}>
+              <MediaDeviceMenu
+                isOpen={audioMenuOpen}
+                onClose={() => setAudioMenuOpen(false)}
+                type="audio"
+                audioInputs={mediaDevices.audioInputs}
+                audioOutputs={mediaDevices.audioOutputs}
+                selectedAudioInputId={mediaDevices.selectedAudioInputId}
+                selectedAudioOutputId={mediaDevices.selectedAudioOutputId}
+                onSelectAudioInput={mediaDevices.setSelectedAudioInputId}
+                onSelectAudioOutput={mediaDevices.setSelectedAudioOutputId}
+                onRequestPermissions={() => mediaDevices.requestPermissions(true, false)}
+                onTestSpeaker={mediaDevices.testSpeaker}
+                testingSpeaker={mediaDevices.testingSpeaker}
+                onTestMic={mediaDevices.testMic}
+                testingMicStatus={mediaDevices.testingMicStatus}
+                micVolume={mediaDevices.micVolume}
+              />
               <button
                 type="button"
-                onClick={handleToggleHandRaise}
-                disabled={!isRaiseHandAllowed && !handRaised}
-                className={`h-10 px-4 rounded-xl flex items-center gap-2 font-medium text-xs transition-all ${
-                  !isRaiseHandAllowed && !handRaised
-                    ? 'opacity-40 cursor-not-allowed bg-[#121216] text-[#888e90] border border-white/[0.06]'
-                    : handRaised
-                    ? 'bg-[#ffc53d] text-black shadow-[0_0_16px_rgba(255,197,61,0.4)] ring-2 ring-amber-400/50 animate-pulse font-semibold'
-                    : 'bg-[#121216] hover:bg-[#18181f] text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
+                data-media-menu-toggle="audio"
+                onClick={() => setAudioMenuOpen((prev) => !prev)}
+                className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${
+                  audioMenuOpen
+                    ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 ring-1 ring-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+                    : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
                 }`}
-                title={
-                  !isRaiseHandAllowed && !handRaised
-                    ? 'Mic requests disabled by host'
-                    : handRaised
-                    ? 'Lower Hand (Cancel Request)'
-                    : 'Request Mic to Speak'
-                }
+                title="Audio & Speaker Settings"
               >
-                <HandCoinsIcon size={14} />
-                <span>{handRaised ? 'Hand Raised' : 'Request Mic'}</span>
+                <HeadphonesIcon size={17} className="pointer-events-none" />
               </button>
-
-              <div className={`relative ${audioMenuOpen ? 'z-50' : 'z-10'}`}>
-                <MediaDeviceMenu
-                  isOpen={audioMenuOpen}
-                  onClose={() => setAudioMenuOpen(false)}
-                  type="audio"
-                  audioInputs={mediaDevices.audioInputs}
-                  audioOutputs={mediaDevices.audioOutputs}
-                  selectedAudioInputId={mediaDevices.selectedAudioInputId}
-                  selectedAudioOutputId={mediaDevices.selectedAudioOutputId}
-                  onSelectAudioInput={mediaDevices.setSelectedAudioInputId}
-                  onSelectAudioOutput={mediaDevices.setSelectedAudioOutputId}
-                  onRequestPermissions={() => mediaDevices.requestPermissions(true, false)}
-                  onTestSpeaker={mediaDevices.testSpeaker}
-                  testingSpeaker={mediaDevices.testingSpeaker}
-                  onTestMic={mediaDevices.testMic}
-                  testingMicStatus={mediaDevices.testingMicStatus}
-                  micVolume={mediaDevices.micVolume}
-                />
-                <button
-                  type="button"
-                  data-media-menu-toggle="audio"
-                  onClick={() => setAudioMenuOpen((prev) => !prev)}
-                  className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${
-                    audioMenuOpen
-                      ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 ring-1 ring-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
-                      : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
-                  }`}
-                  title="Audio & Speaker Settings"
-                >
-                  <HeadphonesIcon size={17} className="pointer-events-none" />
-                </button>
-              </div>
             </div>
           )}
+
+          {/* Universal Raise Hand Button */}
+          <button
+            type="button"
+            onClick={handleToggleHandRaise}
+            disabled={!isRaiseHandAllowed && !handRaised}
+            className={`h-10 px-3 rounded-xl flex items-center gap-1.5 font-medium text-xs transition-all cursor-pointer ${
+              !isRaiseHandAllowed && !handRaised
+                ? 'opacity-40 cursor-not-allowed bg-[#121216] text-[#888e90] border border-white/[0.06]'
+                : handRaised
+                ? 'bg-[#ffc53d] text-black shadow-[0_0_16px_rgba(255,197,61,0.5)] ring-2 ring-amber-400/50 font-semibold'
+                : 'bg-[#121216] hover:bg-[#18181f] text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
+            }`}
+            title={
+              !isRaiseHandAllowed && !handRaised
+                ? 'Hand raise disabled by host'
+                : handRaised
+                ? 'Lower Hand'
+                : isSpeaker
+                ? 'Raise Hand (Show presence / signal host)'
+                : 'Raise Hand (Show presence / request mic)'
+            }
+          >
+            <span className="text-base leading-none">✋</span>
+            <span className="hidden sm:inline">{handRaised ? 'Hand Raised' : 'Raise Hand'}</span>
+          </button>
 
           {/* Emoji Reactions Picker */}
           <ReactionPicker
@@ -1690,7 +1691,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
                     <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
                       {participants
-                        .filter((p) => p.handRaised && p.userId !== room.hostId)
+                        .filter((p) => p.handRaised && !p.canSpeak && p.userId !== room.hostId)
                         .map((p) => (
                           <div
                             key={p.userId}
@@ -1789,9 +1790,9 @@ export default function TalkPage({ params }: TalkPageProps) {
                         <HandCoinsIcon size={14} />
                       </div>
                       <div>
-                        <div className="text-xs font-medium text-[#fcfdff]">Audience Mic Requests</div>
+                        <div className="text-xs font-medium text-[#fcfdff]">Audience Hand Raise</div>
                         <div className="text-[11px] text-[#888e90]">
-                          {settings.allowRaiseHand ? 'Listeners can raise hand' : 'Requests disabled'}
+                          {settings.allowRaiseHand ? 'Listeners can raise hand to speak or show presence' : 'Hand raise disabled'}
                         </div>
                       </div>
                     </div>
@@ -1846,7 +1847,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                         {isSpeaker
                           ? 'You have permission to unmute and speak on stage.'
                           : settings.allowRaiseHand
-                          ? 'You can click "Request Mic" in the bottom controls to request speaking.'
+                          ? 'You can click "Raise Hand" in the bottom controls to request speaking or show presence.'
                           : 'Microphone is restricted by the stage host.'}
                       </p>
                     </div>
@@ -1881,7 +1882,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-[#fcfdff]">Speaking Requests</span>
+                        <span className="text-xs font-medium text-[#fcfdff]">Raise Hand & Presence</span>
                         <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
                           settings.allowRaiseHand
                             ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
@@ -1892,7 +1893,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                       </div>
                       <p className="text-[11px] text-[#888e90] mt-1">
                         {settings.allowRaiseHand
-                          ? 'Audience members may raise hands to ask to speak.'
+                          ? 'Audience members may raise hands to show presence or ask to speak.'
                           : 'Audience hand-raising is currently turned off by the host.'}
                       </p>
                     </div>
