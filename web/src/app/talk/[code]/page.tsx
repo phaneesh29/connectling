@@ -35,6 +35,7 @@ import { playJoinChime, playLeaveChime } from '@/lib/chime';
 import { InRoomChat } from '@/components/in-room-chat';
 import { InRoomParticipants } from '@/components/in-room-participants';
 import { TransferHostModal } from '@/components/transfer-host-modal';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import type { ChatMessage, RoomParticipant } from '@/types/realtime';
 
 interface StageTileGradient {
@@ -154,6 +155,17 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [updatingKey, setUpdatingKey] = useState<'micForAll' | 'allowChat' | 'allowRaiseHand' | null>(null);
   const [grantedSpeaker, setGrantedSpeaker] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmText: string;
+    cancelText?: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    alertOnly?: boolean;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  } | null>(null);
 
   const isHost = Boolean(room && session?.user && room.hostId === session.user.id);
   const isHostRef = useRef(isHost);
@@ -503,8 +515,18 @@ export default function TalkPage({ params }: TalkPageProps) {
     };
 
     const handleKicked = ({ message }: { message: string }) => {
-      alert(message || 'You have been removed from the stage by the host.');
-      router.push('/');
+      setConfirmModal({
+        isOpen: true,
+        title: 'Removed from Stage',
+        description: message || 'You have been removed from the stage by the host.',
+        confirmText: 'Return to Home',
+        variant: 'danger',
+        alertOnly: true,
+        onConfirm: () => {
+          setConfirmModal(null);
+          router.push('/');
+        },
+      });
     };
 
     const handleUserKicked = ({
@@ -677,19 +699,29 @@ export default function TalkPage({ params }: TalkPageProps) {
 
   const handleKickUser = (targetUserId: string, targetName: string) => {
     if (!isHost) return;
-    if (!confirm(`Are you sure you want to remove ${targetName} from the stage?`)) return;
-    const socket = getSocket();
-    socket.emit('room:kick-user', {
-      roomCode: code,
-      targetUserId,
+    setConfirmModal({
+      isOpen: true,
+      title: 'Remove Participant?',
+      description: `Are you sure you want to remove ${targetName} from the stage? They will be disconnected immediately.`,
+      confirmText: 'Remove Participant',
+      variant: 'danger',
+      onConfirm: () => {
+        const socket = getSocket();
+        socket.emit('room:kick-user', {
+          roomCode: code,
+          targetUserId,
+        });
+        setRoomToast({
+          text: `Removed ${targetName} from stage`,
+          type: 'leave',
+        });
+        setTimeout(() => {
+          setRoomToast((curr) => (curr?.text?.startsWith('Removed ') ? null : curr));
+        }, 3000);
+        setConfirmModal(null);
+      },
+      onCancel: () => setConfirmModal(null),
     });
-    setRoomToast({
-      text: `Removed ${targetName} from stage`,
-      type: 'leave',
-    });
-    setTimeout(() => {
-      setRoomToast((curr) => (curr?.text?.startsWith('Removed ') ? null : curr));
-    }, 3000);
   };
 
   const handleTransferHost = async (newHostUserId: string, newHostName: string): Promise<boolean> => {
@@ -717,6 +749,22 @@ export default function TalkPage({ params }: TalkPageProps) {
     }
   };
 
+  const requestTransferHost = (targetUserId: string, targetName: string) => {
+    if (!isHost) return;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Make Stage Host?',
+      description: `Transfer stage host permissions to ${targetName}? They will have full moderation controls over the audio space.`,
+      confirmText: 'Make Host',
+      variant: 'primary',
+      onConfirm: () => {
+        setConfirmModal(null);
+        void handleTransferHost(targetUserId, targetName);
+      },
+      onCancel: () => setConfirmModal(null),
+    });
+  };
+
   const handleLeaveClick = () => {
     if (!isHost) {
       void handleLeave();
@@ -725,9 +773,18 @@ export default function TalkPage({ params }: TalkPageProps) {
 
     const otherParticipants = participants.filter((p) => p.userId !== session?.user?.id);
     if (otherParticipants.length === 0) {
-      if (confirm('You are the only person on stage. Leaving will close this space. Leave and end stage?')) {
-        void handleEndRoom();
-      }
+      setConfirmModal({
+        isOpen: true,
+        title: 'End Audio Stage?',
+        description: 'You are the only person on stage. Leaving will close this space. Leave and end stage now?',
+        confirmText: 'Leave & End Stage',
+        variant: 'danger',
+        onConfirm: () => {
+          setConfirmModal(null);
+          void executeEndRoom();
+        },
+        onCancel: () => setConfirmModal(null),
+      });
       return;
     }
 
@@ -798,8 +855,8 @@ export default function TalkPage({ params }: TalkPageProps) {
     router.push('/');
   };
 
-  const handleEndRoom = async () => {
-    if (!room || !confirm('Are you sure you want to end this audio room for all listeners?')) return;
+  const executeEndRoom = async () => {
+    if (!room) return;
     setEnding(true);
     try {
       await roomsApi.endRoom(room.code);
@@ -808,6 +865,22 @@ export default function TalkPage({ params }: TalkPageProps) {
       console.error('End room error:', err);
       setEnding(false);
     }
+  };
+
+  const handleEndRoom = () => {
+    if (!room) return;
+    setConfirmModal({
+      isOpen: true,
+      title: 'End Audio Stage for Everyone?',
+      description: 'Are you sure you want to end this audio room for all listeners? All active connections will be disconnected and this space will be closed.',
+      confirmText: 'End Audio Stage',
+      variant: 'danger',
+      onConfirm: () => {
+        setConfirmModal(null);
+        void executeEndRoom();
+      },
+      onCancel: () => setConfirmModal(null),
+    });
   };
 
   if (sessionPending || loading) {
@@ -1081,9 +1154,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm(`Make ${p.name} the new stage host?`)) {
-                          void handleTransferHost(p.userId, p.name);
-                        }
+                        requestTransferHost(p.userId, p.name);
                       }}
                       className="h-6 w-6 rounded-md bg-black/80 hover:bg-amber-500/20 text-[#888e90] hover:text-amber-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer"
                       title={`Make ${p.name} the stage host`}
@@ -1702,16 +1773,22 @@ export default function TalkPage({ params }: TalkPageProps) {
         onRevokeMic={isHost ? handleRevokeMic : undefined}
         onMuteUser={isHost ? handleRemoteMute : undefined}
         onKickUser={isHost ? handleKickUser : undefined}
-        onTransferHost={
-          isHost
-            ? (userId, name) => {
-                if (confirm(`Make ${name} the new stage host?`)) {
-                  void handleTransferHost(userId, name);
-                }
-              }
-            : undefined
-        }
+        onTransferHost={isHost ? requestTransferHost : undefined}
       />
+
+      {confirmModal && (
+        <ConfirmDialog
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          description={confirmModal.description}
+          confirmText={confirmModal.confirmText}
+          cancelText={confirmModal.cancelText}
+          variant={confirmModal.variant}
+          alertOnly={confirmModal.alertOnly}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={confirmModal.onCancel}
+        />
+      )}
     </div>
   );
 }

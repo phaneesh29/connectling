@@ -33,6 +33,7 @@ import { playJoinChime, playLeaveChime } from '@/lib/chime';
 import { InRoomChat } from '@/components/in-room-chat';
 import { InRoomParticipants } from '@/components/in-room-participants';
 import { TransferHostModal } from '@/components/transfer-host-modal';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import type { ChatMessage, RoomParticipant } from '@/types/realtime';
 
 interface MeetPageProps {
@@ -47,6 +48,7 @@ export default function MeetPage({ params }: MeetPageProps) {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [hasEntered, setHasEntered] = useState(false);
   const [passcodeRequired, setPasscodeRequired] = useState(false);
   const [passcode, setPasscode] = useState('');
   const [joining, setJoining] = useState(false);
@@ -71,6 +73,17 @@ export default function MeetPage({ params }: MeetPageProps) {
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
   const [participantsOpen, setParticipantsOpen] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    confirmText: string;
+    cancelText?: string;
+    variant?: 'danger' | 'warning' | 'primary';
+    alertOnly?: boolean;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  } | null>(null);
 
   const chatOpenRef = useRef(chatOpen);
   const isMicOnRef = useRef(isMicOn);
@@ -302,8 +315,18 @@ export default function MeetPage({ params }: MeetPageProps) {
     };
 
     const handleKicked = ({ message }: { message: string }) => {
-      alert(message || 'You have been removed from the space by the host.');
-      router.push('/');
+      setConfirmModal({
+        isOpen: true,
+        title: 'Removed from Space',
+        description: message || 'You have been removed from this space by the host.',
+        confirmText: 'Return to Home',
+        variant: 'danger',
+        alertOnly: true,
+        onConfirm: () => {
+          setConfirmModal(null);
+          router.push('/');
+        },
+      });
     };
 
     const handleUserKicked = ({
@@ -441,19 +464,29 @@ export default function MeetPage({ params }: MeetPageProps) {
 
   const handleKickUser = (targetUserId: string, targetName: string) => {
     if (!isHost) return;
-    if (!confirm(`Are you sure you want to remove ${targetName} from this space?`)) return;
-    const socket = getSocket();
-    socket.emit('room:kick-user', {
-      roomCode: code,
-      targetUserId,
+    setConfirmModal({
+      isOpen: true,
+      title: 'Remove Participant?',
+      description: `Are you sure you want to remove ${targetName} from this space? They will be disconnected immediately.`,
+      confirmText: 'Remove Participant',
+      variant: 'danger',
+      onConfirm: () => {
+        const socket = getSocket();
+        socket.emit('room:kick-user', {
+          roomCode: code,
+          targetUserId,
+        });
+        setRoomToast({
+          text: `Removed ${targetName} from space`,
+          type: 'leave',
+        });
+        setTimeout(() => {
+          setRoomToast((curr) => (curr?.text?.startsWith('Removed ') ? null : curr));
+        }, 3000);
+        setConfirmModal(null);
+      },
+      onCancel: () => setConfirmModal(null),
     });
-    setRoomToast({
-      text: `Removed ${targetName} from space`,
-      type: 'leave',
-    });
-    setTimeout(() => {
-      setRoomToast((curr) => (curr?.text?.startsWith('Removed ') ? null : curr));
-    }, 3000);
   };
 
   const handleTransferHost = async (newHostUserId: string, newHostName: string): Promise<boolean> => {
@@ -481,6 +514,22 @@ export default function MeetPage({ params }: MeetPageProps) {
     }
   };
 
+  const requestTransferHost = (targetUserId: string, targetName: string) => {
+    if (!isHost) return;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Make Host?',
+      description: `Transfer space host permissions to ${targetName}? They will have full moderation controls over the meeting.`,
+      confirmText: 'Make Host',
+      variant: 'primary',
+      onConfirm: () => {
+        setConfirmModal(null);
+        void handleTransferHost(targetUserId, targetName);
+      },
+      onCancel: () => setConfirmModal(null),
+    });
+  };
+
   const handleLeaveClick = () => {
     if (!isHost) {
       void handleLeave();
@@ -489,9 +538,18 @@ export default function MeetPage({ params }: MeetPageProps) {
 
     const otherParticipants = participants.filter((p) => p.userId !== session?.user?.id);
     if (otherParticipants.length === 0) {
-      if (confirm('You are the only person in this meeting. Leaving will close this space. Leave and end meeting?')) {
-        void handleEndRoom();
-      }
+      setConfirmModal({
+        isOpen: true,
+        title: 'End Space?',
+        description: 'You are the only person in this meeting. Leaving will close this space. Leave and end meeting now?',
+        confirmText: 'Leave & End Space',
+        variant: 'danger',
+        onConfirm: () => {
+          setConfirmModal(null);
+          void executeEndRoom();
+        },
+        onCancel: () => setConfirmModal(null),
+      });
       return;
     }
 
@@ -510,8 +568,8 @@ export default function MeetPage({ params }: MeetPageProps) {
     router.push('/');
   };
 
-  const handleEndRoom = async () => {
-    if (!room || !confirm('Are you sure you want to end this meeting for all participants?')) return;
+  const executeEndRoom = async () => {
+    if (!room) return;
     setEnding(true);
     try {
       await roomsApi.endRoom(room.code);
@@ -520,6 +578,22 @@ export default function MeetPage({ params }: MeetPageProps) {
       console.error('End room error:', err);
       setEnding(false);
     }
+  };
+
+  const handleEndRoom = () => {
+    if (!room) return;
+    setConfirmModal({
+      isOpen: true,
+      title: 'End Meeting for Everyone?',
+      description: 'Are you sure you want to end this meeting for all participants? All active connections will be disconnected and this space will be closed.',
+      confirmText: 'End Meeting',
+      variant: 'danger',
+      onConfirm: () => {
+        setConfirmModal(null);
+        void executeEndRoom();
+      },
+      onCancel: () => setConfirmModal(null),
+    });
   };
 
   const handleUpdateSettings = async (e: React.FormEvent) => {
@@ -819,9 +893,7 @@ export default function MeetPage({ params }: MeetPageProps) {
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (confirm(`Make ${p.name} the space host?`)) {
-                          void handleTransferHost(p.userId, p.name);
-                        }
+                        requestTransferHost(p.userId, p.name);
                       }}
                       className="h-7 w-7 rounded-lg bg-black/80 hover:bg-amber-500/20 text-[#888e90] hover:text-amber-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md"
                       title={`Make ${p.name} the host`}
@@ -1136,15 +1208,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         copied={copied}
         onMuteUser={isHost ? handleRemoteMute : undefined}
         onKickUser={isHost ? handleKickUser : undefined}
-        onTransferHost={
-          isHost
-            ? (userId, name) => {
-                if (confirm(`Make ${name} the new space host?`)) {
-                  void handleTransferHost(userId, name);
-                }
-              }
-            : undefined
-        }
+        onTransferHost={isHost ? requestTransferHost : undefined}
       />
 
       {/* Transfer Host & Leave Modal */}
@@ -1164,6 +1228,20 @@ export default function MeetPage({ params }: MeetPageProps) {
         onEndRoom={handleEndRoom}
         spaceType="meet"
       />
+
+      {confirmModal && (
+        <ConfirmDialog
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          description={confirmModal.description}
+          confirmText={confirmModal.confirmText}
+          cancelText={confirmModal.cancelText}
+          variant={confirmModal.variant}
+          alertOnly={confirmModal.alertOnly}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={confirmModal.onCancel}
+        />
+      )}
     </div>
   );
 }

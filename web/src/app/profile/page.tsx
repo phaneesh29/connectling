@@ -16,6 +16,7 @@ import {
   LogOutIcon,
 } from '@animateicons/react/lucide';
 import { GoogleIcon } from '@/components/google-icon';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 
 interface SessionItem {
   id: string;
@@ -65,6 +66,7 @@ export default function ProfilePage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [imageError, setImageError] = useState(false);
+  const [confirmSignOutAllOpen, setConfirmSignOutAllOpen] = useState(false);
 
   useEffect(() => {
     if (!isPending && !session) {
@@ -171,16 +173,17 @@ export default function ProfilePage() {
     }
   };
 
-  const handleRevokeAllSessions = async () => {
-    if (!confirm('This will sign you out from all devices. Continue?')) return;
+  const handleExecuteRevokeAll = async () => {
     setActionLoading('all');
     setMessage(null);
     try {
       await revokeSessions();
+      setConfirmSignOutAllOpen(false);
       router.replace('/login');
     } catch {
       setMessage({ type: 'error', text: 'Failed to sign out all sessions' });
       setActionLoading(null);
+      setConfirmSignOutAllOpen(false);
     }
   };
 
@@ -292,9 +295,9 @@ export default function ProfilePage() {
             </div>
 
             <button
-              onClick={handleRevokeAllSessions}
+              onClick={() => setConfirmSignOutAllOpen(true)}
               disabled={actionLoading !== null}
-              className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#ff2047] bg-[#ff2047]/10 hover:bg-[#ff2047]/20 border border-[#ff2047]/20 rounded-xl transition-all disabled:opacity-50"
+              className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[#ff2047] bg-[#ff2047]/10 hover:bg-[#ff2047]/20 border border-[#ff2047]/20 rounded-xl transition-all disabled:opacity-50 cursor-pointer"
             >
               {actionLoading === 'all' ? (
                 <>
@@ -379,6 +382,17 @@ export default function ProfilePage() {
           </button>
         </section>
       </main>
+
+      <ConfirmDialog
+        isOpen={confirmSignOutAllOpen}
+        title="Sign Out from All Devices?"
+        description="This will terminate active sessions across all your computers, phones, and browsers. You will need to sign in again."
+        confirmText="Sign Out Everywhere"
+        variant="danger"
+        isLoading={actionLoading === 'all'}
+        onConfirm={handleExecuteRevokeAll}
+        onCancel={() => setConfirmSignOutAllOpen(false)}
+      />
     </div>
   );
 }

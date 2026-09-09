@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useSession } from '@/lib/auth-client';
 import { roomsApi, type AvailableRoomItem } from '@/lib/rooms-api';
 import { CreateRoomModal } from '@/components/create-room-modal';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 import {
   VideoIcon,
   AudioWaveformIcon,
@@ -36,6 +37,7 @@ export default function DashboardPage() {
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [deletingCode, setDeletingCode] = useState<string | null>(null);
+  const [deleteConfirmRoom, setDeleteConfirmRoom] = useState<string | null>(null);
 
   const fetchMyRooms = useCallback(async () => {
     if (!session) return;
@@ -77,19 +79,15 @@ export default function DashboardPage() {
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
-  const handleDeleteRoom = async (codeToDelete: string) => {
-    if (
-      !confirm(
-        'Are you sure you want to end and delete this space? All participants inside will be disconnected immediately.'
-      )
-    ) {
-      return;
-    }
+  const handleConfirmDelete = async () => {
+    if (!deleteConfirmRoom) return;
+    const codeToDelete = deleteConfirmRoom;
     setDeletingCode(codeToDelete);
     try {
       await roomsApi.endRoom(codeToDelete);
       const res = await roomsApi.listMyRooms();
       if (res.data) setMyRooms(res.data);
+      setDeleteConfirmRoom(null);
     } catch (err) {
       console.error('Failed to end space:', err);
     } finally {
@@ -401,9 +399,9 @@ export default function DashboardPage() {
 
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => handleDeleteRoom(r.code)}
+                            onClick={() => setDeleteConfirmRoom(r.code)}
                             disabled={deletingCode === r.code}
-                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-red-500/10 border border-white/[0.08] hover:border-red-500/30 text-[#888e90] hover:text-[#ff2047] font-medium text-xs transition-all disabled:opacity-50"
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-red-500/10 border border-white/[0.08] hover:border-red-500/30 text-[#888e90] hover:text-[#ff2047] font-medium text-xs transition-all disabled:opacity-50 cursor-pointer"
                             title="End and delete space"
                           >
                             {deletingCode === r.code ? (
@@ -442,6 +440,17 @@ export default function DashboardPage() {
           setModalOpen(false);
           void fetchMyRooms();
         }}
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(deleteConfirmRoom)}
+        title="Delete Space?"
+        description="Are you sure you want to end and delete this space? All participants inside will be disconnected immediately."
+        confirmText="Delete Space"
+        variant="danger"
+        isLoading={Boolean(deletingCode)}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setDeleteConfirmRoom(null)}
       />
     </div>
   );
