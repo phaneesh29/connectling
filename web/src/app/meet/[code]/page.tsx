@@ -1588,6 +1588,8 @@ export default function MeetPage({ params }: MeetPageProps) {
         currentUserId={session?.user?.id}
         hostId={room?.hostId}
         roomCode={room?.code || code}
+        roomType="meet"
+        showVideoStatus={true}
         onCopyLink={handleCopyLink}
         copied={copied}
         onMuteUser={isHost ? handleRemoteMute : undefined}

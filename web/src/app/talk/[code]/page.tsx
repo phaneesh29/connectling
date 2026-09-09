@@ -1965,6 +1965,8 @@ export default function TalkPage({ params }: TalkPageProps) {
         currentUserId={session?.user?.id}
         hostId={room?.hostId}
         roomCode={room?.code || code}
+        roomType="audio"
+        showVideoStatus={false}
         onCopyLink={handleCopyLink}
         copied={copied}
         onGrantMic={isHost ? handleGrantMic : undefined}

@@ -25,6 +25,8 @@ interface InRoomParticipantsProps {
   currentUserId?: string;
   hostId?: string;
   roomCode?: string;
+  roomType?: 'meet' | 'audio';
+  showVideoStatus?: boolean;
   onCopyLink: () => void;
   copied: boolean;
   onGrantMic?: (userId: string, name: string) => void;
@@ -42,6 +44,9 @@ export function InRoomParticipants({
   participants,
   currentUserId,
   hostId,
+  roomCode: _roomCode,
+  roomType = 'meet',
+  showVideoStatus,
   onCopyLink,
   copied,
   onGrantMic,
@@ -55,6 +60,8 @@ export function InRoomParticipants({
   const [searchQuery, setSearchQuery] = useState('');
 
   if (!isOpen) return null;
+
+  const canShowVideo = showVideoStatus ?? (roomType !== 'audio');
 
   const filtered = participants.filter((p) =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -286,16 +293,18 @@ export function InRoomParticipants({
                     )}
                   </div>
 
-                  <div
-                    className={`h-6 w-6 rounded-md flex items-center justify-center border ${
-                      p.isVideoOn ?? true
-                        ? 'bg-white/[0.04] border-white/[0.08] text-[#fcfdff]'
-                        : 'bg-white/[0.02] border-white/[0.04] text-[#888e90]'
-                    }`}
-                    title={p.isVideoOn ?? true ? 'Video Active' : 'Camera Off'}
-                  >
-                    {p.isVideoOn ?? true ? <VideoIcon size={11} /> : <CameraIcon size={11} />}
-                  </div>
+                  {canShowVideo && (
+                    <div
+                      className={`h-6 w-6 rounded-md flex items-center justify-center border ${
+                        p.isVideoOn ?? true
+                          ? 'bg-white/[0.04] border-white/[0.08] text-[#fcfdff]'
+                          : 'bg-white/[0.02] border-white/[0.04] text-[#888e90]'
+                      }`}
+                      title={p.isVideoOn ?? true ? 'Video Active' : 'Camera Off'}
+                    >
+                      {p.isVideoOn ?? true ? <VideoIcon size={11} /> : <CameraIcon size={11} />}
+                    </div>
+                  )}
                 </div>
               </div>
             );
