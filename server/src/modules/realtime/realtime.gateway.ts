@@ -1,5 +1,7 @@
 import { Server } from 'socket.io';
 import type { Server as HttpServer } from 'node:http';
+import { createAdapter } from '@socket.io/redis-adapter';
+import { createRedisClient } from '../../config/redis.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
 import { socketAuthMiddleware, type AuthenticatedSocket } from './realtime.auth.js';
@@ -10,7 +12,6 @@ import type {
   SocketData,
   RoomParticipant,
 } from './realtime.types.js';
-import { realtimeService } from './realtime.service.js';
 import { buildChatMessage } from './realtime.utils.js';
 import { db } from '../../db/index.js';
 import { room } from '../../db/room-schema.js';
@@ -60,12 +61,52 @@ const fetchRoomParticipants = async (
   return Array.from(map.values());
 };
 
+const updateParticipantStateAcrossCluster = (
+  io: RealtimeServer,
+  userId: string,
+  updates: Partial<SocketData>
+) => {
+  for (const socket of io.sockets.sockets.values()) {
+    if (socket.data?.user?.id === userId) {
+      Object.assign(socket.data, updates);
+    }
+  }
+  io.serverSideEmit('participant:update', userId, updates);
+};
+
+const kickParticipantAcrossCluster = async (
+  io: RealtimeServer,
+  userId: string,
+  roomCode: string,
+  message: string
+) => {
+  const roomChannel = `room:${roomCode}`;
+  for (const socket of io.sockets.sockets.values()) {
+    if (socket.data?.user?.id === userId) {
+      socket.emit('room:kicked', { message });
+      socket.data.currentRoomCode = undefined;
+      await socket.leave(roomChannel);
+    }
+  }
+  io.serverSideEmit('participant:kick', userId, roomCode, message);
+};
+
 export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
   const corsOrigin = env.CORS_ORIGIN.includes(',')
     ? env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
     : env.CORS_ORIGIN;
 
+  const pubClient = createRedisClient('socketio:pub');
+  const subClient = pubClient.duplicate();
+  subClient.on('error', (err) => {
+    logger.warn({ err: err.message, client: 'socketio:sub' }, 'Redis broker connection error');
+  });
+  subClient.on('connect', () => {
+    logger.info({ client: 'socketio:sub' }, 'Redis broker client connected');
+  });
+
   const io: RealtimeServer = new Server(httpServer, {
+    adapter: createAdapter(pubClient, subClient),
     cors: {
       origin: corsOrigin,
       credentials: true,
@@ -73,6 +114,25 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
     transports: ['websocket'],
     pingTimeout: 20000,
     pingInterval: 10000,
+  });
+
+  io.on('participant:update', (userId, updates) => {
+    for (const socket of io.sockets.sockets.values()) {
+      if (socket.data?.user?.id === userId) {
+        Object.assign(socket.data, updates);
+      }
+    }
+  });
+
+  io.on('participant:kick', async (userId, roomCode, message) => {
+    const roomChannel = `room:${roomCode}`;
+    for (const socket of io.sockets.sockets.values()) {
+      if (socket.data?.user?.id === userId) {
+        socket.emit('room:kicked', { message });
+        socket.data.currentRoomCode = undefined;
+        await socket.leave(roomChannel);
+      }
+    }
   });
 
   io.use(socketAuthMiddleware);
@@ -148,15 +208,11 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         }
 
         const roomChannel = `room:${roomCode}`;
-        const sockets = await io.in(roomChannel).fetchSockets();
-
-        for (const s of sockets) {
-          if (s.data?.user?.id === targetUserId) {
-            s.data.canSpeak = true;
-            s.data.handRaised = false;
-            s.data.isMuted = false;
-          }
-        }
+        updateParticipantStateAcrossCluster(io, targetUserId, {
+          canSpeak: true,
+          handRaised: false,
+          isMuted: false,
+        });
 
         io.in(roomChannel).emit('room:mic-granted', {
           targetUserId,
@@ -186,14 +242,10 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         }
 
         const roomChannel = `room:${roomCode}`;
-        const sockets = await io.in(roomChannel).fetchSockets();
-
-        for (const s of sockets) {
-          if (s.data?.user?.id === targetUserId) {
-            s.data.canSpeak = false;
-            s.data.isMuted = true;
-          }
-        }
+        updateParticipantStateAcrossCluster(io, targetUserId, {
+          canSpeak: false,
+          isMuted: true,
+        });
 
         io.in(roomChannel).emit('room:mic-revoked', {
           targetUserId,
@@ -222,17 +274,9 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         }
 
         const roomChannel = `room:${roomCode}`;
-        const sockets = await io.in(roomChannel).fetchSockets();
-
-        for (const s of sockets) {
-          if (s.data?.user?.id === targetUserId) {
-            s.data.isMuted = true;
-            const localSocket = io.sockets.sockets.get(s.id);
-            if (localSocket) {
-              localSocket.data.isMuted = true;
-            }
-          }
-        }
+        updateParticipantStateAcrossCluster(io, targetUserId, {
+          isMuted: true,
+        });
 
         io.in(roomChannel).emit('room:user-muted', {
           targetUserId,
@@ -268,16 +312,16 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         for (const s of sockets) {
           if (s.data?.user?.id === targetUserId) {
             targetName = s.data.user.name || 'Participant';
-            s.emit('room:kicked', { message: 'You have been removed from this space by the host.' });
-            await s.leave(roomChannel);
-            s.data.currentRoomCode = undefined;
-            const localSocket = io.sockets.sockets.get(s.id);
-            if (localSocket) {
-              localSocket.data.currentRoomCode = undefined;
-              await localSocket.leave(roomChannel);
-            }
+            break;
           }
         }
+
+        await kickParticipantAcrossCluster(
+          io,
+          targetUserId,
+          roomCode,
+          'You have been removed from this space by the host.'
+        );
 
         io.in(roomChannel).emit('room:user-kicked', {
           targetUserId,
@@ -317,13 +361,13 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         for (const s of sockets) {
           if (s.data?.user?.id === newHostUserId) {
             newHostName = s.data.user.name || 'Participant';
-            s.data.canSpeak = true;
-            const localSocket = io.sockets.sockets.get(s.id);
-            if (localSocket) {
-              localSocket.data.canSpeak = true;
-            }
+            break;
           }
         }
+
+        updateParticipantStateAcrossCluster(io, newHostUserId, {
+          canSpeak: true,
+        });
 
         io.in(roomChannel).emit('room:host-transferred', {
           previousHostId: user.id,
@@ -344,7 +388,6 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       if (!text || !text.trim()) return;
       const message = buildChatMessage(user.id, user.name, user.image, text);
       io.in(`room:${roomCode}`).emit('chat:new-message', message);
-      void realtimeService.publishEvent(roomCode, { type: 'chat:new-message', ...message });
     });
 
     const handleLeave = async (roomCode: string) => {

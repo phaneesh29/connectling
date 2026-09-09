@@ -62,6 +62,8 @@ export interface ServerToClientEvents {
 
 export interface InterServerEvents {
   ping: () => void;
+  'participant:update': (userId: string, data: Partial<SocketData>) => void;
+  'participant:kick': (userId: string, roomCode: string, message: string) => void;
 }
 
 export interface SocketData {
