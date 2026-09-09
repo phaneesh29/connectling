@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { roomService } from './room.service.js';
+import { normalizeRoomCode } from './room.utils.js';
 import { getRealtimeServer } from '../realtime/realtime.gateway.js';
 import type {
   CreateRoomInput,
@@ -63,7 +64,11 @@ export const updateSettingsHandler = async (req: Request, res: Response): Promis
 
   try {
     const io = getRealtimeServer();
-    io.in(`room:${code}`).emit('room:settings-updated', result);
+    const normalized = normalizeRoomCode(code);
+    io.in(`room:${normalized}`).emit('room:settings-updated', result);
+    if (normalized !== code) {
+      io.in(`room:${code}`).emit('room:settings-updated', result);
+    }
   } catch {
   }
 
@@ -80,7 +85,12 @@ export const endRoomHandler = async (req: Request, res: Response): Promise<void>
 
   try {
     const io = getRealtimeServer();
-    io.in(`room:${code}`).emit('room:ended', { message: 'The host has ended this space.' });
+    const normalized = normalizeRoomCode(code);
+    const payload = { message: 'The host has ended this space for all participants.' };
+    io.in(`room:${normalized}`).emit('room:ended', payload);
+    if (normalized !== code) {
+      io.in(`room:${code}`).emit('room:ended', payload);
+    }
   } catch {
   }
 
@@ -121,11 +131,16 @@ export const transferHostHandler = async (req: Request, res: Response): Promise<
 
   try {
     const io = getRealtimeServer();
-    io.in(`room:${code}`).emit('room:host-transferred', {
+    const normalized = normalizeRoomCode(code);
+    const payload = {
       previousHostId: userId,
       newHostId: newHostUserId,
       newHostName: 'Participant',
-    });
+    };
+    io.in(`room:${normalized}`).emit('room:host-transferred', payload);
+    if (normalized !== code) {
+      io.in(`room:${code}`).emit('room:host-transferred', payload);
+    }
   } catch {
   }
 

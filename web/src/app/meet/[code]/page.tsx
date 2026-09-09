@@ -75,6 +75,7 @@ export default function MeetPage({ params }: MeetPageProps) {
   const [updatingSettings, setUpdatingSettings] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [ending, setEnding] = useState(false);
+  const [isRoomEnded, setIsRoomEnded] = useState(false);
 
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -387,6 +388,23 @@ export default function MeetPage({ params }: MeetPageProps) {
       });
     };
 
+    const handleRoomEnded = ({ message }: { message?: string }) => {
+      setIsRoomEnded(true);
+      playLeaveChime();
+      setConfirmModal({
+        isOpen: true,
+        title: 'Meeting Ended',
+        description: message || 'The host has ended this meeting for all participants.',
+        confirmText: 'Return to Home',
+        variant: 'danger',
+        alertOnly: true,
+        onConfirm: () => {
+          setConfirmModal(null);
+          router.push('/');
+        },
+      });
+    };
+
     const handleUserKicked = ({
       targetUserId,
       targetName,
@@ -452,6 +470,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     socket.on('room:host-transferred', handleHostTransferred);
     socket.on('room:reaction', handleIncomingReaction);
     socket.on('room:hand-raised', handleHandRaised);
+    socket.on('room:ended', handleRoomEnded);
 
     return () => {
       socket.off('chat:new-message', handleNewMessage);
@@ -465,6 +484,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       socket.off('room:host-transferred', handleHostTransferred);
       socket.off('room:reaction', handleIncomingReaction);
       socket.off('room:hand-raised', handleHandRaised);
+      socket.off('room:ended', handleRoomEnded);
       socket.emit('room:leave', { roomCode: code });
     };
   }, [roomId, code, router, handleIncomingReaction]);
@@ -476,7 +496,7 @@ export default function MeetPage({ params }: MeetPageProps) {
   const isChatAllowed = settings?.allowChat !== false;
   const isRaiseHandAllowed = isHost || settings?.allowRaiseHand !== false;
 
-  const isInRoom = Boolean(room) && !passcodeRequired;
+  const isInRoom = Boolean(room) && !passcodeRequired && !isRoomEnded;
 
   const webrtc = useWebRTC({
     roomCode: code,
@@ -724,12 +744,14 @@ export default function MeetPage({ params }: MeetPageProps) {
   const executeEndRoom = async () => {
     if (!room) return;
     setEnding(true);
+    setIsRoomEnded(true);
     try {
       await roomsApi.endRoom(room.code);
       router.push('/');
     } catch (err) {
       console.error('End room error:', err);
       setEnding(false);
+      setIsRoomEnded(false);
     }
   };
 
