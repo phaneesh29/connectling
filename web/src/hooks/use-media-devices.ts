@@ -35,9 +35,30 @@ export function useMediaDevices(): UseMediaDevicesReturn {
   const [audioOutputs, setAudioOutputs] = useState<MediaDeviceInfo[]>([]);
   const [videoInputs, setVideoInputs] = useState<MediaDeviceInfo[]>([]);
 
-  const [selectedAudioInputId, setSelectedAudioInputIdState] = useState<string>('default');
-  const [selectedAudioOutputId, setSelectedAudioOutputIdState] = useState<string>('default');
-  const [selectedVideoInputId, setSelectedVideoInputIdState] = useState<string>('default');
+  const [selectedAudioInputId, setSelectedAudioInputIdState] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'default';
+    try {
+      return localStorage.getItem(STORAGE_KEYS.AUDIO_INPUT) || 'default';
+    } catch {
+      return 'default';
+    }
+  });
+  const [selectedAudioOutputId, setSelectedAudioOutputIdState] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'default';
+    try {
+      return localStorage.getItem(STORAGE_KEYS.AUDIO_OUTPUT) || 'default';
+    } catch {
+      return 'default';
+    }
+  });
+  const [selectedVideoInputId, setSelectedVideoInputIdState] = useState<string>(() => {
+    if (typeof window === 'undefined') return 'default';
+    try {
+      return localStorage.getItem(STORAGE_KEYS.VIDEO_INPUT) || 'default';
+    } catch {
+      return 'default';
+    }
+  });
   const [testingSpeaker, setTestingSpeaker] = useState(false);
   const [testingMicStatus, setTestingMicStatus] = useState<MicTestStatus>('idle');
   const [micVolume, setMicVolume] = useState<number>(0);
@@ -46,23 +67,6 @@ export function useMediaDevices(): UseMediaDevicesReturn {
   const playbackAudioRef = useRef<HTMLAudioElement | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const testTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Load saved preferences from localStorage on mount
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const savedMic = localStorage.getItem(STORAGE_KEYS.AUDIO_INPUT);
-      if (savedMic) setSelectedAudioInputIdState(savedMic);
-
-      const savedSpeaker = localStorage.getItem(STORAGE_KEYS.AUDIO_OUTPUT);
-      if (savedSpeaker) setSelectedAudioOutputIdState(savedSpeaker);
-
-      const savedCam = localStorage.getItem(STORAGE_KEYS.VIDEO_INPUT);
-      if (savedCam) setSelectedVideoInputIdState(savedCam);
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, []);
 
   const setSelectedAudioInputId = useCallback((id: string) => {
     setSelectedAudioInputIdState(id);
@@ -114,19 +118,25 @@ export function useMediaDevices(): UseMediaDevicesReturn {
       setVideoInputs(vInputs);
 
       // Verify selected IDs still exist
-      if (aInputs.length > 0 && !aInputs.some((d) => d.deviceId === selectedAudioInputId)) {
-        setSelectedAudioInputIdState(aInputs[0].deviceId || 'default');
+      if (aInputs.length > 0) {
+        setSelectedAudioInputIdState((prev) =>
+          aInputs.some((d) => d.deviceId === prev) ? prev : aInputs[0].deviceId || 'default'
+        );
       }
-      if (aOutputs.length > 0 && !aOutputs.some((d) => d.deviceId === selectedAudioOutputId)) {
-        setSelectedAudioOutputIdState(aOutputs[0].deviceId || 'default');
+      if (aOutputs.length > 0) {
+        setSelectedAudioOutputIdState((prev) =>
+          aOutputs.some((d) => d.deviceId === prev) ? prev : aOutputs[0].deviceId || 'default'
+        );
       }
-      if (vInputs.length > 0 && !vInputs.some((d) => d.deviceId === selectedVideoInputId)) {
-        setSelectedVideoInputIdState(vInputs[0].deviceId || 'default');
+      if (vInputs.length > 0) {
+        setSelectedVideoInputIdState((prev) =>
+          vInputs.some((d) => d.deviceId === prev) ? prev : vInputs[0].deviceId || 'default'
+        );
       }
     } catch (err) {
       console.warn('Unable to enumerate media devices:', err);
     }
-  }, [selectedAudioInputId, selectedAudioOutputId, selectedVideoInputId]);
+  }, []);
 
   const requestPermissions = useCallback(
     async (audio = true, video = true): Promise<boolean> => {
@@ -148,18 +158,66 @@ export function useMediaDevices(): UseMediaDevicesReturn {
   );
 
   useEffect(() => {
-    void refreshDevices();
+    let ignore = false;
+
+    const syncDevices = () => {
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) {
+        return;
+      }
+      navigator.mediaDevices
+        .enumerateDevices()
+        .then((devices) => {
+          if (ignore) return;
+
+          const aInputs: MediaDeviceInfo[] = [];
+          const aOutputs: MediaDeviceInfo[] = [];
+          const vInputs: MediaDeviceInfo[] = [];
+
+          devices.forEach((d) => {
+            if (d.kind === 'audioinput') aInputs.push(d);
+            else if (d.kind === 'audiooutput') aOutputs.push(d);
+            else if (d.kind === 'videoinput') vInputs.push(d);
+          });
+
+          setAudioInputs(aInputs);
+          setAudioOutputs(aOutputs);
+          setVideoInputs(vInputs);
+
+          if (aInputs.length > 0) {
+            setSelectedAudioInputIdState((prev) =>
+              aInputs.some((d) => d.deviceId === prev) ? prev : aInputs[0].deviceId || 'default'
+            );
+          }
+          if (aOutputs.length > 0) {
+            setSelectedAudioOutputIdState((prev) =>
+              aOutputs.some((d) => d.deviceId === prev) ? prev : aOutputs[0].deviceId || 'default'
+            );
+          }
+          if (vInputs.length > 0) {
+            setSelectedVideoInputIdState((prev) =>
+              vInputs.some((d) => d.deviceId === prev) ? prev : vInputs[0].deviceId || 'default'
+            );
+          }
+        })
+        .catch((err) => {
+          console.warn('Unable to enumerate media devices:', err);
+        });
+    };
+
+    syncDevices();
 
     if (typeof navigator !== 'undefined' && navigator.mediaDevices) {
-      const handleDeviceChange = () => {
-        void refreshDevices();
-      };
-      navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+      navigator.mediaDevices.addEventListener('devicechange', syncDevices);
       return () => {
-        navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
+        ignore = true;
+        navigator.mediaDevices.removeEventListener('devicechange', syncDevices);
       };
     }
-  }, [refreshDevices]);
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // Test speaker using Web Audio API chime
   const testSpeaker = useCallback(() => {

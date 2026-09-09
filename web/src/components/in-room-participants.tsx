@@ -44,7 +44,6 @@ export function InRoomParticipants({
   participants,
   currentUserId,
   hostId,
-  roomCode: _roomCode,
   roomType = 'meet',
   showVideoStatus,
   onCopyLink,

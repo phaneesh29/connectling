@@ -70,8 +70,6 @@ const barAnimationClasses = [
   'animate-wave-bar-5',
 ];
 
-const RESTING_PROFILE = ['35%', '65%', '45%', '70%', '40%'];
-
 export function AudioWaveform({
   isActive = true,
   size = 'sm',

@@ -28,7 +28,6 @@ import {
   SettingsIcon,
   XIcon,
   ShieldCheckIcon,
-  SearchIcon,
   ChevronUpIcon,
 } from '@animateicons/react/lucide';
 import { getSocket } from '@/lib/socket';
@@ -38,14 +37,14 @@ import { InRoomParticipants } from '@/components/in-room-participants';
 import { TransferHostModal } from '@/components/transfer-host-modal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { MediaDeviceMenu } from '@/components/media-device-menu';
-import { AudioWaveform, AudioRipple, AudioTileBadge } from '@/components/audio-waveform';
+import { AudioWaveform, AudioRipple } from '@/components/audio-waveform';
 import { useMediaDevices } from '@/hooks/use-media-devices';
 import { useLocalAudioLevel } from '@/hooks/use-local-audio-level';
 import { ReactionPicker } from '@/components/reactions/reaction-picker';
 import { FloatingReactions } from '@/components/reactions/floating-reactions';
 import { ReactionBadge } from '@/components/reactions/reaction-badge';
 import { useRoomReactions } from '@/hooks/use-room-reactions';
-import type { ChatMessage, RoomParticipant, RoomReaction } from '@/types/realtime';
+import type { ChatMessage, RoomParticipant } from '@/types/realtime';
 
 interface StageTileGradient {
   containerStyle: React.CSSProperties;

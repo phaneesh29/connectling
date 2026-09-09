@@ -28,21 +28,6 @@ export function useLocalAudioLevel({
 
   useEffect(() => {
     if (!isEnabled) {
-      if (animFrameRef.current) {
-        cancelAnimationFrame(animFrameRef.current);
-        animFrameRef.current = null;
-      }
-      if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-        void audioCtxRef.current.close().catch(() => {});
-        audioCtxRef.current = null;
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-      setVolume(0);
-      setIsSpeaking(false);
-      setFrequencyBands([0, 0, 0, 0, 0]);
       return;
     }
 
@@ -167,11 +152,12 @@ export function useLocalAudioLevel({
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       }
-      setVolume(0);
-      setIsSpeaking(false);
-      setFrequencyBands([0, 0, 0, 0, 0]);
     };
   }, [isEnabled, deviceId]);
 
-  return { volume, isSpeaking, frequencyBands };
+  return {
+    volume: isEnabled ? volume : 0,
+    isSpeaking: isEnabled ? isSpeaking : false,
+    frequencyBands: isEnabled ? frequencyBands : [0, 0, 0, 0, 0],
+  };
 }

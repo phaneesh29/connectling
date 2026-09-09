@@ -96,7 +96,13 @@ export default function DashboardPage() {
   };
 
   useEffect(() => {
-    setJoining(false);
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        setJoining(false);
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
   }, []);
 
   const cleanRoomCode = (input: string) => {

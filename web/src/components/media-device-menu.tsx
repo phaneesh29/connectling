@@ -3,7 +3,6 @@
 import React, { useRef, useEffect } from 'react';
 import {
   MicIcon,
-  VideoIcon,
   CameraIcon,
   HeadphonesIcon,
   CheckIcon,
