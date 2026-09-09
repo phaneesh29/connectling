@@ -947,8 +947,8 @@ export default function TalkPage({ params }: TalkPageProps) {
     return (
       <main className="flex min-h-screen items-center justify-center p-4 bg-black">
         <div className="w-full max-w-md p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl space-y-6 text-center shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-[#f59e0b] to-[#ea580c] opacity-10 blur-3xl pointer-events-none" />
-          <div className="h-12 w-12 rounded-xl bg-[#101012] border border-white/[0.10] text-[#ffc53d] flex items-center justify-center mx-auto">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-brand-br opacity-20 blur-3xl pointer-events-none" />
+          <div className="h-12 w-12 rounded-xl bg-[#101012] border border-white/[0.10] text-[#FF9933] flex items-center justify-center mx-auto shadow-inner">
             <LockIcon size={22} />
           </div>
           <div className="space-y-1">
@@ -983,7 +983,7 @@ export default function TalkPage({ params }: TalkPageProps) {
               <button
                 type="submit"
                 disabled={joining || !passcode.trim()}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-4 text-xs font-medium bg-[#fcfdff] hover:bg-[#f1f7fe] text-black rounded-lg transition-all shadow-[0_0_20px_rgba(252,253,255,0.15)] disabled:opacity-50"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-4 text-xs font-semibold bg-gradient-brand-r hover:brightness-105 text-black rounded-lg transition-all shadow-brand-glow disabled:opacity-50 cursor-pointer"
               >
                 {joining ? (
                   <>
@@ -1437,8 +1437,8 @@ export default function TalkPage({ params }: TalkPageProps) {
               className={`inline-flex items-center rounded-xl transition-all ${
                 !isMuted
                   ? audioMenuOpen
-                    ? 'bg-gradient-to-r from-[#f59e0b] to-[#ea580c] text-white ring-2 ring-amber-400/50 shadow-[0_0_20px_rgba(245,158,11,0.5)] border border-amber-400/40'
-                    : 'bg-gradient-to-r from-[#f59e0b] to-[#ea580c] text-white shadow-[0_0_16px_rgba(245,158,11,0.4)] border border-amber-500/30'
+                    ? 'bg-gradient-brand-r text-black font-semibold ring-2 ring-[#FF9933]/50 shadow-brand-glow border border-[#F4C430]/40'
+                    : 'bg-gradient-brand-r text-black font-semibold shadow-brand-glow border border-[#F4C430]/30'
                   : audioMenuOpen
                   ? 'bg-[#181820] text-[#fcfdff] border border-amber-500/50 ring-1 ring-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.2)]'
                   : 'bg-[#121216] hover:bg-[#18181f] text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16] shadow-sm'

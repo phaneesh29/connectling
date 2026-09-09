@@ -15,11 +15,15 @@
   --ash: #888e90;
   --stone: #464a4d;
   
-  --accent-orange: #ff7a1a;
-  --accent-orange-glow: rgba(255, 122, 26, 0.22);
-  --accent-amber: #f59e0b;
-  --accent-amber-glow: rgba(245, 158, 11, 0.22);
-  --accent-yellow: #ffc53d;
+  --accent-orange: #FF9933;
+  --accent-orange-glow: rgba(255, 153, 51, 0.22);
+  --accent-amber: #F4C430;
+  --accent-amber-glow: rgba(244, 196, 48, 0.22);
+  --accent-yellow: #F4C430;
+  --accent-saffron: #FF9933;
+  --accent-saffron-gold: #F4C430;
+  --accent-saffron-dark: #FF8C00;
+  --accent-saffron-deep: #E87500;
   --accent-green: #11ff99;
   --accent-green-glow: rgba(34, 255, 153, 0.18);
   --accent-red: #ff2047;
@@ -42,21 +46,54 @@ body {
   line-height: 1.0;
 }
 
-/* Atmospheric Glow Backgrounds */
+/* Atmospheric Glow Backgrounds (#FF9933 #F4C430 #FF8C00 #E87500) */
 .ambient-glow-meet {
   background: 
-    radial-gradient(ellipse 90% 600px at 50% -40px, rgba(255, 122, 26, 0.18), transparent 75%),
-    radial-gradient(ellipse 70% 500px at 85% 45%, rgba(245, 158, 11, 0.08), transparent 70%),
-    radial-gradient(ellipse 80% 600px at 15% 85%, rgba(234, 88, 12, 0.06), transparent 65%),
+    radial-gradient(ellipse 90% 600px at 50% -40px, rgba(255, 153, 51, 0.20), transparent 75%),
+    radial-gradient(ellipse 70% 500px at 85% 45%, rgba(244, 196, 48, 0.12), transparent 70%),
+    radial-gradient(ellipse 80% 600px at 15% 85%, rgba(232, 117, 0, 0.08), transparent 65%),
     #070605;
 }
 
 .ambient-glow-audio {
   background: 
-    radial-gradient(ellipse 90% 600px at 50% -40px, rgba(245, 158, 11, 0.18), transparent 75%),
-    radial-gradient(ellipse 70% 500px at 85% 45%, rgba(255, 122, 26, 0.08), transparent 70%),
-    radial-gradient(ellipse 80% 600px at 15% 85%, rgba(217, 119, 6, 0.06), transparent 65%),
+    radial-gradient(ellipse 90% 600px at 50% -40px, rgba(244, 196, 48, 0.20), transparent 75%),
+    radial-gradient(ellipse 70% 500px at 85% 45%, rgba(255, 140, 0, 0.12), transparent 70%),
+    radial-gradient(ellipse 80% 600px at 15% 85%, rgba(232, 117, 0, 0.08), transparent 65%),
     #070605;
+}
+
+/* Brand Signature Gradients (#FF9933 #F4C430 #FF8C00 #E87500) */
+.bg-gradient-brand {
+  background: linear-gradient(135deg, #FF9933 0%, #F4C430 35%, #FF8C00 70%, #E87500 100%);
+}
+
+.bg-gradient-brand-r {
+  background: linear-gradient(to right, #FF9933 0%, #F4C430 35%, #FF8C00 70%, #E87500 100%);
+}
+
+.bg-gradient-brand-br {
+  background: linear-gradient(to bottom right, #FF9933 0%, #F4C430 35%, #FF8C00 70%, #E87500 100%);
+}
+
+.text-gradient-brand {
+  background: linear-gradient(135deg, #FF9933 0%, #F4C430 35%, #FF8C00 70%, #E87500 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-brand-r {
+  background: linear-gradient(to right, #FF9933 0%, #F4C430 35%, #FF8C00 70%, #E87500 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.shadow-brand-glow {
+  box-shadow: 0 0 24px rgba(255, 153, 51, 0.35);
+}
+
+.shadow-brand-glow-lg {
+  box-shadow: 0 0 45px rgba(255, 153, 51, 0.45);
 }
 
 /* Card Glow Effect on Hover */

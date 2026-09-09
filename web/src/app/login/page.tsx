@@ -55,11 +55,11 @@ function LoginContent() {
     <main className="flex min-h-screen pt-24 pb-12 items-center justify-center p-4 sm:p-6 bg-black ambient-glow-meet">
       <div className="w-full max-w-md p-6 sm:p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl shadow-2xl space-y-6 relative overflow-hidden glow-card">
         {/* Subtle Ambient Glow */}
-        <div className="absolute top-0 right-0 w-56 h-56 bg-gradient-to-br from-[#ff7a1a] to-[#ea580c] opacity-15 blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-56 h-56 bg-gradient-brand-br opacity-20 blur-3xl pointer-events-none" />
 
         {/* Header */}
         <div className="text-center space-y-3 relative z-10">
-          <div className="h-10 w-10 rounded-xl bg-[#101012] border border-white/[0.10] text-[#fcfdff] flex items-center justify-center mx-auto shadow-inner">
+          <div className="h-10 w-10 rounded-xl bg-gradient-brand-br text-black flex items-center justify-center mx-auto shadow-brand-glow">
             <AudioWaveformIcon size={20} />
           </div>
           <div className="space-y-1">
@@ -74,7 +74,7 @@ function LoginContent() {
 
         {/* Privacy Highlight Badge */}
         <div className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-start gap-2.5 relative z-10">
-          <ShieldCheckIcon size={16} className="text-[#ff7a1a] shrink-0 mt-0.5" />
+          <ShieldCheckIcon size={16} className="text-[#FF9933] shrink-0 mt-0.5" />
           <p className="text-[11px] text-[#888e90] leading-relaxed">
             <strong className="text-[#fcfdff] font-medium">Zero-data architecture:</strong> We do not store meeting recordings, persistent chat transcripts, or user presence histories.
           </p>
@@ -92,7 +92,7 @@ function LoginContent() {
                 termsError
                   ? 'bg-red-500/[0.06] border-red-500/40 ring-1 ring-red-500/30'
                   : acceptedTerms
-                  ? 'bg-[#ff7a1a]/[0.06] border-[#ff7a1a]/30'
+                  ? 'bg-[#FF9933]/[0.06] border-[#FF9933]/30'
                   : 'bg-white/[0.02] border-white/[0.08] hover:border-white/[0.16]'
               }`}
             >
@@ -114,7 +114,7 @@ function LoginContent() {
                   <div
                     className={`h-4 w-4 rounded flex items-center justify-center border transition-all ${
                       acceptedTerms
-                        ? 'bg-gradient-to-br from-[#ff7a1a] to-[#ea580c] border-[#ff7a1a] text-black shadow-[0_0_12px_rgba(255,122,26,0.4)]'
+                        ? 'bg-gradient-brand-br border-[#FF9933] text-black shadow-brand-glow'
                         : termsError
                         ? 'border-red-500/80 bg-red-500/10'
                         : 'border-white/30 bg-[#101012] hover:border-white/50'
@@ -131,7 +131,7 @@ function LoginContent() {
                       href="/terms"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#ff7a1a] hover:underline font-medium inline-flex items-center gap-0.5"
+                      className="text-[#FF9933] hover:underline font-medium inline-flex items-center gap-0.5"
                     >
                       Terms of Service & Privacy Policy
                     </Link>{' '}
@@ -275,7 +275,7 @@ function LoginContent() {
                 href="/terms"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[11px] text-[#ff7a1a] hover:underline font-mono"
+                className="text-[11px] text-[#FF9933] hover:underline font-mono"
               >
                 Full document ↗
               </Link>
@@ -294,7 +294,7 @@ function LoginContent() {
                     setTermsError(false);
                     setTermsModalOpen(false);
                   }}
-                  className="px-4 py-2 rounded-xl text-xs font-medium bg-gradient-to-r from-[#ff7a1a] to-[#ea580c] hover:from-[#ff882e] hover:to-[#f06418] text-white transition-all font-semibold shadow-[0_0_16px_rgba(255,122,26,0.35)]"
+                  className="px-4 py-2 rounded-xl text-xs bg-gradient-brand-r hover:brightness-105 text-black transition-all font-semibold shadow-brand-glow cursor-pointer"
                 >
                   I Understand & Accept
                 </button>
@@ -312,7 +312,7 @@ export default function LoginPage() {
     <Suspense
       fallback={
         <main className="flex min-h-screen pt-24 pb-12 items-center justify-center p-4 bg-black">
-          <div className="animate-spin h-6 w-6 border-2 border-white/20 border-t-[#ff7a1a] rounded-full" />
+          <div className="animate-spin h-6 w-6 border-2 border-white/20 border-t-[#FF9933] rounded-full" />
         </main>
       }
     >

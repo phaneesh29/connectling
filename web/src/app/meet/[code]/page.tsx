@@ -748,8 +748,8 @@ export default function MeetPage({ params }: MeetPageProps) {
     return (
       <main className="flex min-h-screen items-center justify-center p-4 bg-black">
         <div className="w-full max-w-md p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl space-y-6 text-center shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-to-br from-[#ff7a1a] to-[#ea580c] opacity-10 blur-3xl pointer-events-none" />
-          <div className="h-12 w-12 rounded-xl bg-[#101012] border border-white/[0.10] text-[#ffc53d] flex items-center justify-center mx-auto">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-brand-br opacity-20 blur-3xl pointer-events-none" />
+          <div className="h-12 w-12 rounded-xl bg-[#101012] border border-white/[0.10] text-[#FF9933] flex items-center justify-center mx-auto shadow-inner">
             <LockIcon size={22} />
           </div>
           <div className="space-y-1">
@@ -784,7 +784,7 @@ export default function MeetPage({ params }: MeetPageProps) {
               <button
                 type="submit"
                 disabled={joining || !passcode.trim()}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-4 text-xs font-medium bg-[#fcfdff] hover:bg-[#f1f7fe] text-black rounded-lg transition-all shadow-[0_0_20px_rgba(252,253,255,0.15)] disabled:opacity-50"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-4 text-xs font-semibold bg-gradient-brand-r hover:brightness-105 text-black rounded-lg transition-all shadow-brand-glow disabled:opacity-50 cursor-pointer"
               >
                 {joining ? (
                   <>
@@ -1366,7 +1366,7 @@ export default function MeetPage({ params }: MeetPageProps) {
               !isScreenShareAllowed && !isScreenSharing
                 ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
                 : isScreenSharing
-                ? 'bg-gradient-to-r from-[#ff7a1a] to-[#ea580c] text-white shadow-[0_0_16px_rgba(255,122,26,0.45)]'
+                ? 'bg-gradient-brand-r text-black font-semibold shadow-brand-glow'
                 : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
             }`}
             title={

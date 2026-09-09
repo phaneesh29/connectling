@@ -46,10 +46,10 @@ export function Navbar() {
         {/* Left: Brand Logo & Navigation */}
         <div className="flex items-center gap-5 sm:gap-7">
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="h-8 w-8 rounded-xl bg-white/[0.08] border border-white/[0.16] flex items-center justify-center shadow-[inset_0_1px_1px_rgba(255,255,255,0.25)] group-hover:bg-white/[0.12] group-hover:border-white/[0.30] transition-all duration-200">
+            <div className="h-8 w-8 rounded-xl bg-gradient-brand-br flex items-center justify-center shadow-brand-glow group-hover:scale-105 transition-all duration-200">
               <AudioWaveformIcon
                 size={16}
-                className="text-[#fcfdff] group-hover:scale-110 transition-transform duration-200"
+                className="text-black group-hover:scale-110 transition-transform duration-200"
               />
             </div>
             <span className="font-serif-headline text-base text-[#fcfdff] tracking-tight font-normal">

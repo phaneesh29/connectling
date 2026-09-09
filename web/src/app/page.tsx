@@ -158,7 +158,7 @@ export default function DashboardPage() {
   if (sessionPending || !session) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black">
-        <div className="animate-spin h-6 w-6 border-2 border-white/20 border-t-[#ff7a1a] rounded-full" />
+        <div className="animate-spin h-6 w-6 border-2 border-white/20 border-t-[#FF9933] rounded-full" />
       </div>
     );
   }
@@ -188,7 +188,7 @@ export default function DashboardPage() {
                     : 'text-[#888e90] hover:text-[#fcfdff]'
                 }`}
               >
-                <VideoIcon size={14} className={activeMode === 'meet' ? 'text-[#ff7a1a]' : ''} />
+                <VideoIcon size={14} className={activeMode === 'meet' ? 'text-[#FF9933]' : ''} />
                 <span>Video Meetings</span>
               </button>
 
@@ -204,7 +204,7 @@ export default function DashboardPage() {
                     : 'text-[#888e90] hover:text-[#fcfdff]'
                 }`}
               >
-                <AudioWaveformIcon size={14} className={activeMode === 'audio' ? 'text-[#f59e0b]' : ''} />
+                <AudioWaveformIcon size={14} className={activeMode === 'audio' ? 'text-[#F4C430]' : ''} />
                 <span>Audio Rooms</span>
               </button>
             </div>
@@ -215,12 +215,12 @@ export default function DashboardPage() {
               {activeMode === 'meet' ? (
                 <>
                   Video conferences <br />
-                  <span className="text-[#888e90] italic font-serif">built for precision.</span>
+                  <span className="text-gradient-brand italic font-serif">built for precision.</span>
                 </>
               ) : (
                 <>
                   Drop-in voice stages <br />
-                  <span className="text-[#888e90] italic font-serif">reimagined for teams.</span>
+                  <span className="text-gradient-brand italic font-serif">reimagined for teams.</span>
                 </>
               )}
             </h1>
@@ -234,11 +234,7 @@ export default function DashboardPage() {
 
         {/* Action Panel: Launch & Join Space */}
         <section className="relative glow-card rounded-2xl border border-white/[0.12] bg-[#0a0a0c] overflow-hidden p-6 sm:p-8 space-y-6">
-          <div
-            className={`absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-20 -mr-20 -mt-20 ${
-              activeMode === 'meet' ? 'bg-[#ff7a1a]' : 'bg-[#f59e0b]'
-            }`}
-          />
+          <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-25 -mr-20 -mt-20 bg-gradient-brand-br" />
 
           <div className="flex items-center justify-between border-b border-white/[0.06] pb-4 relative z-10">
             <div className="flex items-center gap-2">
@@ -274,7 +270,7 @@ export default function DashboardPage() {
 
             <button
               onClick={() => openCreateModal(activeMode)}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-medium text-xs rounded-lg transition-all active:scale-[0.98] shadow-[0_0_24px_rgba(252,253,255,0.18)] shrink-0"
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-lg transition-all active:scale-[0.98] shadow-brand-glow shrink-0 cursor-pointer"
             >
               <SparklesIcon size={13} />
               <span>Launch {activeMode === 'meet' ? 'Video Meeting' : 'Audio Stage'}</span>
@@ -445,7 +441,7 @@ export default function DashboardPage() {
 
                           <Link
                             href={roomHref}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-medium text-xs transition-all active:scale-[0.98] shadow-sm"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs transition-all active:scale-[0.98] shadow-sm"
                           >
                             <span>Enter Space</span>
                             <ArrowRightIcon size={11} />

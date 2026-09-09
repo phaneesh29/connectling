@@ -100,7 +100,7 @@ export function MediaDeviceMenu({
       onClick={(e) => e.stopPropagation()}
     >
       {/* Top Ambient Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-16 blur-2xl pointer-events-none opacity-25 bg-gradient-to-r from-[#ff7a1a] via-[#f59e0b] to-[#ea580c]" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-16 blur-2xl pointer-events-none opacity-30 bg-gradient-brand-r" />
 
       {/* Bottom Notch Anchor directly over Up-Arrow */}
       <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#0c0c10] border-r border-b border-white/[0.14] rotate-45 pointer-events-none" />
@@ -108,7 +108,7 @@ export function MediaDeviceMenu({
       {/* Header */}
       <div className="flex items-center justify-between pb-3 mb-3.5 border-b border-white/[0.08] relative z-10">
         <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-[#ff7a1a]">
+          <div className="h-6 w-6 rounded-lg bg-[#FF9933]/10 border border-[#FF9933]/20 flex items-center justify-center text-[#FF9933]">
             {type === 'audio' ? <MicIcon size={13} /> : <CameraIcon size={13} />}
           </div>
           <span className="text-xs font-semibold tracking-tight text-[#fcfdff]">

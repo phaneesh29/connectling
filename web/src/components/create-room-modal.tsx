@@ -127,18 +127,14 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <div className="w-full max-w-lg bg-[#0a0a0c] border border-white/[0.14] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] relative">
         {/* Subtle Atmospheric Top Glow in Modal */}
-        <div
-          className={`absolute top-0 left-1/2 -translate-x-1/2 w-72 h-32 blur-3xl pointer-events-none opacity-25 ${
-            isMeet ? 'bg-[#ff7a1a]' : 'bg-[#f59e0b]'
-          }`}
-        />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-32 blur-3xl pointer-events-none opacity-30 bg-gradient-brand-r" />
 
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-[#06060a]/60 relative z-10">
           <div className="flex items-center gap-3">
             <div
               className={`h-9 w-9 rounded-lg flex items-center justify-center border border-white/[0.10] ${
-                isMeet ? 'bg-[#ff7a1a]/10 text-[#ff7a1a]' : 'bg-[#f59e0b]/10 text-[#f59e0b]'
+                isMeet ? 'bg-[#FF9933]/10 text-[#FF9933]' : 'bg-[#F4C430]/10 text-[#F4C430]'
               }`}
             >
               {isMeet ? <VideoIcon size={18} /> : <AudioWaveformIcon size={18} />}
@@ -325,7 +321,7 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-medium bg-[#fcfdff] hover:bg-[#f1f7fe] text-black rounded-lg transition-all active:scale-[0.98] shadow-[0_0_24px_rgba(252,253,255,0.18)] disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold bg-gradient-brand-r hover:brightness-105 text-black rounded-lg transition-all active:scale-[0.98] shadow-brand-glow disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <>
