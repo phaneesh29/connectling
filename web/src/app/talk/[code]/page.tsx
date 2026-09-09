@@ -1391,6 +1391,9 @@ export default function TalkPage({ params }: TalkPageProps) {
                   onRequestPermissions={() => mediaDevices.requestPermissions(true, false)}
                   onTestSpeaker={mediaDevices.testSpeaker}
                   testingSpeaker={mediaDevices.testingSpeaker}
+                  onTestMic={mediaDevices.testMic}
+                  testingMicStatus={mediaDevices.testingMicStatus}
+                  micVolume={mediaDevices.micVolume}
                 />
               </div>
             </div>
@@ -1433,6 +1436,9 @@ export default function TalkPage({ params }: TalkPageProps) {
                   onRequestPermissions={() => mediaDevices.requestPermissions(true, false)}
                   onTestSpeaker={mediaDevices.testSpeaker}
                   testingSpeaker={mediaDevices.testingSpeaker}
+                  onTestMic={mediaDevices.testMic}
+                  testingMicStatus={mediaDevices.testingMicStatus}
+                  micVolume={mediaDevices.micVolume}
                 />
                 <button
                   type="button"

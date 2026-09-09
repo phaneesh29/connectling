@@ -1,12 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 const STORAGE_KEYS = {
   AUDIO_INPUT: 'connectling_audio_input_id',
   AUDIO_OUTPUT: 'connectling_audio_output_id',
   VIDEO_INPUT: 'connectling_video_input_id',
 };
+
+export type MicTestStatus = 'idle' | 'recording' | 'playing' | 'done';
 
 export interface UseMediaDevicesReturn {
   audioInputs: MediaDeviceInfo[];
@@ -22,6 +24,10 @@ export interface UseMediaDevicesReturn {
   requestPermissions: (audio?: boolean, video?: boolean) => Promise<boolean>;
   testSpeaker: () => void;
   testingSpeaker: boolean;
+  testMic: () => Promise<void>;
+  stopTestMic: () => void;
+  testingMicStatus: MicTestStatus;
+  micVolume: number;
 }
 
 export function useMediaDevices(): UseMediaDevicesReturn {
@@ -33,6 +39,13 @@ export function useMediaDevices(): UseMediaDevicesReturn {
   const [selectedAudioOutputId, setSelectedAudioOutputIdState] = useState<string>('default');
   const [selectedVideoInputId, setSelectedVideoInputIdState] = useState<string>('default');
   const [testingSpeaker, setTestingSpeaker] = useState(false);
+  const [testingMicStatus, setTestingMicStatus] = useState<MicTestStatus>('idle');
+  const [micVolume, setMicVolume] = useState<number>(0);
+  const micTestStreamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const playbackAudioRef = useRef<HTMLAudioElement | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+  const testTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load saved preferences from localStorage on mount
   useEffect(() => {
@@ -209,6 +222,171 @@ export function useMediaDevices(): UseMediaDevicesReturn {
     }
   }, [selectedAudioOutputId, testingSpeaker]);
 
+  const stopTestMic = useCallback(() => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    if (testTimeoutRef.current) {
+      clearTimeout(testTimeoutRef.current);
+      testTimeoutRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch {
+        // Ignored
+      }
+      mediaRecorderRef.current = null;
+    }
+    if (micTestStreamRef.current) {
+      micTestStreamRef.current.getTracks().forEach((t) => t.stop());
+      micTestStreamRef.current = null;
+    }
+    if (playbackAudioRef.current) {
+      playbackAudioRef.current.pause();
+      playbackAudioRef.current = null;
+    }
+    setTestingMicStatus('idle');
+    setMicVolume(0);
+  }, []);
+
+  const testMic = useCallback(async () => {
+    if (testingMicStatus !== 'idle') {
+      stopTestMic();
+      return;
+    }
+
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      return;
+    }
+
+    try {
+      setTestingMicStatus('recording');
+      setMicVolume(0);
+
+      const constraints: MediaStreamConstraints = {
+        audio:
+          selectedAudioInputId && selectedAudioInputId !== 'default'
+            ? { deviceId: { exact: selectedAudioInputId } }
+            : true,
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      micTestStreamRef.current = stream;
+
+      // Realtime Volume Analysis using AudioContext
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const audioCtx = new AudioCtx();
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const checkVolume = () => {
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        const avg = sum / dataArray.length;
+        // Map to 0-100%
+        const normalized = Math.min(100, Math.round((avg / 128) * 100));
+        setMicVolume(normalized);
+        animFrameRef.current = requestAnimationFrame(checkVolume);
+      };
+      animFrameRef.current = requestAnimationFrame(checkVolume);
+
+      // Record with MediaRecorder
+      const chunks: BlobPart[] = [];
+      let mimeType = 'audio/webm';
+      if (typeof MediaRecorder !== 'undefined') {
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          mimeType = 'audio/webm;codecs=opus';
+        } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+          mimeType = 'audio/ogg;codecs=opus';
+        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          mimeType = 'audio/mp4';
+        }
+      }
+
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      mediaRecorderRef.current = recorder;
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        // Stop stream and analyser
+        if (animFrameRef.current) {
+          cancelAnimationFrame(animFrameRef.current);
+          animFrameRef.current = null;
+        }
+        stream.getTracks().forEach((t) => t.stop());
+        micTestStreamRef.current = null;
+        void audioCtx.close();
+        setMicVolume(0);
+
+        if (chunks.length === 0) {
+          setTestingMicStatus('idle');
+          return;
+        }
+
+        const blob = new Blob(chunks, { type: mimeType });
+        const audioUrl = URL.createObjectURL(blob);
+        const audio = new Audio(audioUrl);
+        playbackAudioRef.current = audio;
+
+        // If setSinkId supported on HTMLMediaElement
+        if (selectedAudioOutputId && selectedAudioOutputId !== 'default' && 'setSinkId' in audio) {
+          void (audio as unknown as { setSinkId: (id: string) => Promise<void> }).setSinkId(
+            selectedAudioOutputId
+          );
+        }
+
+        setTestingMicStatus('playing');
+
+        audio.onended = () => {
+          setTestingMicStatus('done');
+          URL.revokeObjectURL(audioUrl);
+          playbackAudioRef.current = null;
+          testTimeoutRef.current = setTimeout(() => {
+            setTestingMicStatus('idle');
+          }, 2500);
+        };
+
+        audio.onerror = () => {
+          setTestingMicStatus('idle');
+          URL.revokeObjectURL(audioUrl);
+        };
+
+        void audio.play();
+      };
+
+      recorder.start();
+
+      // Automatically stop recording after 3.2 seconds
+      testTimeoutRef.current = setTimeout(() => {
+        if (recorder.state === 'recording') {
+          recorder.stop();
+        }
+      }, 3200);
+    } catch (err) {
+      console.warn('Error testing mic:', err);
+      stopTestMic();
+    }
+  }, [selectedAudioInputId, selectedAudioOutputId, stopTestMic, testingMicStatus]);
+
+  useEffect(() => {
+    return () => {
+      stopTestMic();
+    };
+  }, [stopTestMic]);
+
   return {
     audioInputs,
     audioOutputs,
@@ -223,5 +401,9 @@ export function useMediaDevices(): UseMediaDevicesReturn {
     requestPermissions,
     testSpeaker,
     testingSpeaker,
+    testMic,
+    stopTestMic,
+    testingMicStatus,
+    micVolume,
   };
 }

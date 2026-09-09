@@ -1033,6 +1033,9 @@ export default function MeetPage({ params }: MeetPageProps) {
                 onRequestPermissions={() => mediaDevices.requestPermissions(true, false)}
                 onTestSpeaker={mediaDevices.testSpeaker}
                 testingSpeaker={mediaDevices.testingSpeaker}
+                onTestMic={mediaDevices.testMic}
+                testingMicStatus={mediaDevices.testingMicStatus}
+                micVolume={mediaDevices.micVolume}
               />
             </div>
           </div>

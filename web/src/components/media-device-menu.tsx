@@ -27,6 +27,9 @@ export interface MediaDeviceMenuProps {
   onRequestPermissions?: () => Promise<boolean>;
   onTestSpeaker?: () => void;
   testingSpeaker?: boolean;
+  onTestMic?: () => void;
+  testingMicStatus?: 'idle' | 'recording' | 'playing' | 'done';
+  micVolume?: number;
 }
 
 export function MediaDeviceMenu({
@@ -45,6 +48,9 @@ export function MediaDeviceMenu({
   onRequestPermissions,
   onTestSpeaker,
   testingSpeaker = false,
+  onTestMic,
+  testingMicStatus = 'idle',
+  micVolume = 0,
 }: MediaDeviceMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -105,14 +111,9 @@ export function MediaDeviceMenu({
           <div className="h-6 w-6 rounded-lg bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-[#ff7a1a]">
             {type === 'audio' ? <MicIcon size={13} /> : <CameraIcon size={13} />}
           </div>
-          <div>
-            <span className="text-xs font-semibold tracking-tight text-[#fcfdff] block leading-none">
-              {type === 'audio' ? 'Audio Devices' : 'Video Devices'}
-            </span>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[#888e90]">
-              Hardware Setup
-            </span>
-          </div>
+          <span className="text-xs font-semibold tracking-tight text-[#fcfdff]">
+            {type === 'audio' ? 'Audio Devices' : 'Video Devices'}
+          </span>
         </div>
         <button
           type="button"
@@ -199,6 +200,100 @@ export function MediaDeviceMenu({
                 })
               )}
             </div>
+
+            {/* Test Microphone Button & Visualizer */}
+            {onTestMic && (
+              <div className="mt-2.5 space-y-1.5">
+                <button
+                  type="button"
+                  onClick={onTestMic}
+                  className={`w-full py-2 px-3 rounded-xl border text-xs font-mono flex items-center justify-between transition-all cursor-pointer ${
+                    testingMicStatus === 'recording'
+                      ? 'bg-red-500/10 border-red-500/30 text-[#ff2047] shadow-[0_0_15px_rgba(255,32,71,0.2)]'
+                      : testingMicStatus === 'playing'
+                      ? 'bg-amber-500/10 border-amber-500/30 text-[#ffc53d] shadow-[0_0_15px_rgba(255,197,61,0.2)]'
+                      : testingMicStatus === 'done'
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-[#11ff99] shadow-[0_0_15px_rgba(17,255,153,0.2)]'
+                      : 'bg-white/[0.03] hover:bg-orange-500/10 text-[#888e90] hover:text-[#ff7a1a] border-white/[0.08] hover:border-orange-500/30 group'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    {testingMicStatus === 'recording' ? (
+                      <span className="h-2 w-2 rounded-full bg-[#ff2047] animate-ping shrink-0" />
+                    ) : testingMicStatus === 'playing' ? (
+                      <div className="flex items-end gap-0.5 h-3.5 w-4 pb-0.5 shrink-0">
+                        <span className="w-1 bg-[#ffc53d] rounded-full animate-bounce [animation-delay:-0.3s] h-3" />
+                        <span className="w-1 bg-[#ffc53d] rounded-full animate-bounce [animation-delay:-0.15s] h-2" />
+                        <span className="w-1 bg-[#ffc53d] rounded-full animate-bounce h-3.5" />
+                      </div>
+                    ) : testingMicStatus === 'done' ? (
+                      <CheckIcon size={13} className="text-[#11ff99] shrink-0" />
+                    ) : (
+                      <MicIcon
+                        size={13}
+                        className="text-[#888e90] group-hover:text-[#ff7a1a] transition-colors shrink-0"
+                      />
+                    )}
+
+                    <span
+                      className={
+                        testingMicStatus === 'recording'
+                          ? 'text-[#ff2047] font-medium'
+                          : testingMicStatus === 'playing'
+                          ? 'text-[#ffc53d] font-medium'
+                          : testingMicStatus === 'done'
+                          ? 'text-[#11ff99] font-medium'
+                          : 'text-[#fcfdff]'
+                      }
+                    >
+                      {testingMicStatus === 'recording'
+                        ? 'Speak for 3 seconds...'
+                        : testingMicStatus === 'playing'
+                        ? 'Playing your voice back...'
+                        : testingMicStatus === 'done'
+                        ? 'Mic works clearly!'
+                        : 'Test Microphone'}
+                    </span>
+                  </div>
+
+                  <span
+                    className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
+                      testingMicStatus === 'recording'
+                        ? 'bg-red-500/20 border-red-500/40 text-[#ff2047]'
+                        : testingMicStatus === 'playing'
+                        ? 'bg-amber-500/20 border-amber-500/40 text-[#ffc53d]'
+                        : testingMicStatus === 'done'
+                        ? 'bg-emerald-500/20 border-emerald-500/40 text-[#11ff99]'
+                        : 'bg-white/[0.06] border-white/[0.08] text-[#888e90] group-hover:text-[#ff7a1a] group-hover:border-orange-500/30'
+                    }`}
+                  >
+                    {testingMicStatus === 'recording'
+                      ? 'Recording'
+                      : testingMicStatus === 'playing'
+                      ? 'Playback'
+                      : testingMicStatus === 'done'
+                      ? 'Verified'
+                      : 'Record & Listen'}
+                  </span>
+                </button>
+
+                {/* Live Voice Volume Level Bar when recording */}
+                {testingMicStatus === 'recording' && (
+                  <div className="px-1 space-y-1 animate-in fade-in duration-150">
+                    <div className="flex items-center justify-between text-[10px] font-mono text-[#888e90]">
+                      <span>Voice input level</span>
+                      <span className="text-[#ff7a1a]">{micVolume}%</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-white/[0.06] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-[#ff7a1a] to-[#11ff99] rounded-full transition-all duration-75"
+                        style={{ width: `${Math.max(4, micVolume)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Speakers Section */}
