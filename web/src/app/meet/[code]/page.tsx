@@ -27,6 +27,7 @@ import {
   XIcon,
   MessageSquareIcon,
   StarIcon,
+  ChevronUpIcon,
 } from '@animateicons/react/lucide';
 import { getSocket } from '@/lib/socket';
 import { playJoinChime, playLeaveChime } from '@/lib/chime';
@@ -34,6 +35,8 @@ import { InRoomChat } from '@/components/in-room-chat';
 import { InRoomParticipants } from '@/components/in-room-participants';
 import { TransferHostModal } from '@/components/transfer-host-modal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { MediaDeviceMenu } from '@/components/media-device-menu';
+import { useMediaDevices } from '@/hooks/use-media-devices';
 import type { ChatMessage, RoomParticipant } from '@/types/realtime';
 
 interface MeetPageProps {
@@ -84,6 +87,10 @@ export default function MeetPage({ params }: MeetPageProps) {
     onConfirm: () => void;
     onCancel?: () => void;
   } | null>(null);
+
+  const mediaDevices = useMediaDevices();
+  const [audioMenuOpen, setAudioMenuOpen] = useState(false);
+  const [videoMenuOpen, setVideoMenuOpen] = useState(false);
 
   const chatOpenRef = useRef(chatOpen);
   const isMicOnRef = useRef(isMicOn);
@@ -957,47 +964,132 @@ export default function MeetPage({ params }: MeetPageProps) {
 
       <footer className="h-20 border-t border-white/[0.06] px-4 sm:px-6 flex items-center justify-center bg-black/75 backdrop-blur-xl">
         <div className="flex items-center gap-3 sm:gap-4 p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-xl shadow-2xl">
-          <button
-            onClick={handleToggleMic}
-            disabled={!isMicAllowed && !isMicOn}
-            className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
-              !isMicAllowed && !isMicOn
-                ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
-                : isMicOn
-                ? 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
-                : 'bg-[#ff2047] text-white shadow-[0_0_16px_rgba(255,32,71,0.4)]'
-            }`}
-            title={
-              !isMicAllowed && !isMicOn
-                ? 'Microphone disabled by host'
-                : isMicOn
-                ? 'Mute Microphone'
-                : 'Unmute Microphone'
-            }
-          >
-            {isMicOn ? <MicIcon size={17} /> : <MicOffIcon size={17} />}
-          </button>
+          {/* Microphone Split Button */}
+          <div className="relative">
+            <MediaDeviceMenu
+              isOpen={audioMenuOpen}
+              onClose={() => setAudioMenuOpen(false)}
+              type="audio"
+              audioInputs={mediaDevices.audioInputs}
+              audioOutputs={mediaDevices.audioOutputs}
+              selectedAudioInputId={mediaDevices.selectedAudioInputId}
+              selectedAudioOutputId={mediaDevices.selectedAudioOutputId}
+              onSelectAudioInput={mediaDevices.setSelectedAudioInputId}
+              onSelectAudioOutput={mediaDevices.setSelectedAudioOutputId}
+              onRequestPermissions={() => mediaDevices.requestPermissions(true, false)}
+              onTestSpeaker={mediaDevices.testSpeaker}
+              testingSpeaker={mediaDevices.testingSpeaker}
+            />
+            <div
+              className={`inline-flex items-center rounded-lg transition-all ${
+                !isMicAllowed && !isMicOn
+                  ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
+                  : isMicOn
+                  ? 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
+                  : 'bg-[#ff2047] text-white shadow-[0_0_16px_rgba(255,32,71,0.4)]'
+              }`}
+            >
+              <button
+                type="button"
+                onClick={handleToggleMic}
+                disabled={!isMicAllowed && !isMicOn}
+                className="h-10 px-2.5 sm:px-3 rounded-l-lg flex items-center justify-center hover:opacity-90 transition-all cursor-pointer disabled:cursor-not-allowed"
+                title={
+                  !isMicAllowed && !isMicOn
+                    ? 'Microphone disabled by host'
+                    : isMicOn
+                    ? 'Mute Microphone'
+                    : 'Unmute Microphone'
+                }
+              >
+                {isMicOn ? <MicIcon size={17} /> : <MicOffIcon size={17} />}
+              </button>
+              <div
+                className={`w-px h-5 ${
+                  isMicOn ? 'bg-white/[0.10]' : 'bg-white/20'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setAudioMenuOpen(!audioMenuOpen);
+                  setVideoMenuOpen(false);
+                }}
+                className={`h-10 px-1.5 sm:px-2 rounded-r-lg flex items-center justify-center hover:opacity-90 hover:bg-white/[0.08] transition-all cursor-pointer ${
+                  audioMenuOpen ? 'bg-white/[0.12] text-[#ff7a1a]' : ''
+                }`}
+                title="Microphone & Speaker Settings"
+              >
+                <ChevronUpIcon
+                  size={14}
+                  className={`transition-transform duration-200 ${
+                    audioMenuOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
 
-          <button
-            onClick={handleToggleVideo}
-            disabled={!isVideoAllowed && !isVideoOn}
-            className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
-              !isVideoAllowed && !isVideoOn
-                ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
-                : isVideoOn
-                ? 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
-                : 'bg-[#ff2047] text-white shadow-[0_0_16px_rgba(255,32,71,0.4)]'
-            }`}
-            title={
-              !isVideoAllowed && !isVideoOn
-                ? 'Camera disabled by host'
-                : isVideoOn
-                ? 'Turn Off Camera'
-                : 'Turn On Camera'
-            }
-          >
-            {isVideoOn ? <VideoIcon size={17} /> : <CameraIcon size={17} />}
-          </button>
+          {/* Camera Split Button */}
+          <div className="relative">
+            <MediaDeviceMenu
+              isOpen={videoMenuOpen}
+              onClose={() => setVideoMenuOpen(false)}
+              type="video"
+              videoInputs={mediaDevices.videoInputs}
+              selectedVideoInputId={mediaDevices.selectedVideoInputId}
+              onSelectVideoInput={mediaDevices.setSelectedVideoInputId}
+              onRequestPermissions={() => mediaDevices.requestPermissions(false, true)}
+            />
+            <div
+              className={`inline-flex items-center rounded-lg transition-all ${
+                !isVideoAllowed && !isVideoOn
+                  ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
+                  : isVideoOn
+                  ? 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
+                  : 'bg-[#ff2047] text-white shadow-[0_0_16px_rgba(255,32,71,0.4)]'
+              }`}
+            >
+              <button
+                type="button"
+                onClick={handleToggleVideo}
+                disabled={!isVideoAllowed && !isVideoOn}
+                className="h-10 px-2.5 sm:px-3 rounded-l-lg flex items-center justify-center hover:opacity-90 transition-all cursor-pointer disabled:cursor-not-allowed"
+                title={
+                  !isVideoAllowed && !isVideoOn
+                    ? 'Camera disabled by host'
+                    : isVideoOn
+                    ? 'Turn Off Camera'
+                    : 'Turn On Camera'
+                }
+              >
+                {isVideoOn ? <VideoIcon size={17} /> : <CameraIcon size={17} />}
+              </button>
+              <div
+                className={`w-px h-5 ${
+                  isVideoOn ? 'bg-white/[0.10]' : 'bg-white/20'
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setVideoMenuOpen(!videoMenuOpen);
+                  setAudioMenuOpen(false);
+                }}
+                className={`h-10 px-1.5 sm:px-2 rounded-r-lg flex items-center justify-center hover:opacity-90 hover:bg-white/[0.08] transition-all cursor-pointer ${
+                  videoMenuOpen ? 'bg-white/[0.12] text-[#ff7a1a]' : ''
+                }`}
+                title="Camera Settings"
+              >
+                <ChevronUpIcon
+                  size={14}
+                  className={`transition-transform duration-200 ${
+                    videoMenuOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+            </div>
+          </div>
 
           <button
             onClick={handleToggleScreenShare}

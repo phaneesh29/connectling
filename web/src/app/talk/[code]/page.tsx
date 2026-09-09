@@ -29,6 +29,7 @@ import {
   XIcon,
   ShieldCheckIcon,
   SearchIcon,
+  ChevronUpIcon,
 } from '@animateicons/react/lucide';
 import { getSocket } from '@/lib/socket';
 import { playJoinChime, playLeaveChime } from '@/lib/chime';
@@ -36,6 +37,8 @@ import { InRoomChat } from '@/components/in-room-chat';
 import { InRoomParticipants } from '@/components/in-room-participants';
 import { TransferHostModal } from '@/components/transfer-host-modal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { MediaDeviceMenu } from '@/components/media-device-menu';
+import { useMediaDevices } from '@/hooks/use-media-devices';
 import type { ChatMessage, RoomParticipant } from '@/types/realtime';
 
 interface StageTileGradient {
@@ -166,6 +169,9 @@ export default function TalkPage({ params }: TalkPageProps) {
     onConfirm: () => void;
     onCancel?: () => void;
   } | null>(null);
+
+  const mediaDevices = useMediaDevices();
+  const [audioMenuOpen, setAudioMenuOpen] = useState(false);
 
   const isHost = Boolean(room && session?.user && room.hostId === session.user.id);
   const isHostRef = useRef(isHost);
@@ -1329,39 +1335,112 @@ export default function TalkPage({ params }: TalkPageProps) {
       <footer className="h-20 border-t border-white/[0.06] px-4 sm:px-6 flex items-center justify-center bg-black/75 backdrop-blur-xl">
         <div className="flex items-center gap-3 sm:gap-4 p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-xl shadow-2xl">
           {isSpeaker ? (
-            <button
-              onClick={handleToggleMic}
-              className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
-                !isMuted
-                  ? 'bg-gradient-to-r from-[#f59e0b] to-[#ea580c] text-white shadow-[0_0_16px_rgba(245,158,11,0.4)]'
-                  : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
-              }`}
-              title={!isMuted ? 'Mute microphone' : 'Unmute microphone'}
-            >
-              {!isMuted ? <MicIcon size={17} /> : <MicOffIcon size={17} />}
-            </button>
+            <div className="relative">
+              <MediaDeviceMenu
+                isOpen={audioMenuOpen}
+                onClose={() => setAudioMenuOpen(false)}
+                type="audio"
+                audioInputs={mediaDevices.audioInputs}
+                audioOutputs={mediaDevices.audioOutputs}
+                selectedAudioInputId={mediaDevices.selectedAudioInputId}
+                selectedAudioOutputId={mediaDevices.selectedAudioOutputId}
+                onSelectAudioInput={mediaDevices.setSelectedAudioInputId}
+                onSelectAudioOutput={mediaDevices.setSelectedAudioOutputId}
+                onRequestPermissions={() => mediaDevices.requestPermissions(true, false)}
+                onTestSpeaker={mediaDevices.testSpeaker}
+                testingSpeaker={mediaDevices.testingSpeaker}
+              />
+              <div
+                className={`inline-flex items-center rounded-lg transition-all ${
+                  !isMuted
+                    ? 'bg-gradient-to-r from-[#f59e0b] to-[#ea580c] text-white shadow-[0_0_16px_rgba(245,158,11,0.4)]'
+                    : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={handleToggleMic}
+                  className="h-10 px-2.5 sm:px-3 rounded-l-lg flex items-center justify-center hover:opacity-90 transition-all cursor-pointer"
+                  title={!isMuted ? 'Mute microphone' : 'Unmute microphone'}
+                >
+                  {!isMuted ? <MicIcon size={17} /> : <MicOffIcon size={17} />}
+                </button>
+                <div
+                  className={`w-px h-5 ${
+                    !isMuted ? 'bg-white/20' : 'bg-white/[0.10]'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setAudioMenuOpen(!audioMenuOpen)}
+                  className={`h-10 px-1.5 sm:px-2 rounded-r-lg flex items-center justify-center hover:opacity-90 hover:bg-white/[0.08] transition-all cursor-pointer ${
+                    audioMenuOpen ? 'bg-white/[0.12] text-white' : ''
+                  }`}
+                  title="Audio & Speaker Settings"
+                >
+                  <ChevronUpIcon
+                    size={14}
+                    className={`transition-transform duration-200 ${
+                      audioMenuOpen ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
           ) : (
-            <button
-              onClick={handleToggleHandRaise}
-              disabled={!isRaiseHandAllowed && !handRaised}
-              className={`h-10 px-4 rounded-lg flex items-center gap-2 font-medium text-xs transition-all ${
-                !isRaiseHandAllowed && !handRaised
-                  ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
-                  : handRaised
-                  ? 'bg-[#ffc53d] text-black shadow-[0_0_16px_rgba(255,197,61,0.4)] ring-2 ring-amber-400/50 animate-pulse'
-                  : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
-              }`}
-              title={
-                !isRaiseHandAllowed && !handRaised
-                  ? 'Mic requests disabled by host'
-                  : handRaised
-                  ? 'Lower Hand (Cancel Request)'
-                  : 'Request Mic to Speak'
-              }
-            >
-              <HandCoinsIcon size={14} />
-              <span>{handRaised ? 'Hand Raised' : 'Request Mic'}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleToggleHandRaise}
+                disabled={!isRaiseHandAllowed && !handRaised}
+                className={`h-10 px-4 rounded-lg flex items-center gap-2 font-medium text-xs transition-all ${
+                  !isRaiseHandAllowed && !handRaised
+                    ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
+                    : handRaised
+                    ? 'bg-[#ffc53d] text-black shadow-[0_0_16px_rgba(255,197,61,0.4)] ring-2 ring-amber-400/50 animate-pulse'
+                    : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
+                }`}
+                title={
+                  !isRaiseHandAllowed && !handRaised
+                    ? 'Mic requests disabled by host'
+                    : handRaised
+                    ? 'Lower Hand (Cancel Request)'
+                    : 'Request Mic to Speak'
+                }
+              >
+                <HandCoinsIcon size={14} />
+                <span>{handRaised ? 'Hand Raised' : 'Request Mic'}</span>
+              </button>
+
+              <div className="relative">
+                <MediaDeviceMenu
+                  isOpen={audioMenuOpen}
+                  onClose={() => setAudioMenuOpen(false)}
+                  type="audio"
+                  audioInputs={mediaDevices.audioInputs}
+                  audioOutputs={mediaDevices.audioOutputs}
+                  selectedAudioInputId={mediaDevices.selectedAudioInputId}
+                  selectedAudioOutputId={mediaDevices.selectedAudioOutputId}
+                  onSelectAudioInput={mediaDevices.setSelectedAudioInputId}
+                  onSelectAudioOutput={mediaDevices.setSelectedAudioOutputId}
+                  onRequestPermissions={() => mediaDevices.requestPermissions(true, false)}
+                  onTestSpeaker={mediaDevices.testSpeaker}
+                  testingSpeaker={mediaDevices.testingSpeaker}
+                />
+                <button
+                  type="button"
+                  onClick={() => setAudioMenuOpen(!audioMenuOpen)}
+                  className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
+                    audioMenuOpen
+                      ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 shadow-sm'
+                      : 'bg-[#101012] hover:bg-[#18181c] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.08]'
+                  }`}
+                  title="Audio & Speaker Settings"
+                >
+                  <HeadphonesIcon size={17} />
+                </button>
+              </div>
+            </div>
           )}
 
           <button
