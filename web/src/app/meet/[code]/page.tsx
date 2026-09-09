@@ -208,7 +208,21 @@ export default function MeetPage({ params }: MeetPageProps) {
       }
     }, 15000);
 
-    return () => clearInterval(interval);
+    const onBeforeUnload = () => {
+      const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000';
+      fetch(`${apiUrl}/api/v1/rooms/${roomCode}/leave`, {
+        method: 'POST',
+        credentials: 'include',
+        keepalive: true,
+      });
+    };
+
+    window.addEventListener('beforeunload', onBeforeUnload);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('beforeunload', onBeforeUnload);
+    };
   }, [roomId, roomCode]);
 
   // Connect WebSocket and listen for in-room ephemeral messages
