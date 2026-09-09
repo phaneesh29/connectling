@@ -84,6 +84,7 @@ const fetchRoomParticipants = async (
         image: u.image,
         isMuted: data.isMuted ?? false,
         isVideoOn: data.isVideoOn ?? true,
+        isScreenSharing: data.isScreenSharing ?? false,
         handRaised: data.handRaised ?? false,
         canSpeak: data.canSpeak ?? false,
       });
@@ -141,6 +142,7 @@ export const notifyUserLeftRoom = async (
       }
       socket.data.currentRoomCode = undefined;
       await socket.leave(roomChannel);
+      await socket.leave(`room:${normalized}:user:${userId}`);
       socket.disconnect(true);
     }
   }
@@ -201,6 +203,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         socket.emit('room:kicked', { message });
         socket.data.currentRoomCode = undefined;
         await socket.leave(roomChannel);
+        await socket.leave(`room:${roomCode}:user:${userId}`);
       }
     }
   });
@@ -211,6 +214,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       if (socket.data?.user?.id === userId) {
         socket.data.currentRoomCode = undefined;
         await socket.leave(roomChannel);
+        await socket.leave(`room:${roomCode}:user:${userId}`);
         socket.disconnect(true);
       }
     }
@@ -222,7 +226,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
     const user = socket.data.user;
     logger.info({ userId: user.id, socketId: socket.id }, 'Realtime socket connected');
 
-    socket.on('room:join', async ({ roomCode, isMuted, isVideoOn, handRaised }) => {
+    socket.on('room:join', async ({ roomCode, isMuted, isVideoOn, isScreenSharing, handRaised }) => {
       try {
         const normalized = normalizeRoomCode(roomCode);
         const roomChannel = `room:${normalized}`;
@@ -261,9 +265,11 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         }
 
         await socket.join(roomChannel);
+        await socket.join(`room:${normalized}:user:${user.id}`);
         socket.data.currentRoomCode = normalized;
         if (typeof isMuted === 'boolean') socket.data.isMuted = isMuted;
         if (typeof isVideoOn === 'boolean') socket.data.isVideoOn = isVideoOn;
+        if (typeof isScreenSharing === 'boolean') socket.data.isScreenSharing = isScreenSharing;
         if (typeof handRaised === 'boolean') socket.data.handRaised = handRaised;
 
         socket.to(roomChannel).emit('room:user-joined', {
@@ -285,9 +291,10 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       }
     });
 
-    socket.on('room:media-toggle', async ({ roomCode, isMuted, isVideoOn, handRaised }) => {
+    socket.on('room:media-toggle', async ({ roomCode, isMuted, isVideoOn, isScreenSharing, handRaised }) => {
       if (typeof isMuted === 'boolean') socket.data.isMuted = isMuted;
       if (typeof isVideoOn === 'boolean') socket.data.isVideoOn = isVideoOn;
+      if (typeof isScreenSharing === 'boolean') socket.data.isScreenSharing = isScreenSharing;
       if (typeof handRaised === 'boolean') socket.data.handRaised = handRaised;
 
       const participants = await fetchRoomParticipants(io, roomCode);
@@ -521,6 +528,20 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       io.in(roomChannel).emit('room:reaction', reactionPayload);
     });
 
+    socket.on('webrtc:signal', async ({ roomCode, targetUserId, signal }) => {
+      if (!targetUserId || !signal) return;
+      try {
+        const normalized = normalizeRoomCode(roomCode);
+        const targetUserChannel = `room:${normalized}:user:${targetUserId}`;
+        io.to(targetUserChannel).emit('webrtc:signal', {
+          fromUserId: user.id,
+          signal,
+        });
+      } catch (err) {
+        logger.error({ err, fromUserId: user.id, targetUserId, roomCode }, 'Error relaying WebRTC signal');
+      }
+    });
+
     const handleLeave = async (roomCode: string) => {
       if (!socket.data.currentRoomCode) return;
       socket.data.currentRoomCode = undefined;
@@ -534,6 +555,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         });
 
         await socket.leave(roomChannel);
+        await socket.leave(`room:${normalized}:user:${user.id}`);
 
         const participants = await fetchRoomParticipants(io, normalized, user.id);
         io.in(roomChannel).emit('room:roster', { participants });

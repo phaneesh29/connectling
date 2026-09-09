@@ -40,6 +40,8 @@ import { MediaDeviceMenu } from '@/components/media-device-menu';
 import { AudioWaveform, AudioRipple } from '@/components/audio-waveform';
 import { useMediaDevices } from '@/hooks/use-media-devices';
 import { useLocalAudioLevel } from '@/hooks/use-local-audio-level';
+import { useWebRTC } from '@/hooks/use-webrtc';
+import { RemoteAudio } from '@/components/webrtc-media';
 import { ReactionPicker } from '@/components/reactions/reaction-picker';
 import { FloatingReactions } from '@/components/reactions/floating-reactions';
 import { ReactionBadge } from '@/components/reactions/reaction-badge';
@@ -638,10 +640,29 @@ export default function TalkPage({ params }: TalkPageProps) {
   const isChatAllowed = settings?.allowChat !== false;
   const isRaiseHandAllowed = isHost || settings?.allowRaiseHand !== false;
 
-  const isLocalMicActive = Boolean(room) && !isMuted && isSpeaker;
+  const isInRoom = Boolean(room) && !passcodeRequired;
+  const isLocalMicActive = isInRoom && !isMuted && isSpeaker;
+
+  const webrtc = useWebRTC({
+    roomCode: code,
+    currentUserId: session?.user?.id,
+    enabled: isInRoom && Boolean(session?.user?.id),
+    mediaType: 'talk',
+    isMicOn: isLocalMicActive,
+    isVideoOn: false,
+    isScreenSharing: false,
+    selectedAudioInputId: mediaDevices.selectedAudioInputId,
+    selectedAudioOutputId: mediaDevices.selectedAudioOutputId,
+    selectedVideoInputId: mediaDevices.selectedVideoInputId,
+    onError: (msg) => {
+      setRoomToast({ text: msg, type: 'leave' });
+    },
+  });
+
   const localAudio = useLocalAudioLevel({
     isEnabled: isLocalMicActive,
     deviceId: mediaDevices.selectedAudioInputId,
+    stream: webrtc.localStream,
   });
 
   const handleSendMessage = (text: string) => {
@@ -1168,9 +1189,12 @@ export default function TalkPage({ params }: TalkPageProps) {
             const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'U';
             const gradient = getStageTileGradient(p.userId, isPHost);
             const isMicActive = isMe ? isLocalMicActive : !p.isMuted;
+            const remoteAudio = webrtc.remoteAudioLevels[p.userId];
             const isSpeaking = isMe
               ? isLocalMicActive && localAudio.isSpeaking
-              : !p.isMuted;
+              : remoteAudio ? remoteAudio.isSpeaking : !p.isMuted;
+            const liveVolume = isMe ? localAudio.volume : remoteAudio?.volume;
+            const remoteStream = webrtc.remoteStreams.get(p.userId);
 
             return (
               <div
@@ -1182,6 +1206,14 @@ export default function TalkPage({ params }: TalkPageProps) {
                   isSpeaking ? 'ring-1 ring-emerald-500/50' : ''
                 }`}
               >
+                {/* Live WebRTC Remote Audio element for other participants */}
+                {!isMe && (
+                  <RemoteAudio
+                    stream={remoteStream}
+                    audioOutputId={mediaDevices.selectedAudioOutputId}
+                  />
+                )}
+
                 {/* Subtle top edge specular highlight line */}
                 <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent pointer-events-none" />
 
@@ -1310,7 +1342,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                             isActive={true}
                             size="xs"
                             barCount={3}
-                            volume={isMe ? localAudio.volume : undefined}
+                            volume={liveVolume}
                             frequencyBands={isMe ? localAudio.frequencyBands : undefined}
                           />
                           <span className="text-[9px] font-mono uppercase tracking-wider block font-semibold">
@@ -1329,7 +1361,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                         isActive={true}
                         size="xs"
                         barCount={3}
-                        volume={isMe ? localAudio.volume : undefined}
+                        volume={liveVolume}
                         frequencyBands={isMe ? localAudio.frequencyBands : undefined}
                       />
                       <span className="text-[10px] font-mono uppercase tracking-wider block font-semibold">

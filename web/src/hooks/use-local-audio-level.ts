@@ -5,6 +5,7 @@ import { useState, useEffect, useRef } from 'react';
 export interface UseLocalAudioLevelOptions {
   isEnabled: boolean; // e.g. hasEntered && isMicOn
   deviceId?: string;
+  stream?: MediaStream | null;
 }
 
 export interface LocalAudioLevelState {
@@ -16,6 +17,7 @@ export interface LocalAudioLevelState {
 export function useLocalAudioLevel({
   isEnabled,
   deviceId,
+  stream: externalStream,
 }: UseLocalAudioLevelOptions): LocalAudioLevelState {
   const [volume, setVolume] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -45,25 +47,35 @@ export function useLocalAudioLevel({
     window.addEventListener('click', handleResume);
     window.addEventListener('keydown', handleResume);
 
+    let ownStreamCreated = false;
+
     const startAudioAnalysis = async () => {
       try {
-        const constraints: MediaStreamConstraints = {
-          audio:
-            deviceId && deviceId !== 'default'
-              ? { deviceId: { exact: deviceId } }
-              : true,
-        };
-
         let stream: MediaStream;
-        try {
-          stream = await navigator.mediaDevices.getUserMedia(constraints);
-        } catch {
-          // Fallback to default microphone if specified device constraints fail
-          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        if (externalStream && externalStream.getAudioTracks().length > 0) {
+          stream = externalStream;
+        } else {
+          const constraints: MediaStreamConstraints = {
+            audio:
+              deviceId && deviceId !== 'default'
+                ? { deviceId: { exact: deviceId } }
+                : true,
+          };
+
+          try {
+            stream = await navigator.mediaDevices.getUserMedia(constraints);
+          } catch {
+            // Fallback to default microphone if specified device constraints fail
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          }
+          ownStreamCreated = true;
         }
 
         if (isCancelled) {
-          stream.getTracks().forEach((t) => t.stop());
+          if (ownStreamCreated) {
+            stream.getTracks().forEach((t) => t.stop());
+          }
           return;
         }
 
@@ -148,12 +160,12 @@ export function useLocalAudioLevel({
         void audioCtxRef.current.close().catch(() => {});
         audioCtxRef.current = null;
       }
-      if (streamRef.current) {
+      if (streamRef.current && ownStreamCreated) {
         streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       }
     };
-  }, [isEnabled, deviceId]);
+  }, [isEnabled, deviceId, externalStream]);
 
   return {
     volume: isEnabled ? volume : 0,

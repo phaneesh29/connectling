@@ -39,6 +39,8 @@ import { MediaDeviceMenu } from '@/components/media-device-menu';
 import { AudioWaveform, AudioRipple } from '@/components/audio-waveform';
 import { useMediaDevices } from '@/hooks/use-media-devices';
 import { useLocalAudioLevel } from '@/hooks/use-local-audio-level';
+import { useWebRTC } from '@/hooks/use-webrtc';
+import { LocalVideo, RemoteVideo } from '@/components/webrtc-media';
 import { ReactionPicker } from '@/components/reactions/reaction-picker';
 import { FloatingReactions } from '@/components/reactions/floating-reactions';
 import { ReactionBadge } from '@/components/reactions/reaction-badge';
@@ -266,6 +268,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       roomCode: code,
       isMuted: !isMicOnRef.current,
       isVideoOn: isVideoOnRef.current,
+      isScreenSharing: false,
       handRaised: handRaisedRef.current,
     });
 
@@ -474,9 +477,31 @@ export default function MeetPage({ params }: MeetPageProps) {
   const isRaiseHandAllowed = isHost || settings?.allowRaiseHand !== false;
 
   const isInRoom = Boolean(room) && !passcodeRequired;
+
+  const webrtc = useWebRTC({
+    roomCode: code,
+    currentUserId: session?.user?.id,
+    enabled: isInRoom && Boolean(session?.user?.id),
+    mediaType: 'meet',
+    isMicOn: isMicOn && isMicAllowed,
+    isVideoOn: isVideoOn && isVideoAllowed,
+    isScreenSharing,
+    selectedAudioInputId: mediaDevices.selectedAudioInputId,
+    selectedAudioOutputId: mediaDevices.selectedAudioOutputId,
+    selectedVideoInputId: mediaDevices.selectedVideoInputId,
+    onScreenShareEnded: () => {
+      setIsScreenSharing(false);
+      setRoomToast({ text: 'Screen sharing ended', type: 'leave' });
+    },
+    onError: (msg) => {
+      setRoomToast({ text: msg, type: 'leave' });
+    },
+  });
+
   const localAudio = useLocalAudioLevel({
     isEnabled: isInRoom && isMicOn && isMicAllowed,
     deviceId: mediaDevices.selectedAudioInputId,
+    stream: webrtc.localStream,
   });
 
   const handleSendMessage = (text: string) => {
@@ -552,6 +577,21 @@ export default function MeetPage({ params }: MeetPageProps) {
     }
     setIsScreenSharing(!isScreenSharing);
   };
+
+  // Broadcast screen sharing state changes to room roster
+  useEffect(() => {
+    if (!roomId) return;
+    const socket = getSocket();
+    if (socket.connected) {
+      socket.emit('room:media-toggle', {
+        roomCode: code,
+        isMuted: !isMicOn,
+        isVideoOn,
+        isScreenSharing,
+        handRaised,
+      });
+    }
+  }, [roomId, code, isScreenSharing, isMicOn, isVideoOn, handRaised]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -824,6 +864,7 @@ export default function MeetPage({ params }: MeetPageProps) {
   }
 
   const otherParticipants = participants.filter((p) => p.userId !== session?.user?.id);
+  const isLocalVideoLive = Boolean((isVideoOn || isScreenSharing) && webrtc.localStream);
 
   return (
     <div className="flex flex-col h-screen bg-black text-[#fcfdff] select-none ambient-glow-meet">
@@ -917,45 +958,35 @@ export default function MeetPage({ params }: MeetPageProps) {
               className="absolute top-3 right-3"
             />
 
-            {isVideoOn ? (
-              <div className="w-full h-full bg-gradient-to-b from-[#0e0e12] to-[#06060a] flex flex-col items-center justify-center p-6 text-center space-y-3 relative">
-                <div className="relative">
-                  <AudioRipple isActive={isMicOn} isSpeaking={localAudio.isSpeaking} size="lg" />
-                  <div
-                    className={`h-20 w-20 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden shadow-2xl relative z-10 transition-all ${
-                      isMicOn && localAudio.isSpeaking ? 'ring-2 ring-emerald-400/90' : ''
-                    }`}
-                  >
-                    {session?.user.image ? (
-                      <Image
-                        src={session.user.image}
-                        alt={session.user.name || 'User'}
-                        width={80}
-                        height={80}
-                        unoptimized
-                        referrerPolicy="no-referrer"
-                        className="h-full w-full rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="font-serif text-2xl text-[#fcfdff]">{session?.user.name?.charAt(0) || 'U'}</span>
-                    )}
-                  </div>
+            {/* Live WebRTC Local Video Preview */}
+            <LocalVideo
+              stream={webrtc.localStream}
+              isActive={isLocalVideoLive}
+            />
+
+            {isLocalVideoLive ? (
+              <div className="w-full h-full relative z-10 flex flex-col justify-between p-4 pointer-events-none">
+                <div className="flex items-center justify-between">
+                  <div />
                   {isHost && (
                     <span
-                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 z-30"
+                      className="h-5 w-5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 pointer-events-auto"
                       title="Meeting Host (You)"
                     >
                       <StarIcon size={11} className="fill-black/30" />
                     </span>
                   )}
                 </div>
-                <div className="space-y-0.5 relative z-10">
-                  <p className="text-xs font-medium text-[#fcfdff]">{session?.user.name} (You)</p>
-                  <p className="text-[10px] font-mono text-[#11ff99]">Camera Feed Online</p>
-                </div>
+                {isScreenSharing && (
+                  <div className="self-center bg-black/70 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-[10px] font-mono text-[#11ff99] flex items-center gap-1.5 shadow-lg pointer-events-auto">
+                    <MonitorIcon size={11} />
+                    <span>Sharing your screen</span>
+                  </div>
+                )}
+                <div />
               </div>
             ) : (
-              <div className="relative flex flex-col items-center justify-center gap-2.5">
+              <div className="relative flex flex-col items-center justify-center gap-2.5 z-10">
                 <div className="relative">
                   <AudioRipple isActive={isMicOn} isSpeaking={localAudio.isSpeaking} size="md" />
                   <div
@@ -963,7 +994,19 @@ export default function MeetPage({ params }: MeetPageProps) {
                       isMicOn && localAudio.isSpeaking ? 'ring-2 ring-emerald-400/90 text-emerald-300' : ''
                     }`}
                   >
-                    <CameraIcon size={20} />
+                    {session?.user.image ? (
+                      <Image
+                        src={session.user.image}
+                        alt={session.user.name || 'User'}
+                        width={56}
+                        height={56}
+                        unoptimized
+                        referrerPolicy="no-referrer"
+                        className="h-full w-full rounded-full object-cover"
+                      />
+                    ) : (
+                      <CameraIcon size={20} />
+                    )}
                   </div>
                   {isHost && (
                     <span
@@ -1027,8 +1070,17 @@ export default function MeetPage({ params }: MeetPageProps) {
           {otherParticipants.map((p) => {
             const isOtherHost = p.userId === room.hostId;
             const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'U';
-            const isVideoActive = p.isVideoOn ?? true;
-            const isSpeaking = !p.isMuted;
+            const remoteStream = webrtc.remoteStreams.get(p.userId);
+            const hasRemoteVideoTrack = Boolean(
+              remoteStream &&
+                remoteStream.getVideoTracks().some((t) => t.readyState === 'live' && t.enabled)
+            );
+            const isVideoActive = Boolean(
+              p.isScreenSharing || ((p.isVideoOn ?? true) && hasRemoteVideoTrack)
+            );
+            const remoteAudio = webrtc.remoteAudioLevels[p.userId];
+            const isSpeaking = remoteAudio ? remoteAudio.isSpeaking : !p.isMuted;
+            const remoteVolume = remoteAudio?.volume;
 
             return (
               <div
@@ -1039,6 +1091,13 @@ export default function MeetPage({ params }: MeetPageProps) {
                     : 'border border-white/[0.12]'
                 }`}
               >
+                {/* Live WebRTC Remote Video & Audio element */}
+                <RemoteVideo
+                  stream={remoteStream}
+                  isVideoActive={isVideoActive}
+                  audioOutputId={mediaDevices.selectedAudioOutputId}
+                />
+
                 {/* Hand Raised & Reaction Badges on Other Participant Tile */}
                 <div className="absolute top-3 left-3 flex items-center gap-2 z-30">
                   {p.handRaised && (
@@ -1053,44 +1112,28 @@ export default function MeetPage({ params }: MeetPageProps) {
                 </div>
 
                 {isVideoActive ? (
-                  <div className="w-full h-full bg-gradient-to-b from-[#0e0e12] to-[#06060a] flex flex-col items-center justify-center p-6 text-center space-y-3 relative">
-                    <div className="relative">
-                      <AudioRipple isActive={isSpeaking} size="lg" />
-                      <div
-                        className={`h-20 w-20 rounded-full bg-[#101012] border border-white/20 flex items-center justify-center overflow-hidden shadow-2xl relative z-10 transition-all ${
-                          isSpeaking ? 'ring-2 ring-emerald-400/80' : ''
-                        }`}
-                      >
-                        {p.image ? (
-                          <Image
-                            src={p.image}
-                            alt={p.name || 'Participant'}
-                            width={80}
-                            height={80}
-                            unoptimized
-                            referrerPolicy="no-referrer"
-                            className="h-full w-full rounded-full object-cover"
-                          />
-                        ) : (
-                          <span className="font-serif text-2xl text-[#fcfdff]">{initial}</span>
-                        )}
-                      </div>
+                  <div className="w-full h-full relative z-10 flex flex-col justify-between p-4 pointer-events-none">
+                    <div className="flex items-center justify-between">
+                      <div />
                       {isOtherHost && (
                         <span
-                          className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 z-30"
+                          className="h-5 w-5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 pointer-events-auto"
                           title="Meeting Host"
                         >
                           <StarIcon size={11} className="fill-black/30" />
                         </span>
                       )}
                     </div>
-                    <div className="space-y-0.5 relative z-10">
-                      <p className="text-xs font-medium text-[#fcfdff]">{p.name}</p>
-                      <p className="text-[10px] font-mono text-[#11ff99]">Connected</p>
-                    </div>
+                    {p.isScreenSharing && (
+                      <div className="self-center bg-black/70 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 text-[10px] font-mono text-[#11ff99] flex items-center gap-1.5 shadow-lg pointer-events-auto">
+                        <MonitorIcon size={11} />
+                        <span>{p.name?.split(' ')[0] || 'User'} is presenting</span>
+                      </div>
+                    )}
+                    <div />
                   </div>
                 ) : (
-                  <div className="relative flex flex-col items-center justify-center gap-2.5">
+                  <div className="relative flex flex-col items-center justify-center gap-2.5 z-10">
                     <div className="relative">
                       <AudioRipple isActive={isSpeaking} size="md" />
                       <div
@@ -1098,7 +1141,19 @@ export default function MeetPage({ params }: MeetPageProps) {
                           isSpeaking ? 'ring-2 ring-emerald-400/80 text-emerald-300' : ''
                         }`}
                       >
-                        <CameraIcon size={20} />
+                        {p.image ? (
+                          <Image
+                            src={p.image}
+                            alt={p.name || 'Participant'}
+                            width={56}
+                            height={56}
+                            unoptimized
+                            referrerPolicy="no-referrer"
+                            className="h-full w-full rounded-full object-cover"
+                          />
+                        ) : (
+                          <span className="font-serif text-xl text-[#fcfdff]">{initial}</span>
+                        )}
                       </div>
                       {isOtherHost && (
                         <span
@@ -1172,7 +1227,7 @@ export default function MeetPage({ params }: MeetPageProps) {
                   {isSpeaking ? (
                     <div className="flex items-center gap-1.5">
                       <MicIcon size={13} className="text-[#11ff99]" />
-                      <AudioWaveform isActive={true} size="xs" barCount={3} />
+                      <AudioWaveform isActive={true} size="xs" barCount={3} volume={remoteVolume} />
                     </div>
                   ) : (
                     <MicOffIcon size={13} className="text-[#ff2047]" />

@@ -13,14 +13,15 @@ export interface RoomParticipant {
   image?: string | null;
   isMuted?: boolean;
   isVideoOn?: boolean;
+  isScreenSharing?: boolean;
   handRaised?: boolean;
   canSpeak?: boolean;
 }
 
 export interface ClientToServerEvents {
-  'room:join': (payload: { roomCode: string; isMuted?: boolean; isVideoOn?: boolean; handRaised?: boolean }) => void;
+  'room:join': (payload: { roomCode: string; isMuted?: boolean; isVideoOn?: boolean; isScreenSharing?: boolean; handRaised?: boolean }) => void;
   'room:leave': (payload: { roomCode: string }) => void;
-  'room:media-toggle': (payload: { roomCode: string; isMuted?: boolean; isVideoOn?: boolean; handRaised?: boolean }) => void;
+  'room:media-toggle': (payload: { roomCode: string; isMuted?: boolean; isVideoOn?: boolean; isScreenSharing?: boolean; handRaised?: boolean }) => void;
   'room:raise-hand': (payload: { roomCode: string; handRaised: boolean }) => void;
   'room:grant-mic': (payload: { roomCode: string; targetUserId: string }) => void;
   'room:revoke-mic': (payload: { roomCode: string; targetUserId: string }) => void;
@@ -29,6 +30,29 @@ export interface ClientToServerEvents {
   'room:transfer-host': (payload: { roomCode: string; newHostUserId: string }) => void;
   'chat:message': (payload: { roomCode: string; text: string }) => void;
   'room:reaction': (payload: { roomCode: string; emoji: string }) => void;
+  'webrtc:signal': (payload: WebRTCSignalPayload) => void;
+}
+
+export interface WebRTCSignalData {
+  type: 'offer' | 'answer' | 'candidate';
+  sdp?: string;
+  candidate?: {
+    candidate?: string;
+    sdpMid?: string | null;
+    sdpMLineIndex?: number | null;
+    usernameFragment?: string | null;
+  } | null;
+}
+
+export interface WebRTCSignalPayload {
+  roomCode: string;
+  targetUserId: string;
+  signal: WebRTCSignalData;
+}
+
+export interface WebRTCIncomingSignalPayload {
+  fromUserId: string;
+  signal: WebRTCSignalData;
 }
 
 export interface RoomReaction {
@@ -67,6 +91,7 @@ export interface ServerToClientEvents {
   'room:user-kicked': (payload: { targetUserId: string; targetName: string }) => void;
   'room:host-transferred': (payload: { previousHostId: string; newHostId: string; newHostName: string }) => void;
   'room:reaction': (payload: RoomReaction) => void;
+  'webrtc:signal': (payload: WebRTCIncomingSignalPayload) => void;
   'error:message': (payload: { message: string }) => void;
 }
 
@@ -87,6 +112,7 @@ export interface SocketData {
   currentRoomCode?: string;
   isMuted?: boolean;
   isVideoOn?: boolean;
+  isScreenSharing?: boolean;
   handRaised?: boolean;
   canSpeak?: boolean;
 }
