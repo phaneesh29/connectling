@@ -41,7 +41,11 @@ import { MediaDeviceMenu } from '@/components/media-device-menu';
 import { AudioWaveform, AudioRipple, AudioTileBadge } from '@/components/audio-waveform';
 import { useMediaDevices } from '@/hooks/use-media-devices';
 import { useLocalAudioLevel } from '@/hooks/use-local-audio-level';
-import type { ChatMessage, RoomParticipant } from '@/types/realtime';
+import { ReactionPicker } from '@/components/reactions/reaction-picker';
+import { FloatingReactions } from '@/components/reactions/floating-reactions';
+import { ReactionBadge } from '@/components/reactions/reaction-badge';
+import { useRoomReactions } from '@/hooks/use-room-reactions';
+import type { ChatMessage, RoomParticipant, RoomReaction } from '@/types/realtime';
 
 interface StageTileGradient {
   containerStyle: React.CSSProperties;
@@ -174,6 +178,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
   const mediaDevices = useMediaDevices();
   const [audioMenuOpen, setAudioMenuOpen] = useState(false);
+  const { floatingReactions, tileReactions, handleIncomingReaction } = useRoomReactions();
 
   const isHost = Boolean(room && session?.user && room.hostId === session.user.id);
   const isHostRef = useRef(isHost);
@@ -595,6 +600,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     socket.on('room:kicked', handleKicked);
     socket.on('room:user-kicked', handleUserKicked);
     socket.on('room:host-transferred', handleHostTransferred);
+    socket.on('room:reaction', handleIncomingReaction);
 
     return () => {
       socket.off('chat:new-message', handleNewMessage);
@@ -609,9 +615,10 @@ export default function TalkPage({ params }: TalkPageProps) {
       socket.off('room:kicked', handleKicked);
       socket.off('room:user-kicked', handleUserKicked);
       socket.off('room:host-transferred', handleHostTransferred);
+      socket.off('room:reaction', handleIncomingReaction);
       socket.emit('room:leave', { roomCode: code });
     };
-  }, [roomId, code, grantedSpeaker, router]);
+  }, [roomId, code, grantedSpeaker, router, handleIncomingReaction]);
 
   const myRosterParticipant = participants.find((p) => p.userId === currentUserId);
   const isSpeaker =
@@ -636,6 +643,13 @@ export default function TalkPage({ params }: TalkPageProps) {
     }
     const socket = getSocket();
     socket.emit('chat:message', { roomCode: code, text });
+  };
+
+  const handleSendReaction = (emoji: string) => {
+    const socket = getSocket();
+    if (socket.connected) {
+      socket.emit('room:reaction', { roomCode: code, emoji });
+    }
   };
 
   const handleToggleMic = () => {
@@ -1205,6 +1219,12 @@ export default function TalkPage({ params }: TalkPageProps) {
                 )}
 
                 <div className="relative z-10">
+                  {/* Reaction Badge on Stage Tile */}
+                  <ReactionBadge
+                    emoji={tileReactions[p.userId]?.emoji}
+                    className="absolute -top-3 left-1/2 -translate-x-1/2"
+                  />
+
                   <AudioRipple
                     isActive={isMicActive}
                     isSpeaking={isSpeaking}
@@ -1522,6 +1542,12 @@ export default function TalkPage({ params }: TalkPageProps) {
               </div>
             </div>
           )}
+
+          {/* Emoji Reactions Picker */}
+          <ReactionPicker
+            onSelectReaction={handleSendReaction}
+            accentColor="amber"
+          />
 
           <button
             onClick={() => {
@@ -1950,6 +1976,9 @@ export default function TalkPage({ params }: TalkPageProps) {
           onCancel={confirmModal.onCancel}
         />
       )}
+
+      {/* Floating Reactions Stream */}
+      <FloatingReactions reactions={floatingReactions} />
     </div>
   );
 }

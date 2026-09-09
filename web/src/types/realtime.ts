@@ -28,6 +28,15 @@ export interface ClientToServerEvents {
   'room:kick-user': (payload: { roomCode: string; targetUserId: string }) => void;
   'room:transfer-host': (payload: { roomCode: string; newHostUserId: string }) => void;
   'chat:message': (payload: { roomCode: string; text: string }) => void;
+  'room:reaction': (payload: { roomCode: string; emoji: string }) => void;
+}
+
+export interface RoomReaction {
+  id: string;
+  userId: string;
+  name: string;
+  emoji: string;
+  timestamp: number;
 }
 
 export interface RoomSettingsPayload {
@@ -58,5 +67,6 @@ export interface ServerToClientEvents {
   'room:kicked': (payload: { message: string }) => void;
   'room:user-kicked': (payload: { targetUserId: string; targetName: string }) => void;
   'room:host-transferred': (payload: { previousHostId: string; newHostId: string; newHostName: string }) => void;
+  'room:reaction': (payload: RoomReaction) => void;
   'error:message': (payload: { message: string }) => void;
 }

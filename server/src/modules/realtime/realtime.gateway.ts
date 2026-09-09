@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { Server } from 'socket.io';
 import type { Server as HttpServer } from 'node:http';
 import { createAdapter } from '@socket.io/redis-adapter';
@@ -436,6 +437,20 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       if (!text || !text.trim()) return;
       const message = buildChatMessage(user.id, user.name, user.image, text);
       io.in(`room:${roomCode}`).emit('chat:new-message', message);
+    });
+
+    socket.on('room:reaction', ({ roomCode, emoji }) => {
+      if (!emoji || typeof emoji !== 'string') return;
+      const normalized = normalizeRoomCode(roomCode);
+      const roomChannel = `room:${normalized}`;
+      const reactionPayload = {
+        id: crypto.randomUUID(),
+        userId: user.id,
+        name: user.name,
+        emoji,
+        timestamp: Date.now(),
+      };
+      io.in(roomChannel).emit('room:reaction', reactionPayload);
     });
 
     const handleLeave = async (roomCode: string) => {

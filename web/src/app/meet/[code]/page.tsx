@@ -39,7 +39,11 @@ import { MediaDeviceMenu } from '@/components/media-device-menu';
 import { AudioWaveform, AudioRipple, AudioTileBadge } from '@/components/audio-waveform';
 import { useMediaDevices } from '@/hooks/use-media-devices';
 import { useLocalAudioLevel } from '@/hooks/use-local-audio-level';
-import type { ChatMessage, RoomParticipant } from '@/types/realtime';
+import { ReactionPicker } from '@/components/reactions/reaction-picker';
+import { FloatingReactions } from '@/components/reactions/floating-reactions';
+import { ReactionBadge } from '@/components/reactions/reaction-badge';
+import { useRoomReactions } from '@/hooks/use-room-reactions';
+import type { ChatMessage, RoomParticipant, RoomReaction } from '@/types/realtime';
 
 interface MeetPageProps {
   params: Promise<{ code: string }>;
@@ -93,6 +97,7 @@ export default function MeetPage({ params }: MeetPageProps) {
   const mediaDevices = useMediaDevices();
   const [audioMenuOpen, setAudioMenuOpen] = useState(false);
   const [videoMenuOpen, setVideoMenuOpen] = useState(false);
+  const { floatingReactions, tileReactions, handleIncomingReaction } = useRoomReactions();
 
   const chatOpenRef = useRef(chatOpen);
   const isMicOnRef = useRef(isMicOn);
@@ -407,6 +412,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     socket.on('room:kicked', handleKicked);
     socket.on('room:user-kicked', handleUserKicked);
     socket.on('room:host-transferred', handleHostTransferred);
+    socket.on('room:reaction', handleIncomingReaction);
 
     return () => {
       socket.off('chat:new-message', handleNewMessage);
@@ -418,9 +424,10 @@ export default function MeetPage({ params }: MeetPageProps) {
       socket.off('room:kicked', handleKicked);
       socket.off('room:user-kicked', handleUserKicked);
       socket.off('room:host-transferred', handleHostTransferred);
+      socket.off('room:reaction', handleIncomingReaction);
       socket.emit('room:leave', { roomCode: code });
     };
-  }, [roomId, code, router]);
+  }, [roomId, code, router, handleIncomingReaction]);
 
   const isHost = Boolean(room && session?.user && room.hostId === session.user.id);
   const isMicAllowed = isHost || settings?.micForAll !== false;
@@ -441,6 +448,13 @@ export default function MeetPage({ params }: MeetPageProps) {
     }
     const socket = getSocket();
     socket.emit('chat:message', { roomCode: code, text });
+  };
+
+  const handleSendReaction = (emoji: string) => {
+    const socket = getSocket();
+    if (socket.connected) {
+      socket.emit('room:reaction', { roomCode: code, emoji });
+    }
   };
 
   const handleToggleMic = () => {
@@ -831,6 +845,12 @@ export default function MeetPage({ params }: MeetPageProps) {
                 : 'border border-white/[0.12]'
             }`}
           >
+            {/* Reaction Badge on Local Tile */}
+            <ReactionBadge
+              emoji={tileReactions[session?.user?.id || '']?.emoji}
+              className="absolute top-3 right-3"
+            />
+
             {isVideoOn ? (
               <div className="w-full h-full bg-gradient-to-b from-[#0e0e12] to-[#06060a] flex flex-col items-center justify-center p-6 text-center space-y-3 relative">
                 <div className="relative">
@@ -937,6 +957,12 @@ export default function MeetPage({ params }: MeetPageProps) {
                     : 'border border-white/[0.12]'
                 }`}
               >
+                {/* Reaction Badge on Other Participant Tile */}
+                <ReactionBadge
+                  emoji={tileReactions[p.userId]?.emoji}
+                  className="absolute top-3 left-3"
+                />
+
                 {isVideoActive ? (
                   <div className="w-full h-full bg-gradient-to-b from-[#0e0e12] to-[#06060a] flex flex-col items-center justify-center p-6 text-center space-y-3 relative">
                     <div className="relative">
@@ -1253,6 +1279,12 @@ export default function MeetPage({ params }: MeetPageProps) {
             <MonitorIcon size={17} />
           </button>
 
+          {/* Emoji Reactions Picker */}
+          <ReactionPicker
+            onSelectReaction={handleSendReaction}
+            accentColor="orange"
+          />
+
           <button
             onClick={() => {
               setParticipantsOpen(!participantsOpen);
@@ -1477,6 +1509,9 @@ export default function MeetPage({ params }: MeetPageProps) {
           onCancel={confirmModal.onCancel}
         />
       )}
+
+      {/* Floating Reactions Stream */}
+      <FloatingReactions reactions={floatingReactions} />
     </div>
   );
 }
