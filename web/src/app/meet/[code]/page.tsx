@@ -1011,8 +1011,9 @@ export default function MeetPage({ params }: MeetPageProps) {
               />
               <button
                 type="button"
+                data-media-menu-toggle="audio"
                 onClick={() => {
-                  setAudioMenuOpen(!audioMenuOpen);
+                  setAudioMenuOpen((prev) => !prev);
                   setVideoMenuOpen(false);
                 }}
                 className={`h-10 px-1.5 sm:px-2 rounded-r-lg flex items-center justify-center hover:opacity-90 hover:bg-white/[0.08] transition-all cursor-pointer ${
@@ -1022,7 +1023,7 @@ export default function MeetPage({ params }: MeetPageProps) {
               >
                 <ChevronUpIcon
                   size={14}
-                  className={`transition-transform duration-200 ${
+                  className={`transition-transform duration-200 pointer-events-none ${
                     audioMenuOpen ? 'rotate-180' : ''
                   }`}
                 />
@@ -1072,8 +1073,9 @@ export default function MeetPage({ params }: MeetPageProps) {
               />
               <button
                 type="button"
+                data-media-menu-toggle="video"
                 onClick={() => {
-                  setVideoMenuOpen(!videoMenuOpen);
+                  setVideoMenuOpen((prev) => !prev);
                   setAudioMenuOpen(false);
                 }}
                 className={`h-10 px-1.5 sm:px-2 rounded-r-lg flex items-center justify-center hover:opacity-90 hover:bg-white/[0.08] transition-all cursor-pointer ${
@@ -1083,7 +1085,7 @@ export default function MeetPage({ params }: MeetPageProps) {
               >
                 <ChevronUpIcon
                   size={14}
-                  className={`transition-transform duration-200 ${
+                  className={`transition-transform duration-200 pointer-events-none ${
                     videoMenuOpen ? 'rotate-180' : ''
                   }`}
                 />

@@ -51,8 +51,16 @@ export function MediaDeviceMenu({
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Element | null;
+      if (menuRef.current && target && !menuRef.current.contains(target)) {
+        // Ignore clicks/taps on the toggle button for this menu type
+        if (
+          typeof target.closest === 'function' &&
+          target.closest(`[data-media-menu-toggle="${type}"]`)
+        ) {
+          return;
+        }
         onClose();
       }
     };
@@ -64,12 +72,14 @@ export function MediaDeviceMenu({
     };
 
     document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
     document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, type]);
 
   if (!isOpen) return null;
 

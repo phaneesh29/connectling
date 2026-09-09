@@ -1372,7 +1372,8 @@ export default function TalkPage({ params }: TalkPageProps) {
                 />
                 <button
                   type="button"
-                  onClick={() => setAudioMenuOpen(!audioMenuOpen)}
+                  data-media-menu-toggle="audio"
+                  onClick={() => setAudioMenuOpen((prev) => !prev)}
                   className={`h-10 px-1.5 sm:px-2 rounded-r-lg flex items-center justify-center hover:opacity-90 hover:bg-white/[0.08] transition-all cursor-pointer ${
                     audioMenuOpen ? 'bg-white/[0.12] text-white' : ''
                   }`}
@@ -1380,7 +1381,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 >
                   <ChevronUpIcon
                     size={14}
-                    className={`transition-transform duration-200 ${
+                    className={`transition-transform duration-200 pointer-events-none ${
                       audioMenuOpen ? 'rotate-180' : ''
                     }`}
                   />
@@ -1429,7 +1430,8 @@ export default function TalkPage({ params }: TalkPageProps) {
                 />
                 <button
                   type="button"
-                  onClick={() => setAudioMenuOpen(!audioMenuOpen)}
+                  data-media-menu-toggle="audio"
+                  onClick={() => setAudioMenuOpen((prev) => !prev)}
                   className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
                     audioMenuOpen
                       ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 shadow-sm'
@@ -1437,7 +1439,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                   }`}
                   title="Audio & Speaker Settings"
                 >
-                  <HeadphonesIcon size={17} />
+                  <HeadphonesIcon size={17} className="pointer-events-none" />
                 </button>
               </div>
             </div>
