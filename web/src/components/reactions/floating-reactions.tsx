@@ -7,32 +7,41 @@ interface FloatingReactionsProps {
   reactions: RoomReaction[];
 }
 
+const FLOAT_ANIMATION_CLASSES = [
+  'animate-reaction-float-1',
+  'animate-reaction-float-2',
+  'animate-reaction-float-3',
+  'animate-reaction-float-4',
+];
+
 export function FloatingReactions({ reactions }: FloatingReactionsProps) {
   if (!reactions || reactions.length === 0) return null;
 
   return (
     <div
-      className="fixed inset-x-0 bottom-24 pointer-events-none z-50 flex flex-col items-end sm:items-center px-6 overflow-hidden max-h-[400px]"
+      className="fixed bottom-24 right-4 sm:right-10 pointer-events-none z-50 w-52 sm:w-72 h-[450px] overflow-visible"
       aria-hidden="true"
     >
-      <div className="relative w-full max-w-lg h-64">
+      <div className="relative w-full h-full">
         {reactions.map((r, index) => {
-          // Deterministic horizontal jitter based on ID
-          const seed = r.id.charCodeAt(0) + (r.id.charCodeAt(r.id.length - 1) || 0) + index * 17;
-          const leftPercent = 40 + (seed % 35); // 40% to 75%
+          // Deterministic horizontal jitter & trajectory variant based on reaction ID
+          const seed =
+            r.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) + index * 23;
+          const leftPercent = 10 + (seed % 65); // 10% to 75%
+          const animClass = FLOAT_ANIMATION_CLASSES[seed % FLOAT_ANIMATION_CLASSES.length];
 
           return (
             <div
               key={r.id}
-              className="absolute bottom-2 flex flex-col items-center gap-1 animate-reaction-float"
+              className={`absolute bottom-0 flex flex-col items-center gap-1.5 ${animClass}`}
               style={{
                 left: `${leftPercent}%`,
               }}
             >
-              <span className="text-3xl sm:text-4xl filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.5)] select-none">
+              <span className="text-4xl sm:text-5xl filter drop-shadow-[0_8px_20px_rgba(0,0,0,0.6)] select-none">
                 {r.emoji}
               </span>
-              <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-[#0a0a0c]/85 border border-white/15 text-[#fcfdff] shadow-lg backdrop-blur-md whitespace-nowrap max-w-[100px] truncate">
+              <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-[#0a0a0c]/90 border border-white/20 text-[#fcfdff] shadow-xl backdrop-blur-md whitespace-nowrap max-w-[110px] truncate">
                 {r.name}
               </span>
             </div>

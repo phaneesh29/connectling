@@ -1461,20 +1461,21 @@ export default function MeetPage({ params }: MeetPageProps) {
           </div>
 
           <button
+            type="button"
             onClick={handleToggleScreenShare}
             disabled={!isScreenShareAllowed && !isScreenSharing}
-            className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
+            className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
               !isScreenShareAllowed && !isScreenSharing
                 ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
                 : isScreenSharing
-                ? 'bg-gradient-brand-r text-black font-semibold shadow-brand-glow'
+                ? 'bg-orange-500/20 text-[#ff7a1a] border border-orange-500/40 shadow-sm'
                 : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
             }`}
             title={
               !isScreenShareAllowed && !isScreenSharing
                 ? 'Screen sharing disabled by host'
                 : isScreenSharing
-                ? 'Stop Sharing'
+                ? 'Stop Presenting Screen'
                 : 'Share Screen'
             }
           >

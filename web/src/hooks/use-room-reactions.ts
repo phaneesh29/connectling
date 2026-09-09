@@ -18,7 +18,7 @@ export function useRoomReactions() {
     // Auto-cleanup floating reaction
     setTimeout(() => {
       setFloatingReactions((prev) => prev.filter((r) => r.id !== reaction.id));
-    }, 2800);
+    }, 3600);
 
     // Auto-cleanup tile reaction
     setTimeout(() => {
