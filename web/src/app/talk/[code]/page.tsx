@@ -214,6 +214,16 @@ export default function TalkPage({ params }: TalkPageProps) {
     participantRef.current = participant;
   }, [participant]);
 
+  const grantedSpeakerRef = useRef(grantedSpeaker);
+  useEffect(() => {
+    grantedSpeakerRef.current = grantedSpeaker;
+  }, [grantedSpeaker]);
+
+  const handleIncomingReactionRef = useRef(handleIncomingReaction);
+  useEffect(() => {
+    handleIncomingReactionRef.current = handleIncomingReaction;
+  }, [handleIncomingReaction]);
+
   const roomHostId = room?.hostId;
   const roomHostIdRef = useRef(roomHostId);
 
@@ -509,7 +519,7 @@ export default function TalkPage({ params }: TalkPageProps) {
         isNotHost &&
         updated.micForAll === false &&
         participantRef.current?.role !== 'speaker' &&
-        !grantedSpeaker &&
+        !grantedSpeakerRef.current &&
         !isMutedRef.current
       ) {
         setIsMuted(true);
@@ -565,21 +575,29 @@ export default function TalkPage({ params }: TalkPageProps) {
       });
     };
 
+    let roomEndedTimer: NodeJS.Timeout | null = null;
+
     const handleRoomEnded = ({ message }: { message?: string }) => {
       setIsRoomEnded(true);
       playLeaveChime();
       setConfirmModal({
         isOpen: true,
         title: 'Audio Stage Ended',
-        description: message || 'The host has ended this audio room for all participants.',
-        confirmText: 'Return to Home',
+        description: `${message || 'The host has ended this audio room for all participants.'} Returning to home...`,
+        confirmText: 'Return to Home Now',
         variant: 'danger',
         alertOnly: true,
         onConfirm: () => {
+          if (roomEndedTimer) clearTimeout(roomEndedTimer);
           setConfirmModal(null);
           router.push('/');
         },
       });
+
+      roomEndedTimer = setTimeout(() => {
+        setConfirmModal(null);
+        router.push('/');
+      }, 3000);
     };
 
     const handleUserKicked = ({
@@ -616,6 +634,10 @@ export default function TalkPage({ params }: TalkPageProps) {
       }, 4000);
     };
 
+    const onReaction = (data: Parameters<typeof handleIncomingReaction>[0]) => {
+      handleIncomingReactionRef.current(data);
+    };
+
     socket.on('chat:new-message', handleNewMessage);
     socket.on('room:roster', handleRoster);
     socket.on('room:user-joined', handleUserJoined);
@@ -628,7 +650,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     socket.on('room:kicked', handleKicked);
     socket.on('room:user-kicked', handleUserKicked);
     socket.on('room:host-transferred', handleHostTransferred);
-    socket.on('room:reaction', handleIncomingReaction);
+    socket.on('room:reaction', onReaction);
     socket.on('room:ended', handleRoomEnded);
 
     return () => {
@@ -644,11 +666,12 @@ export default function TalkPage({ params }: TalkPageProps) {
       socket.off('room:kicked', handleKicked);
       socket.off('room:user-kicked', handleUserKicked);
       socket.off('room:host-transferred', handleHostTransferred);
-      socket.off('room:reaction', handleIncomingReaction);
+      socket.off('room:reaction', onReaction);
       socket.off('room:ended', handleRoomEnded);
+      if (roomEndedTimer) clearTimeout(roomEndedTimer);
       socket.emit('room:leave', { roomCode: code });
     };
-  }, [roomId, code, grantedSpeaker, router, handleIncomingReaction]);
+  }, [roomId, code, router]);
 
   const myRosterParticipant = participants.find((p) => p.userId === currentUserId);
   const isSpeaker =

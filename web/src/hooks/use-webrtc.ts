@@ -112,6 +112,7 @@ export function useWebRTC({
   const currentUserIdRef = useRef(currentUserId);
   const mediaTypeRef = useRef(mediaType);
   const onScreenShareEndedRef = useRef(onScreenShareEnded);
+  const onErrorRef = useRef(onError);
 
   useEffect(() => {
     isMicOnRef.current = isMicOn;
@@ -143,11 +144,19 @@ export function useWebRTC({
   useEffect(() => {
     onScreenShareEndedRef.current = onScreenShareEnded;
   }, [onScreenShareEnded]);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
 
   const updateRemoteStreamsState = useCallback(() => {
     const nextMap = new Map<string, MediaStream>();
     for (const [uid, entry] of peersRef.current.entries()) {
-      nextMap.set(uid, entry.remoteStream);
+      const tracks = entry.remoteStream.getTracks();
+      if (tracks.length > 0) {
+        nextMap.set(uid, new MediaStream(tracks));
+      } else {
+        nextMap.set(uid, entry.remoteStream);
+      }
     }
     setRemoteStreamsMap(nextMap);
   }, []);
@@ -333,6 +342,16 @@ export function useWebRTC({
         }
       }
 
+      // Ensure audio transceiver is present so audio can be sent and received
+      const audioSender = getAudioSender(pc);
+      if (!audioSender) {
+        try {
+          pc.addTransceiver('audio', { direction: 'sendrecv' });
+        } catch {
+          // Ignored if unsupported
+        }
+      }
+
       // In meet spaces, ensure video transceiver is present even if starting with video muted
       if (mediaTypeRef.current === 'meet') {
         const videoSender = getVideoSender(pc);
@@ -369,7 +388,7 @@ export function useWebRTC({
 
         // Attach to DOM element if already registered
         const mediaEl = mediaElementsRef.current.get(targetUserId);
-        if (mediaEl && mediaEl.srcObject !== currentEntry.remoteStream) {
+        if (mediaEl) {
           mediaEl.srcObject = currentEntry.remoteStream;
           mediaEl.play().catch(() => {});
         }
@@ -553,11 +572,10 @@ export function useWebRTC({
 
       // Update all existing peer connections with the newly acquired tracks
       for (const [, entry] of peersRef.current.entries()) {
-        const senders = entry.pc.getSenders();
         for (const track of stream.getTracks()) {
-          const matchingSender = senders.find((s) => s.track?.kind === track.kind);
-          if (matchingSender) {
-            void matchingSender.replaceTrack(track);
+          const sender = track.kind === 'video' ? getVideoSender(entry.pc) : getAudioSender(entry.pc);
+          if (sender) {
+            void sender.replaceTrack(track);
           } else {
             entry.pc.addTrack(track, stream);
           }
@@ -567,9 +585,9 @@ export function useWebRTC({
       const msg = err instanceof Error ? err.message : 'Failed to access camera or microphone';
       console.warn('WebRTC getUserMedia failed:', msg);
       setConnectionError(msg);
-      onError?.(msg);
+      onErrorRef.current?.(msg);
     }
-  }, [onError]);
+  }, []);
 
   // Main lifecycle: Initialize WebRTC and subscribe to socket signaling
   useEffect(() => {
@@ -604,7 +622,7 @@ export function useWebRTC({
           }
 
           if (offerCollision) {
-            await pc.setRemoteDescription({ type: 'rollback' });
+            await pc.setLocalDescription({ type: 'rollback' });
           }
 
           await pc.setRemoteDescription(
@@ -615,7 +633,11 @@ export function useWebRTC({
           while (entry.pendingCandidates.length > 0) {
             const cand = entry.pendingCandidates.shift();
             if (cand) {
-              await pc.addIceCandidate(new RTCIceCandidate(cand));
+              try {
+                await pc.addIceCandidate(new RTCIceCandidate(cand));
+              } catch (candErr) {
+                console.warn(`Error flushing ICE candidate for ${fromUserId}:`, candErr);
+              }
             }
           }
 
@@ -638,15 +660,25 @@ export function useWebRTC({
             while (entry.pendingCandidates.length > 0) {
               const cand = entry.pendingCandidates.shift();
               if (cand) {
-                await pc.addIceCandidate(new RTCIceCandidate(cand));
+                try {
+                  await pc.addIceCandidate(new RTCIceCandidate(cand));
+                } catch (candErr) {
+                  console.warn(`Error flushing ICE candidate for ${fromUserId}:`, candErr);
+                }
               }
             }
           }
         } else if (signal.type === 'candidate' && signal.candidate) {
-          if (pc.remoteDescription && pc.remoteDescription.type) {
-            await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
-          } else {
-            entry.pendingCandidates.push(signal.candidate);
+          try {
+            if (pc.remoteDescription && pc.remoteDescription.type) {
+              await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            } else {
+              entry.pendingCandidates.push(signal.candidate);
+            }
+          } catch (candErr) {
+            if (!entry.ignoreOffer) {
+              console.warn(`Error adding ICE candidate from ${fromUserId}:`, candErr);
+            }
           }
         }
       } catch (err) {
@@ -716,7 +748,12 @@ export function useWebRTC({
         localStreamRef.current = null;
       }
 
-      cameraVideoTrackRef.current = null;
+      // Explicitly stop camera track if preserved separately from localStream
+      if (cameraVideoTrackRef.current) {
+        cameraVideoTrackRef.current.stop();
+        cameraVideoTrackRef.current = null;
+      }
+
       setLocalStream(null);
       setIsConnected(false);
     };

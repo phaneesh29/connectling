@@ -40,7 +40,7 @@ import { AudioWaveform, AudioRipple } from '@/components/audio-waveform';
 import { useMediaDevices } from '@/hooks/use-media-devices';
 import { useLocalAudioLevel } from '@/hooks/use-local-audio-level';
 import { useWebRTC } from '@/hooks/use-webrtc';
-import { LocalVideo, RemoteVideo } from '@/components/webrtc-media';
+import { LocalVideo, RemoteVideo, RemoteAudio } from '@/components/webrtc-media';
 import { ReactionPicker } from '@/components/reactions/reaction-picker';
 import { FloatingReactions } from '@/components/reactions/floating-reactions';
 import { ReactionBadge } from '@/components/reactions/reaction-badge';
@@ -100,6 +100,10 @@ export default function MeetPage({ params }: MeetPageProps) {
   const [audioMenuOpen, setAudioMenuOpen] = useState(false);
   const [videoMenuOpen, setVideoMenuOpen] = useState(false);
   const { floatingReactions, tileReactions, handleIncomingReaction } = useRoomReactions();
+  const handleIncomingReactionRef = useRef(handleIncomingReaction);
+  useEffect(() => {
+    handleIncomingReactionRef.current = handleIncomingReaction;
+  }, [handleIncomingReaction]);
 
   const chatOpenRef = useRef(chatOpen);
   const isMicOnRef = useRef(isMicOn);
@@ -388,21 +392,29 @@ export default function MeetPage({ params }: MeetPageProps) {
       });
     };
 
+    let roomEndedTimer: NodeJS.Timeout | null = null;
+
     const handleRoomEnded = ({ message }: { message?: string }) => {
       setIsRoomEnded(true);
       playLeaveChime();
       setConfirmModal({
         isOpen: true,
         title: 'Meeting Ended',
-        description: message || 'The host has ended this meeting for all participants.',
-        confirmText: 'Return to Home',
+        description: `${message || 'The host has ended this meeting for all participants.'} Returning to home...`,
+        confirmText: 'Return to Home Now',
         variant: 'danger',
         alertOnly: true,
         onConfirm: () => {
+          if (roomEndedTimer) clearTimeout(roomEndedTimer);
           setConfirmModal(null);
           router.push('/');
         },
       });
+
+      roomEndedTimer = setTimeout(() => {
+        setConfirmModal(null);
+        router.push('/');
+      }, 3000);
     };
 
     const handleUserKicked = ({
@@ -459,6 +471,10 @@ export default function MeetPage({ params }: MeetPageProps) {
       );
     };
 
+    const onReaction = (data: Parameters<typeof handleIncomingReaction>[0]) => {
+      handleIncomingReactionRef.current(data);
+    };
+
     socket.on('chat:new-message', handleNewMessage);
     socket.on('room:roster', handleRoster);
     socket.on('room:user-joined', handleUserJoined);
@@ -468,7 +484,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     socket.on('room:kicked', handleKicked);
     socket.on('room:user-kicked', handleUserKicked);
     socket.on('room:host-transferred', handleHostTransferred);
-    socket.on('room:reaction', handleIncomingReaction);
+    socket.on('room:reaction', onReaction);
     socket.on('room:hand-raised', handleHandRaised);
     socket.on('room:ended', handleRoomEnded);
 
@@ -482,12 +498,13 @@ export default function MeetPage({ params }: MeetPageProps) {
       socket.off('room:kicked', handleKicked);
       socket.off('room:user-kicked', handleUserKicked);
       socket.off('room:host-transferred', handleHostTransferred);
-      socket.off('room:reaction', handleIncomingReaction);
+      socket.off('room:reaction', onReaction);
       socket.off('room:hand-raised', handleHandRaised);
       socket.off('room:ended', handleRoomEnded);
+      if (roomEndedTimer) clearTimeout(roomEndedTimer);
       socket.emit('room:leave', { roomCode: code });
     };
-  }, [roomId, code, router, handleIncomingReaction]);
+  }, [roomId, code, router]);
 
   const isHost = Boolean(room && session?.user && room.hostId === session.user.id);
   const isMicAllowed = isHost || settings?.micForAll !== false;
@@ -1113,10 +1130,14 @@ export default function MeetPage({ params }: MeetPageProps) {
                     : 'border border-white/[0.12]'
                 }`}
               >
-                {/* Live WebRTC Remote Video & Audio element */}
+                {/* Live WebRTC Remote Video & Audio elements */}
                 <RemoteVideo
                   stream={remoteStream}
                   isVideoActive={isVideoActive}
+                  audioOutputId={mediaDevices.selectedAudioOutputId}
+                />
+                <RemoteAudio
+                  stream={remoteStream}
                   audioOutputId={mediaDevices.selectedAudioOutputId}
                 />
 
