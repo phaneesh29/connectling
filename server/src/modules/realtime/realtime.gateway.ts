@@ -18,6 +18,7 @@ import { db } from '../../db/index.js';
 import { room } from '../../db/room-schema.js';
 import { eq } from 'drizzle-orm';
 import { normalizeRoomCode } from '../rooms/room.utils.js';
+import { ROOM_CAPACITY } from '../rooms/rooms.constants.js';
 
 export type RealtimeServer = Server<
   ClientToServerEvents,
@@ -35,12 +36,41 @@ export const getRealtimeServer = (): RealtimeServer => {
   return ioInstance;
 };
 
+export const getActiveRoomParticipantsCount = async (roomCode: string): Promise<number> => {
+  if (!ioInstance) return 0;
+  const normalized = normalizeRoomCode(roomCode);
+  const roomChannel = `room:${normalized}`;
+  const sockets = await ioInstance.in(roomChannel).fetchSockets();
+  const userIds = new Set<string>();
+  for (const s of sockets) {
+    if (s.data?.user?.id) {
+      userIds.add(s.data.user.id);
+    }
+  }
+  return userIds.size;
+};
+
+export const getActiveRoomUserIds = async (roomCode: string): Promise<Set<string>> => {
+  if (!ioInstance) return new Set<string>();
+  const normalized = normalizeRoomCode(roomCode);
+  const roomChannel = `room:${normalized}`;
+  const sockets = await ioInstance.in(roomChannel).fetchSockets();
+  const userIds = new Set<string>();
+  for (const s of sockets) {
+    if (s.data?.user?.id) {
+      userIds.add(s.data.user.id);
+    }
+  }
+  return userIds;
+};
+
 const fetchRoomParticipants = async (
   io: RealtimeServer,
   roomCode: string,
   excludeUserId?: string
 ): Promise<RoomParticipant[]> => {
-  const roomChannel = `room:${roomCode}`;
+  const normalized = normalizeRoomCode(roomCode);
+  const roomChannel = `room:${normalized}`;
   const sockets = await io.in(roomChannel).fetchSockets();
   const map = new Map<string, RoomParticipant>();
 
@@ -82,7 +112,8 @@ const kickParticipantAcrossCluster = async (
   roomCode: string,
   message: string
 ) => {
-  const roomChannel = `room:${roomCode}`;
+  const normalized = normalizeRoomCode(roomCode);
+  const roomChannel = `room:${normalized}`;
   for (const socket of io.sockets.sockets.values()) {
     if (socket.data?.user?.id === userId) {
       socket.emit('room:kicked', { message });
@@ -90,7 +121,7 @@ const kickParticipantAcrossCluster = async (
       await socket.leave(roomChannel);
     }
   }
-  io.serverSideEmit('participant:kick', userId, roomCode, message);
+  io.serverSideEmit('participant:kick', userId, normalized, message);
 };
 
 export const notifyUserLeftRoom = async (
@@ -99,7 +130,8 @@ export const notifyUserLeftRoom = async (
   userName?: string
 ): Promise<void> => {
   if (!ioInstance) return;
-  const roomChannel = `room:${roomCode}`;
+  const normalized = normalizeRoomCode(roomCode);
+  const roomChannel = `room:${normalized}`;
 
   let departingName = userName || 'Participant';
   for (const socket of ioInstance.sockets.sockets.values()) {
@@ -113,18 +145,18 @@ export const notifyUserLeftRoom = async (
     }
   }
 
-  ioInstance.serverSideEmit('participant:leave', userId, roomCode);
+  ioInstance.serverSideEmit('participant:leave', userId, normalized);
 
   ioInstance.to(roomChannel).emit('room:user-left', {
     userId,
     name: departingName,
   });
 
-  const participants = await fetchRoomParticipants(ioInstance, roomCode, userId);
+  const participants = await fetchRoomParticipants(ioInstance, normalized, userId);
   ioInstance.in(roomChannel).emit('room:roster', { participants });
 
   logger.info(
-    { userId, roomCode, remaining: participants.length },
+    { userId, roomCode: normalized, remaining: participants.length },
     'User departed space via instant HTTP leave signal'
   );
 };
@@ -192,9 +224,44 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
 
     socket.on('room:join', async ({ roomCode, isMuted, isVideoOn, handRaised }) => {
       try {
-        const roomChannel = `room:${roomCode}`;
+        const normalized = normalizeRoomCode(roomCode);
+        const roomChannel = `room:${normalized}`;
+
+        const activeUserIds = await getActiveRoomUserIds(normalized);
+        const isAlreadyInRoom = activeUserIds.has(user.id);
+
+        if (!isAlreadyInRoom) {
+          const foundRoom = await db.query.room.findFirst({
+            where: eq(room.code, normalized),
+            with: {
+              settings: true,
+            },
+          });
+
+          if (foundRoom) {
+            const isHost = foundRoom.hostId === user.id;
+            const maxCapacity =
+              foundRoom.settings?.maxParticipants ||
+              (foundRoom.type === 'meet' ? ROOM_CAPACITY.meet : ROOM_CAPACITY.audio);
+
+            if (!isHost && activeUserIds.size >= maxCapacity) {
+              logger.warn(
+                { userId: user.id, roomCode: normalized, currentCount: activeUserIds.size, maxCapacity },
+                'User blocked from joining full room via socket'
+              );
+              socket.emit('error:message', {
+                message: `This room has reached its maximum capacity of ${maxCapacity} participants.`,
+              });
+              socket.emit('room:kicked', {
+                message: `This room has reached its maximum capacity of ${maxCapacity} participants.`,
+              });
+              return;
+            }
+          }
+        }
+
         await socket.join(roomChannel);
-        socket.data.currentRoomCode = roomCode;
+        socket.data.currentRoomCode = normalized;
         if (typeof isMuted === 'boolean') socket.data.isMuted = isMuted;
         if (typeof isVideoOn === 'boolean') socket.data.isVideoOn = isVideoOn;
         if (typeof handRaised === 'boolean') socket.data.handRaised = handRaised;
@@ -205,11 +272,11 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
           image: user.image,
         });
 
-        const participants = await fetchRoomParticipants(io, roomCode);
+        const participants = await fetchRoomParticipants(io, normalized);
         io.in(roomChannel).emit('room:roster', { participants });
 
         logger.info(
-          { userId: user.id, roomCode, participantCount: participants.length },
+          { userId: user.id, roomCode: normalized, participantCount: participants.length },
           'User joined chat room'
         );
       } catch (err) {
@@ -435,8 +502,9 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
 
     socket.on('chat:message', ({ roomCode, text }) => {
       if (!text || !text.trim()) return;
+      const normalized = normalizeRoomCode(roomCode);
       const message = buildChatMessage(user.id, user.name, user.image, text);
-      io.in(`room:${roomCode}`).emit('chat:new-message', message);
+      io.in(`room:${normalized}`).emit('chat:new-message', message);
     });
 
     socket.on('room:reaction', ({ roomCode, emoji }) => {
@@ -458,7 +526,8 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       socket.data.currentRoomCode = undefined;
 
       try {
-        const roomChannel = `room:${roomCode}`;
+        const normalized = normalizeRoomCode(roomCode);
+        const roomChannel = `room:${normalized}`;
         socket.to(roomChannel).emit('room:user-left', {
           userId: user.id,
           name: user.name,
@@ -466,11 +535,11 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
 
         await socket.leave(roomChannel);
 
-        const participants = await fetchRoomParticipants(io, roomCode, user.id);
+        const participants = await fetchRoomParticipants(io, normalized, user.id);
         io.in(roomChannel).emit('room:roster', { participants });
 
         logger.info(
-          { userId: user.id, roomCode, remaining: participants.length },
+          { userId: user.id, roomCode: normalized, remaining: participants.length },
           'User departed chat room'
         );
       } catch (err) {

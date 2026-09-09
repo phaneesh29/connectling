@@ -357,6 +357,7 @@ export default function DashboardPage() {
                 {myRooms.map((r) => {
                   const isMeet = r.type === 'meet';
                   const roomHref = isMeet ? `/meet/${r.code}` : `/talk/${r.code}`;
+                  const isFull = r.participantCount >= r.maxParticipants;
 
                   return (
                     <div
@@ -415,9 +416,13 @@ export default function DashboardPage() {
 
                       <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] text-xs">
                         <div className="flex items-center gap-1.5 text-[11px] font-mono text-[#888e90]">
-                          <span className="h-1.5 w-1.5 rounded-full bg-[#11ff99] animate-pulse" />
-                          <span>
-                            {r.participantCount} / {r.maxParticipants} Seats
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full ${
+                              isFull ? 'bg-[#ff2047]' : 'bg-[#11ff99] animate-pulse'
+                            }`}
+                          />
+                          <span className={isFull ? 'text-[#ffc53d]' : ''}>
+                            {r.participantCount} / {r.maxParticipants} Seats{isFull ? ' (Full)' : ''}
                           </span>
                         </div>
 

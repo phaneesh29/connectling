@@ -14,7 +14,11 @@ import type {
   JoinRoomInput,
   UpdateRoomSettingsInput,
 } from './room.validation.js';
-import { notifyUserLeftRoom } from '../realtime/realtime.gateway.js';
+import {
+  notifyUserLeftRoom,
+  getActiveRoomParticipantsCount,
+  getActiveRoomUserIds,
+} from '../realtime/realtime.gateway.js';
 import { logger } from '../../utils/logger.js';
 
 export const roomService = {
@@ -129,10 +133,12 @@ export const roomService = {
           }))(foundRoom.settings)
       : null;
 
+    const activeParticipantsCount = await getActiveRoomParticipantsCount(normalized);
+
     return {
       ...foundRoom,
       settings,
-      activeParticipantsCount: 0,
+      activeParticipantsCount,
     };
   },
 
@@ -162,14 +168,26 @@ export const roomService = {
       }
     }
 
+    const isHost = foundRoom.hostId === userId;
+    const maxCapacity =
+      settings?.maxParticipants ||
+      (foundRoom.type === 'meet' ? ROOM_CAPACITY.meet : ROOM_CAPACITY.audio);
+
+    const activeUserIds = await getActiveRoomUserIds(normalized);
+
+    if (!isHost && !activeUserIds.has(userId) && activeUserIds.size >= maxCapacity) {
+      throw new BadRequestError(
+        `This room has reached its maximum capacity of ${maxCapacity} participants.`
+      );
+    }
+
     const role =
-      foundRoom.hostId === userId
+      isHost
         ? 'host'
         : foundRoom.type === 'audio'
           ? 'listener'
           : 'participant';
 
-    const isHost = foundRoom.hostId === userId;
     const sanitizedSettings = foundRoom.settings
       ? isHost
         ? foundRoom.settings
@@ -320,6 +338,14 @@ export const roomService = {
 
     const activeRooms = roomsList.filter((r) => r.expiresAt > now);
 
+    const roomCounts = await Promise.all(
+      activeRooms.map(async (r) => {
+        const count = await getActiveRoomParticipantsCount(r.code);
+        return { code: r.code, count };
+      })
+    );
+    const countMap = new Map(roomCounts.map((rc) => [rc.code, rc.count]));
+
     return activeRooms.map((r) => ({
       id: r.id,
       code: r.code,
@@ -329,7 +355,7 @@ export const roomService = {
       status: r.status,
       hasPasscode: !!r.settings?.passcode,
       host: r.host,
-      participantCount: 0,
+      participantCount: countMap.get(r.code) || 0,
       maxParticipants: r.settings?.maxParticipants || (r.type === 'meet' ? 4 : 10),
       expiresAt: r.expiresAt,
       createdAt: r.createdAt,
