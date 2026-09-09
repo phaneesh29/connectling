@@ -267,6 +267,7 @@ export function InRoomParticipants({
                         <AudioWaveform
                           isActive={true}
                           size="xs"
+                          barCount={3}
                           volume={isMe ? localVolume : undefined}
                           frequencyBands={isMe ? localFrequencyBands : undefined}
                         />

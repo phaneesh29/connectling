@@ -1133,6 +1133,7 @@ export default function TalkPage({ params }: TalkPageProps) {
             const isMe = p.userId === session?.user?.id;
             const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'U';
             const gradient = getStageTileGradient(p.userId, isPHost);
+            const isMicActive = isMe ? isLocalMicActive : !p.isMuted;
             const isSpeaking = isMe
               ? isLocalMicActive && localAudio.isSpeaking
               : !p.isMuted;
@@ -1191,23 +1192,10 @@ export default function TalkPage({ params }: TalkPageProps) {
                   </div>
                 )}
 
-                {/* Stage Tile Floating Waveform Badge when speaking */}
-                {isSpeaking && (
-                  <div className="absolute top-2.5 left-2.5 z-20">
-                    <AudioTileBadge
-                      isActive={true}
-                      label=""
-                      size="xs"
-                      volume={isMe ? localAudio.volume : undefined}
-                      frequencyBands={isMe ? localAudio.frequencyBands : undefined}
-                    />
-                  </div>
-                )}
-
                 <div className="relative z-10">
                   <AudioRipple
-                    isActive={isMe ? isLocalMicActive : isSpeaking}
-                    isSpeaking={isMe ? localAudio.isSpeaking : isSpeaking}
+                    isActive={isMicActive}
+                    isSpeaking={isSpeaking}
                     size="md"
                   />
                   <div
@@ -1269,30 +1257,45 @@ export default function TalkPage({ params }: TalkPageProps) {
                     {isMe && <span className="text-[#888e90]"> (You)</span>}
                   </p>
                   {isPHost ? (
-                    <span className="text-[10px] font-mono text-[#f59e0b] uppercase tracking-wider block font-semibold">
-                      Stage Host
-                    </span>
-                  ) : isSpeaking ? (
+                    <div className="space-y-0.5">
+                      <span className="text-[10px] font-mono text-[#f59e0b] uppercase tracking-wider block font-semibold">
+                        Stage Host
+                      </span>
+                      {isMicActive ? (
+                        <div className="flex items-center justify-center gap-1.5 text-[#11ff99]">
+                          <AudioWaveform
+                            isActive={true}
+                            size="xs"
+                            barCount={3}
+                            volume={isMe ? localAudio.volume : undefined}
+                            frequencyBands={isMe ? localAudio.frequencyBands : undefined}
+                          />
+                          <span className="text-[9px] font-mono uppercase tracking-wider block font-semibold">
+                            {isSpeaking ? 'Speaking' : 'Live'}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-[9px] font-mono text-[#ff2047] uppercase tracking-wider block">
+                          Muted
+                        </span>
+                      )}
+                    </div>
+                  ) : isMicActive ? (
                     <div className="flex items-center justify-center gap-1.5 text-[#11ff99]">
                       <AudioWaveform
                         isActive={true}
                         size="xs"
+                        barCount={3}
                         volume={isMe ? localAudio.volume : undefined}
                         frequencyBands={isMe ? localAudio.frequencyBands : undefined}
                       />
                       <span className="text-[10px] font-mono uppercase tracking-wider block font-semibold">
-                        Speaking
+                        {isSpeaking ? 'Speaking' : 'Speaker'}
                       </span>
-                      <AudioWaveform
-                        isActive={true}
-                        size="xs"
-                        volume={isMe ? localAudio.volume : undefined}
-                        frequencyBands={isMe ? localAudio.frequencyBands : undefined}
-                      />
                     </div>
                   ) : p.canSpeak || (isMe && (participant?.role === 'speaker' || grantedSpeaker)) ? (
-                    <span className="text-[10px] font-mono text-[#ffc53d] uppercase tracking-wider block font-medium">
-                      Speaker
+                    <span className="text-[10px] font-mono text-[#888e90] uppercase tracking-wider block font-medium">
+                      Speaker (Muted)
                     </span>
                   ) : (
                     <span className="text-[10px] font-mono text-[#888e90] uppercase tracking-wider block">

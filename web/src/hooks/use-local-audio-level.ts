@@ -52,6 +52,14 @@ export function useLocalAudioLevel({
 
     let isCancelled = false;
 
+    const handleResume = () => {
+      if (audioCtxRef.current && audioCtxRef.current.state === 'suspended') {
+        void audioCtxRef.current.resume();
+      }
+    };
+    window.addEventListener('click', handleResume);
+    window.addEventListener('keydown', handleResume);
+
     const startAudioAnalysis = async () => {
       try {
         const constraints: MediaStreamConstraints = {
@@ -61,7 +69,14 @@ export function useLocalAudioLevel({
               : true,
         };
 
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch {
+          // Fallback to default microphone if specified device constraints fail
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+
         if (isCancelled) {
           stream.getTracks().forEach((t) => t.stop());
           return;
@@ -93,23 +108,23 @@ export function useLocalAudioLevel({
 
           analyser.getByteFrequencyData(dataArray);
 
-          // Calculate average volume
-          let sum = 0;
-          for (let i = 0; i < dataArray.length; i++) {
-            sum += dataArray[i];
+          // Calculate average volume focusing on the speech frequency range (bins 1 to 16)
+          let speechSum = 0;
+          for (let i = 1; i <= 16; i++) {
+            speechSum += dataArray[i];
           }
-          const avg = sum / dataArray.length;
-          // Normalize to 0-100
-          const normalizedVol = Math.min(100, Math.round((avg / 128) * 100));
+          const speechAvg = speechSum / 16;
+          // Normalize to 0-100 (speech threshold ~4-5)
+          const normalizedVol = Math.min(100, Math.round((speechAvg / 90) * 100));
 
           // Compute 5 frequency bands: bass, low-mid, mid, upper-mid, treble
-          const b0 = Math.min(100, Math.round(((dataArray[1] + dataArray[2]) / 2 / 160) * 100));
-          const b1 = Math.min(100, Math.round(((dataArray[3] + dataArray[4]) / 2 / 150) * 100));
-          const b2 = Math.min(100, Math.round(((dataArray[5] + dataArray[6] + dataArray[7]) / 3 / 140) * 100));
-          const b3 = Math.min(100, Math.round(((dataArray[8] + dataArray[9] + dataArray[10]) / 3 / 130) * 100));
-          const b4 = Math.min(100, Math.round(((dataArray[11] + dataArray[12] + dataArray[13]) / 3 / 120) * 100));
+          const b0 = Math.min(100, Math.round(((dataArray[1] + dataArray[2]) / 2 / 120) * 100));
+          const b1 = Math.min(100, Math.round(((dataArray[3] + dataArray[4]) / 2 / 110) * 100));
+          const b2 = Math.min(100, Math.round(((dataArray[5] + dataArray[6] + dataArray[7]) / 3 / 100) * 100));
+          const b3 = Math.min(100, Math.round(((dataArray[8] + dataArray[9] + dataArray[10]) / 3 / 90) * 100));
+          const b4 = Math.min(100, Math.round(((dataArray[11] + dataArray[12] + dataArray[13]) / 3 / 80) * 100));
 
-          const speakingNow = normalizedVol > 5;
+          const speakingNow = normalizedVol > 4;
           const now = Date.now();
 
           if (speakingNow) {
@@ -138,6 +153,8 @@ export function useLocalAudioLevel({
 
     return () => {
       isCancelled = true;
+      window.removeEventListener('click', handleResume);
+      window.removeEventListener('keydown', handleResume);
       if (animFrameRef.current) {
         cancelAnimationFrame(animFrameRef.current);
         animFrameRef.current = null;

@@ -402,8 +402,9 @@ export default function MeetPage({ params }: MeetPageProps) {
   const isScreenShareAllowed = isHost || settings?.screenShareForAll !== false;
   const isChatAllowed = settings?.allowChat !== false;
 
+  const isInRoom = Boolean(room) && !passcodeRequired;
   const localAudio = useLocalAudioLevel({
-    isEnabled: hasEntered && isMicOn && isMicAllowed,
+    isEnabled: isInRoom && isMicOn && isMicAllowed,
     deviceId: mediaDevices.selectedAudioInputId,
   });
 
@@ -846,31 +847,28 @@ export default function MeetPage({ params }: MeetPageProps) {
                   </div>
                 </div>
                 {isMicOn ? (
-                  <div
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border relative z-10 transition-all ${
-                      localAudio.isSpeaking
-                        ? 'bg-[#11ff99]/15 border-[#11ff99]/40 text-[#11ff99] shadow-[0_0_12px_rgba(17,255,153,0.2)]'
-                        : 'bg-white/[0.04] border-white/[0.08] text-[#888e90]'
-                    }`}
-                  >
-                    <AudioWaveform
-                      isActive={isMicOn}
-                      size="xs"
-                      volume={localAudio.volume}
-                      frequencyBands={localAudio.frequencyBands}
+                  <p className="text-[11px] font-mono text-[#11ff99] relative z-10 font-medium flex items-center gap-1.5">
+                    <span
+                      className={`h-1.5 w-1.5 rounded-full bg-[#11ff99] ${
+                        localAudio.isSpeaking ? 'animate-ping' : 'opacity-70'
+                      }`}
                     />
-                    <span className="text-[10px] font-mono font-medium">
-                      {localAudio.isSpeaking ? 'Speaking' : 'Mic active'}
-                    </span>
-                  </div>
+                    <span>{localAudio.isSpeaking ? 'Speaking' : 'Mic active'}</span>
+                  </p>
                 ) : (
                   <p className="text-[11px] font-mono text-[#888e90] relative z-10">Camera muted</p>
                 )}
               </div>
             )}
 
-            {/* Audio Waveforms in bottom-left Name Badge */}
-            <div className="absolute bottom-3 left-3 bg-[#0a0a0c]/85 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 text-[#fcfdff] border border-white/[0.10] z-20 shadow-md">
+            {/* Single Unified Voice Indicator in bottom-left Name Badge */}
+            <div
+              className={`absolute bottom-3 left-3 bg-[#0a0a0c]/85 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 text-[#fcfdff] border transition-all duration-200 z-20 shadow-lg ${
+                isMicOn && localAudio.isSpeaking
+                  ? 'border-[#11ff99]/40 ring-1 ring-[#11ff99]/30'
+                  : 'border-white/[0.10]'
+              }`}
+            >
               {isMicOn ? (
                 <div className="flex items-center gap-1.5">
                   <MicIcon
@@ -880,6 +878,7 @@ export default function MeetPage({ params }: MeetPageProps) {
                   <AudioWaveform
                     isActive={isMicOn}
                     size="xs"
+                    barCount={3}
                     volume={localAudio.volume}
                     frequencyBands={localAudio.frequencyBands}
                   />
@@ -893,17 +892,6 @@ export default function MeetPage({ params }: MeetPageProps) {
                   HOST
                 </span>
               )}
-            </div>
-
-            {/* Floating Audio Waveform Badge at bottom-right of tile */}
-            <div className="absolute bottom-3 right-3 z-20">
-              <AudioTileBadge
-                isActive={isMicOn}
-                label={localAudio.isSpeaking ? 'LIVE' : 'MIC'}
-                size="xs"
-                volume={localAudio.volume}
-                frequencyBands={localAudio.frequencyBands}
-              />
             </div>
           </div>
 
@@ -970,10 +958,10 @@ export default function MeetPage({ params }: MeetPageProps) {
                       </div>
                     </div>
                     {isSpeaking ? (
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#11ff99]/10 border border-[#11ff99]/25 text-[#11ff99] relative z-10">
-                        <AudioWaveform isActive={true} size="xs" />
-                        <span className="text-[10px] font-mono font-medium">Speaking</span>
-                      </div>
+                      <p className="text-[11px] font-mono text-[#11ff99] relative z-10 font-medium flex items-center gap-1.5">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#11ff99] opacity-80" />
+                        <span>Speaking</span>
+                      </p>
                     ) : (
                       <p className="text-[11px] font-mono text-[#888e90] relative z-10">Camera muted</p>
                     )}
@@ -1021,12 +1009,18 @@ export default function MeetPage({ params }: MeetPageProps) {
                   </div>
                 )}
 
-                {/* Bottom-Left Name Badge with Waveform */}
-                <div className="absolute bottom-3 left-3 bg-[#0a0a0c]/85 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 text-[#fcfdff] border border-white/[0.10] z-20 shadow-md">
+                {/* Single Unified Voice Indicator in bottom-left Name Badge */}
+                <div
+                  className={`absolute bottom-3 left-3 bg-[#0a0a0c]/85 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 text-[#fcfdff] border transition-all duration-200 z-20 shadow-lg ${
+                    isSpeaking
+                      ? 'border-[#11ff99]/40 ring-1 ring-[#11ff99]/30'
+                      : 'border-white/[0.10]'
+                  }`}
+                >
                   {isSpeaking ? (
                     <div className="flex items-center gap-1.5">
                       <MicIcon size={13} className="text-[#11ff99]" />
-                      <AudioWaveform isActive={true} size="xs" />
+                      <AudioWaveform isActive={true} size="xs" barCount={3} />
                     </div>
                   ) : (
                     <MicOffIcon size={13} className="text-[#ff2047]" />
@@ -1037,11 +1031,6 @@ export default function MeetPage({ params }: MeetPageProps) {
                       HOST
                     </span>
                   )}
-                </div>
-
-                {/* Floating Audio Waveform Badge at bottom-right of tile */}
-                <div className="absolute bottom-3 right-3 z-20">
-                  <AudioTileBadge isActive={isSpeaking} label="LIVE" size="xs" />
                 </div>
               </div>
             );

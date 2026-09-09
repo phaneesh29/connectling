@@ -70,6 +70,8 @@ const barAnimationClasses = [
   'animate-wave-bar-5',
 ];
 
+const RESTING_PROFILE = ['35%', '65%', '45%', '70%', '40%'];
+
 export function AudioWaveform({
   isActive = true,
   size = 'sm',
@@ -91,34 +93,35 @@ export function AudioWaveform({
     >
       {Array.from({ length: count }).map((_, idx) => {
         let liveHeightStyle: React.CSSProperties | undefined;
+        let isVoiceDetected = false;
 
-        if (hasLiveLevels) {
+        if (hasLiveLevels && isActive) {
           const rawVal =
             frequencyBands && frequencyBands.length > idx
               ? frequencyBands[idx]
               : volume ?? 0;
-          const isSilent = !isActive || rawVal <= 4;
-          const heightPct = isSilent ? '3px' : `${Math.max(16, Math.min(100, rawVal))}%`;
+          isVoiceDetected = rawVal > 4;
 
-          liveHeightStyle = {
-            height: heightPct,
-            transformOrigin: 'bottom',
-            transition: 'height 0.07s cubic-bezier(0.2, 0.8, 0.4, 1)',
-          };
+          if (isVoiceDetected) {
+            liveHeightStyle = {
+              height: `${Math.max(28, Math.min(100, rawVal))}%`,
+              transformOrigin: 'bottom',
+              transition: 'height 0.08s cubic-bezier(0.2, 0.8, 0.4, 1)',
+            };
+          }
         }
 
-        const isActivelyBouncing =
-          isActive && (!hasLiveLevels || (volume !== undefined ? volume > 4 : true));
+        const shouldAnimateWave = isActive && !liveHeightStyle;
 
         return (
           <span
             key={idx}
             className={`inline-block ${conf.barWidth} ${conf.barRounded} ${
-              isActivelyBouncing
-                ? `${activeColor.active} ${!hasLiveLevels ? barAnimationClasses[idx % barAnimationClasses.length] : ''}`
-                : `h-1 ${activeColor.inactive}`
+              isActive
+                ? `${activeColor.active} ${shouldAnimateWave ? barAnimationClasses[idx % barAnimationClasses.length] : ''}`
+                : `h-0.5 ${activeColor.inactive}`
             }`}
-            style={liveHeightStyle || { transformOrigin: 'bottom' }}
+            style={liveHeightStyle || (isActive ? { transformOrigin: 'bottom' } : undefined)}
           />
         );
       })}
