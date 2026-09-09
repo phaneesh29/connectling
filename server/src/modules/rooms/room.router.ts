@@ -6,6 +6,7 @@ import {
   joinRoomSchema,
   updateRoomSettingsSchema,
   roomCodeParamSchema,
+  transferHostSchema,
 } from './room.validation.js';
 import {
   createRoomHandler,
@@ -16,6 +17,7 @@ import {
   endRoomHandler,
   heartbeatHandler,
   listMyRoomsHandler,
+  transferHostHandler,
 } from './room.controller.js';
 
 export const roomRouter = Router();
@@ -64,5 +66,11 @@ roomRouter.post(
   '/:code/end',
   validateRequest({ params: roomCodeParamSchema }),
   endRoomHandler
+);
+
+roomRouter.post(
+  '/:code/transfer-host',
+  validateRequest({ params: roomCodeParamSchema, body: transferHostSchema }),
+  transferHostHandler
 );
 

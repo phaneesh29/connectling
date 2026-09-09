@@ -32,6 +32,7 @@ import { getSocket } from '@/lib/socket';
 import { playJoinChime, playLeaveChime } from '@/lib/chime';
 import { InRoomChat } from '@/components/in-room-chat';
 import { InRoomParticipants } from '@/components/in-room-participants';
+import { TransferHostModal } from '@/components/transfer-host-modal';
 import type { ChatMessage, RoomParticipant } from '@/types/realtime';
 
 interface MeetPageProps {
@@ -69,6 +70,7 @@ export default function MeetPage({ params }: MeetPageProps) {
   const [roomToast, setRoomToast] = useState<{ text: string; type: 'join' | 'leave' } | null>(null);
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
   const [participantsOpen, setParticipantsOpen] = useState(false);
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
 
   const chatOpenRef = useRef(chatOpen);
   const isMicOnRef = useRef(isMicOn);
@@ -279,11 +281,74 @@ export default function MeetPage({ params }: MeetPageProps) {
       }
     };
 
+    const handleUserMuted = ({ targetUserId }: { targetUserId: string; byHost: boolean }) => {
+      if (targetUserId === currentUserIdRef.current) {
+        setIsMicOn(false);
+        const socket = getSocket();
+        socket.emit('room:media-toggle', {
+          roomCode: code,
+          isMuted: true,
+          isVideoOn: isVideoOnRef.current,
+        });
+        playLeaveChime();
+        setRoomToast({ text: 'You were muted by the host', type: 'leave' });
+        setTimeout(() => {
+          setRoomToast((curr) => (curr?.text === 'You were muted by the host' ? null : curr));
+        }, 3500);
+      }
+      setParticipants((prev) =>
+        prev.map((p) => (p.userId === targetUserId ? { ...p, isMuted: true } : p))
+      );
+    };
+
+    const handleKicked = ({ message }: { message: string }) => {
+      alert(message || 'You have been removed from the space by the host.');
+      router.push('/');
+    };
+
+    const handleUserKicked = ({
+      targetUserId,
+      targetName,
+    }: {
+      targetUserId: string;
+      targetName: string;
+    }) => {
+      setRoomToast({ text: `${targetName} was removed from the space`, type: 'leave' });
+      setTimeout(() => {
+        setRoomToast((curr) => (curr?.text?.includes('was removed from the space') ? null : curr));
+      }, 3500);
+      setParticipants((prev) => prev.filter((p) => p.userId !== targetUserId));
+    };
+
+    const handleHostTransferred = ({
+      newHostId,
+      newHostName,
+    }: {
+      previousHostId: string;
+      newHostId: string;
+      newHostName: string;
+    }) => {
+      setRoom((prev) => (prev ? { ...prev, hostId: newHostId } : prev));
+      if (newHostId === currentUserIdRef.current) {
+        setRoomToast({ text: 'You are now the space host!', type: 'join' });
+        playJoinChime();
+      } else {
+        setRoomToast({ text: `${newHostName} is now the space host`, type: 'join' });
+      }
+      setTimeout(() => {
+        setRoomToast((curr) => (curr?.text?.includes('space host') ? null : curr));
+      }, 4000);
+    };
+
     socket.on('chat:new-message', handleNewMessage);
     socket.on('room:roster', handleRoster);
     socket.on('room:user-joined', handleUserJoined);
     socket.on('room:user-left', handleUserLeft);
     socket.on('room:settings-updated', handleSettingsUpdated);
+    socket.on('room:user-muted', handleUserMuted);
+    socket.on('room:kicked', handleKicked);
+    socket.on('room:user-kicked', handleUserKicked);
+    socket.on('room:host-transferred', handleHostTransferred);
 
     return () => {
       socket.off('chat:new-message', handleNewMessage);
@@ -291,9 +356,13 @@ export default function MeetPage({ params }: MeetPageProps) {
       socket.off('room:user-joined', handleUserJoined);
       socket.off('room:user-left', handleUserLeft);
       socket.off('room:settings-updated', handleSettingsUpdated);
+      socket.off('room:user-muted', handleUserMuted);
+      socket.off('room:kicked', handleKicked);
+      socket.off('room:user-kicked', handleUserKicked);
+      socket.off('room:host-transferred', handleHostTransferred);
       socket.emit('room:leave', { roomCode: code });
     };
-  }, [roomId, code]);
+  }, [roomId, code, router]);
 
   const isHost = Boolean(room && session?.user && room.hostId === session.user.id);
   const isMicAllowed = isHost || settings?.micForAll !== false;
@@ -352,6 +421,81 @@ export default function MeetPage({ params }: MeetPageProps) {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleRemoteMute = (targetUserId: string, targetName: string) => {
+    if (!isHost) return;
+    const socket = getSocket();
+    socket.emit('room:mute-user', {
+      roomCode: code,
+      targetUserId,
+    });
+    setRoomToast({
+      text: `Muted ${targetName}`,
+      type: 'leave',
+    });
+    setTimeout(() => {
+      setRoomToast((curr) => (curr?.text?.startsWith('Muted ') ? null : curr));
+    }, 3000);
+  };
+
+  const handleKickUser = (targetUserId: string, targetName: string) => {
+    if (!isHost) return;
+    if (!confirm(`Are you sure you want to remove ${targetName} from this space?`)) return;
+    const socket = getSocket();
+    socket.emit('room:kick-user', {
+      roomCode: code,
+      targetUserId,
+    });
+    setRoomToast({
+      text: `Removed ${targetName} from space`,
+      type: 'leave',
+    });
+    setTimeout(() => {
+      setRoomToast((curr) => (curr?.text?.startsWith('Removed ') ? null : curr));
+    }, 3000);
+  };
+
+  const handleTransferHost = async (newHostUserId: string, newHostName: string): Promise<boolean> => {
+    if (!isHost) return false;
+    try {
+      const socket = getSocket();
+      socket.emit('room:transfer-host', {
+        roomCode: code,
+        newHostUserId,
+      });
+      await roomsApi.transferHost(code, newHostUserId);
+      setRoom((prev) => (prev ? { ...prev, hostId: newHostUserId } : prev));
+      setRoomToast({
+        text: `Made ${newHostName} the space host`,
+        type: 'join',
+      });
+      setTimeout(() => {
+        setRoomToast((curr) => (curr?.text?.startsWith('Made ') ? null : curr));
+      }, 3000);
+      return true;
+    } catch (err) {
+      console.error('Failed to transfer space host:', err);
+      setRoomToast({ text: 'Failed to transfer space host', type: 'leave' });
+      return false;
+    }
+  };
+
+  const handleLeaveClick = () => {
+    if (!isHost) {
+      void handleLeave();
+      return;
+    }
+
+    const otherParticipants = participants.filter((p) => p.userId !== session?.user?.id);
+    if (otherParticipants.length === 0) {
+      if (confirm('You are the only person in this meeting. Leaving will close this space. Leave and end meeting?')) {
+        void handleEndRoom();
+      }
+      return;
+    }
+
+    setTransferModalOpen(true);
   };
 
   const handleLeave = async () => {
@@ -655,6 +799,49 @@ export default function MeetPage({ params }: MeetPageProps) {
                   </div>
                 )}
 
+                {/* Host Moderation Controls on Video Card */}
+                {isHost && !isOtherHost && (
+                  <div className="absolute top-3 right-3 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 flex items-center gap-1.5 z-30 transition-opacity">
+                    {!p.isMuted && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoteMute(p.userId, p.name);
+                        }}
+                        className="h-7 w-7 rounded-lg bg-black/80 hover:bg-amber-500/20 text-amber-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md"
+                        title={`Mute ${p.name}`}
+                      >
+                        <MicOffIcon size={12} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Make ${p.name} the space host?`)) {
+                          void handleTransferHost(p.userId, p.name);
+                        }
+                      }}
+                      className="h-7 w-7 rounded-lg bg-black/80 hover:bg-amber-500/20 text-[#888e90] hover:text-amber-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md"
+                      title={`Make ${p.name} the host`}
+                    >
+                      <StarIcon size={12} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleKickUser(p.userId, p.name);
+                      }}
+                      className="h-7 w-7 rounded-lg bg-black/80 hover:bg-red-500/20 text-[#888e90] hover:text-red-400 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer shadow-md"
+                      title={`Remove ${p.name} from space`}
+                    >
+                      <LogOutIcon size={12} />
+                    </button>
+                  </div>
+                )}
+
                 <div className="absolute bottom-3 left-3 bg-[#0a0a0c]/80 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-2 text-[#fcfdff] border border-white/[0.10]">
                   {p.isMuted ? (
                     <MicOffIcon size={13} className="text-[#ff2047]" />
@@ -807,7 +994,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           <div className="h-6 w-px bg-white/[0.08] mx-1" />
 
           <button
-            onClick={handleLeave}
+            onClick={handleLeaveClick}
             disabled={leaving || ending}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#101012] hover:bg-[#18181c] text-[#888e90] hover:text-[#fcfdff] font-medium text-xs transition-all border border-white/[0.08] disabled:opacity-50"
           >
@@ -947,6 +1134,35 @@ export default function MeetPage({ params }: MeetPageProps) {
         roomCode={room?.code || code}
         onCopyLink={handleCopyLink}
         copied={copied}
+        onMuteUser={isHost ? handleRemoteMute : undefined}
+        onKickUser={isHost ? handleKickUser : undefined}
+        onTransferHost={
+          isHost
+            ? (userId, name) => {
+                if (confirm(`Make ${name} the new space host?`)) {
+                  void handleTransferHost(userId, name);
+                }
+              }
+            : undefined
+        }
+      />
+
+      {/* Transfer Host & Leave Modal */}
+      <TransferHostModal
+        isOpen={transferModalOpen}
+        onClose={() => setTransferModalOpen(false)}
+        participants={participants}
+        currentUserId={session?.user?.id}
+        onConfirmTransferAndLeave={async (newHostUserId, newHostName) => {
+          const ok = await handleTransferHost(newHostUserId, newHostName);
+          if (ok) {
+            setTransferModalOpen(false);
+            await new Promise((r) => setTimeout(r, 150));
+            await handleLeave();
+          }
+        }}
+        onEndRoom={handleEndRoom}
+        spaceType="meet"
       />
     </div>
   );

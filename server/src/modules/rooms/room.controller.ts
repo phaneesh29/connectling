@@ -6,6 +6,7 @@ import type {
   JoinRoomInput,
   UpdateRoomSettingsInput,
   RoomCodeParam,
+  TransferHostInput,
 } from './room.validation.js';
 
 export const createRoomHandler = async (req: Request, res: Response): Promise<void> => {
@@ -103,6 +104,29 @@ export const listMyRoomsHandler = async (req: Request, res: Response): Promise<v
   const userId = req.user!.id;
   const type = req.query.type as 'meet' | 'audio' | undefined;
   const result = await roomService.listMyRooms(userId, type);
+
+  res.status(200).json({
+    success: true,
+    data: result,
+  });
+};
+
+export const transferHostHandler = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.id;
+  const { code } = req.params as RoomCodeParam;
+  const { newHostUserId } = req.body as TransferHostInput;
+
+  const result = await roomService.transferHost(userId, code, newHostUserId);
+
+  try {
+    const io = getRealtimeServer();
+    io.in(`room:${code}`).emit('room:host-transferred', {
+      previousHostId: userId,
+      newHostId: newHostUserId,
+      newHostName: 'Participant',
+    });
+  } catch {
+  }
 
   res.status(200).json({
     success: true,

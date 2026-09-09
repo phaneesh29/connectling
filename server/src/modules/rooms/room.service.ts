@@ -239,6 +239,28 @@ export const roomService = {
     return { success: true, message: 'Room ended and deleted successfully' };
   },
 
+  transferHost: async (userId: string, code: string, newHostUserId: string) => {
+    const normalized = normalizeRoomCode(code);
+    const foundRoom = await db.query.room.findFirst({
+      where: eq(room.code, normalized),
+    });
+
+    if (!foundRoom) {
+      throw new NotFoundError('Room not found');
+    }
+
+    if (foundRoom.hostId !== userId) {
+      if (foundRoom.hostId === newHostUserId) {
+        return { success: true, newHostId: newHostUserId };
+      }
+      throw new ForbiddenError('Only the room host can transfer stage ownership.');
+    }
+
+    await db.update(room).set({ hostId: newHostUserId }).where(eq(room.id, foundRoom.id));
+
+    return { success: true, newHostId: newHostUserId };
+  },
+
   heartbeat: async (_userId: string, code: string) => {
     const normalized = normalizeRoomCode(code);
     const foundRoom = await db.query.room.findFirst({

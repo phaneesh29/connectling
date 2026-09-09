@@ -28,11 +28,13 @@ import {
   SettingsIcon,
   XIcon,
   ShieldCheckIcon,
+  SearchIcon,
 } from '@animateicons/react/lucide';
 import { getSocket } from '@/lib/socket';
 import { playJoinChime, playLeaveChime } from '@/lib/chime';
 import { InRoomChat } from '@/components/in-room-chat';
 import { InRoomParticipants } from '@/components/in-room-participants';
+import { TransferHostModal } from '@/components/transfer-host-modal';
 import type { ChatMessage, RoomParticipant } from '@/types/realtime';
 
 interface StageTileGradient {
@@ -151,6 +153,7 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [updatingKey, setUpdatingKey] = useState<'micForAll' | 'allowChat' | 'allowRaiseHand' | null>(null);
   const [grantedSpeaker, setGrantedSpeaker] = useState(false);
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
 
   const isHost = Boolean(room && session?.user && room.hostId === session.user.id);
   const isHostRef = useRef(isHost);
@@ -480,6 +483,64 @@ export default function TalkPage({ params }: TalkPageProps) {
       }
     };
 
+    const handleUserMuted = ({ targetUserId }: { targetUserId: string; byHost: boolean }) => {
+      if (targetUserId === currentUserIdRef.current) {
+        setIsMuted(true);
+        const socket = getSocket();
+        socket.emit('room:media-toggle', {
+          roomCode: code,
+          isMuted: true,
+        });
+        playLeaveChime();
+        setRoomToast({ text: 'You were muted by the host', type: 'leave' });
+        setTimeout(() => {
+          setRoomToast((curr) => (curr?.text === 'You were muted by the host' ? null : curr));
+        }, 3500);
+      }
+      setParticipants((prev) =>
+        prev.map((p) => (p.userId === targetUserId ? { ...p, isMuted: true } : p))
+      );
+    };
+
+    const handleKicked = ({ message }: { message: string }) => {
+      alert(message || 'You have been removed from the stage by the host.');
+      router.push('/');
+    };
+
+    const handleUserKicked = ({
+      targetUserId,
+      targetName,
+    }: {
+      targetUserId: string;
+      targetName: string;
+    }) => {
+      setRoomToast({ text: `${targetName} was removed from the stage`, type: 'leave' });
+      setTimeout(() => {
+        setRoomToast((curr) => (curr?.text?.includes('was removed from the stage') ? null : curr));
+      }, 3500);
+      setParticipants((prev) => prev.filter((p) => p.userId !== targetUserId));
+    };
+
+    const handleHostTransferred = ({
+      newHostId,
+      newHostName,
+    }: {
+      previousHostId: string;
+      newHostId: string;
+      newHostName: string;
+    }) => {
+      setRoom((prev) => (prev ? { ...prev, hostId: newHostId } : prev));
+      if (newHostId === currentUserIdRef.current) {
+        setRoomToast({ text: 'You are now the stage host!', type: 'join' });
+        playJoinChime();
+      } else {
+        setRoomToast({ text: `${newHostName} is now the stage host`, type: 'join' });
+      }
+      setTimeout(() => {
+        setRoomToast((curr) => (curr?.text?.includes('stage host') ? null : curr));
+      }, 4000);
+    };
+
     socket.on('chat:new-message', handleNewMessage);
     socket.on('room:roster', handleRoster);
     socket.on('room:user-joined', handleUserJoined);
@@ -488,6 +549,10 @@ export default function TalkPage({ params }: TalkPageProps) {
     socket.on('room:hand-raised', handleHandRaised);
     socket.on('room:mic-granted', handleMicGranted);
     socket.on('room:mic-revoked', handleMicRevoked);
+    socket.on('room:user-muted', handleUserMuted);
+    socket.on('room:kicked', handleKicked);
+    socket.on('room:user-kicked', handleUserKicked);
+    socket.on('room:host-transferred', handleHostTransferred);
 
     return () => {
       socket.off('chat:new-message', handleNewMessage);
@@ -498,9 +563,13 @@ export default function TalkPage({ params }: TalkPageProps) {
       socket.off('room:hand-raised', handleHandRaised);
       socket.off('room:mic-granted', handleMicGranted);
       socket.off('room:mic-revoked', handleMicRevoked);
+      socket.off('room:user-muted', handleUserMuted);
+      socket.off('room:kicked', handleKicked);
+      socket.off('room:user-kicked', handleUserKicked);
+      socket.off('room:host-transferred', handleHostTransferred);
       socket.emit('room:leave', { roomCode: code });
     };
-  }, [roomId, code, grantedSpeaker]);
+  }, [roomId, code, grantedSpeaker, router]);
 
   const myRosterParticipant = participants.find((p) => p.userId === currentUserId);
   const isSpeaker =
@@ -588,6 +657,82 @@ export default function TalkPage({ params }: TalkPageProps) {
     setTimeout(() => {
       setRoomToast((curr) => (curr?.text?.startsWith('Muted ') ? null : curr));
     }, 3000);
+  };
+
+  const handleRemoteMute = (targetUserId: string, targetName: string) => {
+    if (!isHost) return;
+    const socket = getSocket();
+    socket.emit('room:mute-user', {
+      roomCode: code,
+      targetUserId,
+    });
+    setRoomToast({
+      text: `Muted ${targetName}`,
+      type: 'leave',
+    });
+    setTimeout(() => {
+      setRoomToast((curr) => (curr?.text?.startsWith('Muted ') ? null : curr));
+    }, 3000);
+  };
+
+  const handleKickUser = (targetUserId: string, targetName: string) => {
+    if (!isHost) return;
+    if (!confirm(`Are you sure you want to remove ${targetName} from the stage?`)) return;
+    const socket = getSocket();
+    socket.emit('room:kick-user', {
+      roomCode: code,
+      targetUserId,
+    });
+    setRoomToast({
+      text: `Removed ${targetName} from stage`,
+      type: 'leave',
+    });
+    setTimeout(() => {
+      setRoomToast((curr) => (curr?.text?.startsWith('Removed ') ? null : curr));
+    }, 3000);
+  };
+
+  const handleTransferHost = async (newHostUserId: string, newHostName: string): Promise<boolean> => {
+    if (!isHost) return false;
+    try {
+      const socket = getSocket();
+      socket.emit('room:transfer-host', {
+        roomCode: code,
+        newHostUserId,
+      });
+      await roomsApi.transferHost(code, newHostUserId);
+      setRoom((prev) => (prev ? { ...prev, hostId: newHostUserId } : prev));
+      setRoomToast({
+        text: `Made ${newHostName} the stage host`,
+        type: 'join',
+      });
+      setTimeout(() => {
+        setRoomToast((curr) => (curr?.text?.startsWith('Made ') ? null : curr));
+      }, 3000);
+      return true;
+    } catch (err) {
+      console.error('Failed to transfer stage host:', err);
+      setRoomToast({ text: 'Failed to transfer stage host', type: 'leave' });
+      return false;
+    }
+  };
+
+  const handleLeaveClick = () => {
+    if (!isHost) {
+      void handleLeave();
+      return;
+    }
+
+    const otherParticipants = participants.filter((p) => p.userId !== session?.user?.id);
+    if (otherParticipants.length === 0) {
+      if (confirm('You are the only person on stage. Leaving will close this space. Leave and end stage?')) {
+        void handleEndRoom();
+      }
+      return;
+    }
+
+    // Host has other participants -> Show transfer host dialog
+    setTransferModalOpen(true);
   };
 
   const handleQuickToggle = async (key: 'micForAll' | 'allowChat' | 'allowRaiseHand') => {
@@ -916,6 +1061,49 @@ export default function TalkPage({ params }: TalkPageProps) {
                 {/* Subtle top edge specular highlight line */}
                 <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent pointer-events-none" />
 
+                {/* Host Hover Action Buttons (Mute / Make Host / Kick) */}
+                {isHost && !isPHost && (
+                  <div className="absolute top-2.5 right-2.5 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 flex items-center gap-1 z-30 transition-opacity">
+                    {!p.isMuted && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoteMute(p.userId, p.name);
+                        }}
+                        className="h-6 w-6 rounded-md bg-black/80 hover:bg-amber-500/20 text-amber-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer"
+                        title={`Mute ${p.name}`}
+                      >
+                        <MicOffIcon size={10} />
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Make ${p.name} the new stage host?`)) {
+                          void handleTransferHost(p.userId, p.name);
+                        }
+                      }}
+                      className="h-6 w-6 rounded-md bg-black/80 hover:bg-amber-500/20 text-[#888e90] hover:text-amber-300 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer"
+                      title={`Make ${p.name} the stage host`}
+                    >
+                      <StarIcon size={10} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleKickUser(p.userId, p.name);
+                      }}
+                      className="h-6 w-6 rounded-md bg-black/80 hover:bg-red-500/20 text-[#888e90] hover:text-red-400 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer"
+                      title={`Remove ${p.name} from stage`}
+                    >
+                      <LogOutIcon size={10} />
+                    </button>
+                  </div>
+                )}
+
                 <div className="relative z-10">
                   <div
                     className={`h-16 w-16 rounded-full bg-[#121216] border border-white/[0.10] flex items-center justify-center overflow-hidden shadow-lg transition-transform duration-200 group-hover:scale-[1.02] ${
@@ -984,7 +1172,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                     </span>
                   )}
 
-                  {/* Host Direct Unmute / Speaker Controls on Participant Tile */}
+                  {/* Host Direct Unmute / Remote Mute / Speaker Controls on Participant Tile */}
                   {isHost && !isPHost && (
                     <div className="pt-2 flex justify-center w-full">
                       {p.handRaised ? (
@@ -1000,6 +1188,19 @@ export default function TalkPage({ params }: TalkPageProps) {
                           <MicIcon size={12} />
                           <span>Allow to Speak</span>
                         </button>
+                      ) : !p.isMuted ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoteMute(p.userId, p.name);
+                          }}
+                          className="w-full py-0.5 px-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer"
+                          title="Mute participant"
+                        >
+                          <MicOffIcon size={11} />
+                          <span>Mute</span>
+                        </button>
                       ) : p.canSpeak ? (
                         <button
                           type="button"
@@ -1008,10 +1209,10 @@ export default function TalkPage({ params }: TalkPageProps) {
                             handleRevokeMic(p.userId, p.name);
                           }}
                           className="w-full py-0.5 px-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer"
-                          title="Revoke speaking access and mute"
+                          title="Revoke speaking access"
                         >
                           <MicOffIcon size={11} />
-                          <span>Mute / Revoke</span>
+                          <span>Revoke Mic</span>
                         </button>
                       ) : (
                         <button
@@ -1138,7 +1339,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           <div className="h-6 w-px bg-white/[0.08] mx-1" />
 
           <button
-            onClick={handleLeave}
+            onClick={handleLeaveClick}
             disabled={leaving || ending}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#101012] hover:bg-[#18181c] text-[#888e90] hover:text-[#fcfdff] font-medium text-xs transition-all border border-white/[0.08] disabled:opacity-50"
           >
@@ -1457,6 +1658,24 @@ export default function TalkPage({ params }: TalkPageProps) {
         </div>
       )}
 
+      {/* Transfer Host & Leave Modal */}
+      <TransferHostModal
+        isOpen={transferModalOpen}
+        onClose={() => setTransferModalOpen(false)}
+        participants={participants}
+        currentUserId={session?.user?.id}
+        onConfirmTransferAndLeave={async (newHostUserId, newHostName) => {
+          const ok = await handleTransferHost(newHostUserId, newHostName);
+          if (ok) {
+            setTransferModalOpen(false);
+            await new Promise((r) => setTimeout(r, 150));
+            await handleLeave();
+          }
+        }}
+        onEndRoom={handleEndRoom}
+        spaceType="audio"
+      />
+
       {/* In-Call Ephemeral Chat */}
       <InRoomChat
         isOpen={chatOpen}
@@ -1481,6 +1700,17 @@ export default function TalkPage({ params }: TalkPageProps) {
         copied={copied}
         onGrantMic={isHost ? handleGrantMic : undefined}
         onRevokeMic={isHost ? handleRevokeMic : undefined}
+        onMuteUser={isHost ? handleRemoteMute : undefined}
+        onKickUser={isHost ? handleKickUser : undefined}
+        onTransferHost={
+          isHost
+            ? (userId, name) => {
+                if (confirm(`Make ${name} the new stage host?`)) {
+                  void handleTransferHost(userId, name);
+                }
+              }
+            : undefined
+        }
       />
     </div>
   );

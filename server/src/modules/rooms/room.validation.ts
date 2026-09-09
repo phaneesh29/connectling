@@ -47,7 +47,12 @@ export const roomCodeParamSchema = z.object({
     .trim(),
 });
 
+export const transferHostSchema = z.object({
+  newHostUserId: z.string().min(1, 'New host user ID is required').trim(),
+});
+
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;
 export type JoinRoomInput = z.infer<typeof joinRoomSchema>;
 export type UpdateRoomSettingsInput = z.infer<typeof updateRoomSettingsSchema>;
 export type RoomCodeParam = z.infer<typeof roomCodeParamSchema>;
+export type TransferHostInput = z.infer<typeof transferHostSchema>;

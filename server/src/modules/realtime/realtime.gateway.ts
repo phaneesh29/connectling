@@ -33,6 +33,8 @@ export const getRealtimeServer = (): RealtimeServer => {
   return ioInstance;
 };
 
+const kickedUsersByRoom = new Map<string, Set<string>>();
+
 const fetchRoomParticipants = async (
   io: RealtimeServer,
   roomCode: string
@@ -83,6 +85,13 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
 
     socket.on('room:join', async ({ roomCode, isMuted, isVideoOn, handRaised }) => {
       try {
+        const normalized = normalizeRoomCode(roomCode);
+        const kicked = kickedUsersByRoom.get(normalized);
+        if (kicked?.has(user.id)) {
+          socket.emit('room:kicked', { message: 'You have been removed from this space by the host.' });
+          return;
+        }
+
         const roomChannel = `room:${roomCode}`;
         await socket.join(roomChannel);
         socket.data.currentRoomCode = roomCode;
@@ -205,6 +214,145 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         logger.info({ hostId: user.id, targetUserId, roomCode }, 'Host revoked mic permission');
       } catch (err) {
         logger.error({ err, hostId: user.id, targetUserId, roomCode }, 'Error revoking mic permission');
+      }
+    });
+
+    socket.on('room:mute-user', async ({ roomCode, targetUserId }) => {
+      try {
+        const normalized = normalizeRoomCode(roomCode);
+        const foundRoom = await db.query.room.findFirst({
+          where: eq(room.code, normalized),
+          columns: { hostId: true },
+        });
+
+        if (!foundRoom || foundRoom.hostId !== user.id) {
+          socket.emit('error:message', { message: 'Only the host can mute participants.' });
+          return;
+        }
+
+        const roomChannel = `room:${roomCode}`;
+        const sockets = await io.in(roomChannel).fetchSockets();
+
+        for (const s of sockets) {
+          if (s.data?.user?.id === targetUserId) {
+            s.data.isMuted = true;
+            const localSocket = io.sockets.sockets.get(s.id);
+            if (localSocket) {
+              localSocket.data.isMuted = true;
+            }
+          }
+        }
+
+        io.in(roomChannel).emit('room:user-muted', {
+          targetUserId,
+          byHost: true,
+        });
+
+        const participants = await fetchRoomParticipants(io, roomCode);
+        io.in(roomChannel).emit('room:roster', { participants });
+
+        logger.info({ hostId: user.id, targetUserId, roomCode }, 'Host remotely muted user');
+      } catch (err) {
+        logger.error({ err, hostId: user.id, targetUserId, roomCode }, 'Error remotely muting user');
+      }
+    });
+
+    socket.on('room:kick-user', async ({ roomCode, targetUserId }) => {
+      try {
+        const normalized = normalizeRoomCode(roomCode);
+        const foundRoom = await db.query.room.findFirst({
+          where: eq(room.code, normalized),
+          columns: { hostId: true },
+        });
+
+        if (!foundRoom || foundRoom.hostId !== user.id) {
+          socket.emit('error:message', { message: 'Only the host can remove participants.' });
+          return;
+        }
+
+        let kicked = kickedUsersByRoom.get(normalized);
+        if (!kicked) {
+          kicked = new Set();
+          kickedUsersByRoom.set(normalized, kicked);
+        }
+        kicked.add(targetUserId);
+
+        const roomChannel = `room:${roomCode}`;
+        const sockets = await io.in(roomChannel).fetchSockets();
+        let targetName = 'Participant';
+
+        for (const s of sockets) {
+          if (s.data?.user?.id === targetUserId) {
+            targetName = s.data.user.name || 'Participant';
+            s.emit('room:kicked', { message: 'You have been removed from this space by the host.' });
+            await s.leave(roomChannel);
+            s.data.currentRoomCode = undefined;
+            const localSocket = io.sockets.sockets.get(s.id);
+            if (localSocket) {
+              localSocket.data.currentRoomCode = undefined;
+              await localSocket.leave(roomChannel);
+            }
+          }
+        }
+
+        io.in(roomChannel).emit('room:user-kicked', {
+          targetUserId,
+          targetName,
+        });
+
+        const participants = await fetchRoomParticipants(io, roomCode);
+        io.in(roomChannel).emit('room:roster', { participants });
+
+        logger.info({ hostId: user.id, targetUserId, roomCode }, 'Host removed participant from space');
+      } catch (err) {
+        logger.error({ err, hostId: user.id, targetUserId, roomCode }, 'Error removing participant');
+      }
+    });
+
+    socket.on('room:transfer-host', async ({ roomCode, newHostUserId }) => {
+      try {
+        const normalized = normalizeRoomCode(roomCode);
+        const foundRoom = await db.query.room.findFirst({
+          where: eq(room.code, normalized),
+          columns: { id: true, hostId: true },
+        });
+
+        if (!foundRoom || (foundRoom.hostId !== user.id && foundRoom.hostId !== newHostUserId)) {
+          socket.emit('error:message', { message: 'Only the current host can transfer host permissions.' });
+          return;
+        }
+
+        if (foundRoom.hostId !== newHostUserId) {
+          await db.update(room).set({ hostId: newHostUserId }).where(eq(room.id, foundRoom.id));
+        }
+
+        const roomChannel = `room:${roomCode}`;
+        const sockets = await io.in(roomChannel).fetchSockets();
+        let newHostName = 'Participant';
+
+        for (const s of sockets) {
+          if (s.data?.user?.id === newHostUserId) {
+            newHostName = s.data.user.name || 'Participant';
+            s.data.canSpeak = true;
+            const localSocket = io.sockets.sockets.get(s.id);
+            if (localSocket) {
+              localSocket.data.canSpeak = true;
+            }
+          }
+        }
+
+        io.in(roomChannel).emit('room:host-transferred', {
+          previousHostId: user.id,
+          newHostId: newHostUserId,
+          newHostName,
+        });
+
+        const participants = await fetchRoomParticipants(io, roomCode);
+        io.in(roomChannel).emit('room:roster', { participants });
+
+        logger.info({ previousHostId: user.id, newHostId: newHostUserId, roomCode }, 'Host transferred space ownership');
+      } catch (err) {
+        logger.error({ err, previousHostId: user.id, newHostId: newHostUserId, roomCode }, 'Error transferring host');
       }
     });
 

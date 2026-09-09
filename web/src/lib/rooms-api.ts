@@ -160,6 +160,16 @@ export const roomsApi = {
     );
   },
 
+  transferHost: (code: string, newHostUserId: string) => {
+    return request<{ success: boolean; newHostId: string }>(
+      `/api/v1/rooms/${encodeURIComponent(code)}/transfer-host`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ newHostUserId }),
+      }
+    );
+  },
+
   listMyRooms: (type?: 'meet' | 'audio') => {
     const query = type ? `?type=${type}` : '';
     return request<AvailableRoomItem[]>(`/api/v1/rooms${query}`, {
