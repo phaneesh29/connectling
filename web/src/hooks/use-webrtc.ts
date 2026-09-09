@@ -559,6 +559,9 @@ export function useWebRTC({
       const videoTrack = stream.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = videoDesired;
+        if ('contentHint' in videoTrack) {
+          videoTrack.contentHint = 'motion';
+        }
         cameraVideoTrackRef.current = videoTrack;
       }
 
@@ -985,6 +988,9 @@ export function useWebRTC({
           if (!screenTrack) return;
 
           screenTrackRef.current = screenTrack;
+          if ('contentHint' in screenTrack) {
+            screenTrack.contentHint = 'detail';
+          }
 
           // Check if system or tab audio was shared
           const displayAudioTrack = displayStream.getAudioTracks()[0] || null;
