@@ -906,7 +906,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           >
             {/* Hand Raised Badge on Local Tile */}
             {handRaised && (
-              <div className="absolute top-3 left-3 bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 text-white rounded-full px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 shadow-[0_0_20px_rgba(99,102,241,0.7)] ring-2 ring-indigo-400/80 z-30 animate-bounce">
+              <div className="absolute top-3 left-3 bg-[#0e0c0a]/90 border border-[#FF9933]/50 text-[#FF9933] rounded-full px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 shadow-[0_0_16px_rgba(255,153,51,0.3)] ring-1 ring-[#FF9933]/40 z-30 animate-bounce">
                 <span className="text-sm">✋</span>
                 <span className="text-[10px] font-mono tracking-wider uppercase font-extrabold hidden sm:inline">Hand Raised</span>
               </div>
@@ -1043,7 +1043,7 @@ export default function MeetPage({ params }: MeetPageProps) {
                 {/* Hand Raised & Reaction Badges on Other Participant Tile */}
                 <div className="absolute top-3 left-3 flex items-center gap-2 z-30">
                   {p.handRaised && (
-                    <div className="bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 text-white rounded-full px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 shadow-[0_0_20px_rgba(99,102,241,0.7)] ring-2 ring-indigo-400/80 animate-bounce">
+                    <div className="bg-[#0e0c0a]/90 border border-[#FF9933]/50 text-[#FF9933] rounded-full px-2.5 py-1 text-xs font-bold flex items-center gap-1.5 shadow-[0_0_16px_rgba(255,153,51,0.3)] ring-1 ring-[#FF9933]/40 animate-bounce">
                       <span className="text-sm">✋</span>
                       <span className="text-[10px] font-mono tracking-wider uppercase font-extrabold hidden sm:inline">Hand Raised</span>
                     </div>
@@ -1222,10 +1222,10 @@ export default function MeetPage({ params }: MeetPageProps) {
                 ? 'opacity-40 cursor-not-allowed bg-[#121216] border border-white/[0.06] text-[#888e90]'
                 : isMicOn
                 ? audioMenuOpen
-                  ? 'bg-[#181820] text-[#fcfdff] border border-[#ff7a1a]/50 ring-1 ring-[#ff7a1a]/40 shadow-[0_0_20px_rgba(255,122,26,0.2)]'
-                  : 'bg-[#121216] hover:bg-[#18181f] text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16] shadow-sm'
+                  ? 'bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/50 ring-1 ring-[#FF9933]/40 shadow-[0_0_20px_rgba(255,153,51,0.2)]'
+                  : 'bg-[#FF9933]/12 hover:bg-[#FF9933]/18 text-[#FF9933] border border-[#FF9933]/35 hover:border-[#FF9933]/50 shadow-[0_0_12px_rgba(255,153,51,0.15)]'
                 : audioMenuOpen
-                ? 'bg-gradient-to-r from-[#ff2047] to-[#e61239] text-white ring-2 ring-[#ff7a1a]/60 shadow-[0_0_20px_rgba(255,32,71,0.5)] border border-red-400/50'
+                ? 'bg-gradient-to-r from-[#ff2047] to-[#e61239] text-white ring-2 ring-[#FF9933]/60 shadow-[0_0_20px_rgba(255,32,71,0.5)] border border-red-400/50'
                 : 'bg-gradient-to-r from-[#ff2047] to-[#e61239] text-white shadow-[0_0_18px_rgba(255,32,71,0.4)] border border-red-500/40'
             }`}
           >
@@ -1246,7 +1246,7 @@ export default function MeetPage({ params }: MeetPageProps) {
             </button>
             <div
               className={`w-px h-4.5 ${
-                isMicOn ? (audioMenuOpen ? 'bg-[#ff7a1a]/40' : 'bg-white/[0.10]') : 'bg-white/20'
+                isMicOn ? (audioMenuOpen ? 'bg-[#FF9933]/40' : 'bg-[#FF9933]/30') : 'bg-white/20'
               }`}
             />
             {/* Up-Arrow Trigger & Popover Anchor */}
@@ -1259,14 +1259,18 @@ export default function MeetPage({ params }: MeetPageProps) {
                   setVideoMenuOpen(false);
                 }}
                 className={`h-10 px-2 rounded-r-xl flex items-center justify-center hover:bg-white/[0.08] transition-all cursor-pointer ${
-                  audioMenuOpen ? 'bg-white/[0.12] text-[#ff7a1a]' : 'text-[#888e90] hover:text-[#fcfdff]'
+                  audioMenuOpen
+                    ? 'bg-white/[0.12] text-[#FF9933]'
+                    : isMicOn
+                    ? 'text-[#FF9933]/80 hover:text-[#FF9933]'
+                    : 'text-white/80 hover:text-white'
                 }`}
                 title="Microphone & Speaker Settings"
               >
                 <ChevronUpIcon
                   size={14}
                   className={`transition-transform duration-200 pointer-events-none ${
-                    audioMenuOpen ? 'rotate-180 text-[#ff7a1a]' : ''
+                    audioMenuOpen ? 'rotate-180 text-[#FF9933]' : isMicOn ? 'text-[#FF9933]' : ''
                   }`}
                 />
               </button>
@@ -1389,8 +1393,8 @@ export default function MeetPage({ params }: MeetPageProps) {
               !isRaiseHandAllowed && !handRaised
                 ? 'opacity-40 cursor-not-allowed bg-[#121216] text-[#888e90] border border-white/[0.06]'
                 : handRaised
-                ? 'bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-[0_0_18px_rgba(99,102,241,0.5)] ring-2 ring-indigo-400/80 font-semibold active:scale-95'
-                : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08] hover:border-indigo-500/40'
+                ? 'bg-[#FF9933]/15 hover:bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/40 shadow-[0_0_14px_rgba(255,153,51,0.18)] font-semibold active:scale-95'
+                : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
             }`}
             title={handRaised ? 'Lower Hand' : 'Raise Hand (Show presence / ask question)'}
           >
@@ -1401,7 +1405,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           {/* Emoji Reactions Picker */}
           <ReactionPicker
             onSelectReaction={handleSendReaction}
-            accentColor="rose"
+            accentColor="orange"
           />
 
           <button

@@ -1270,7 +1270,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
                   {((isMe && handRaised) || p.handRaised) && (
                     <span
-                      className="absolute -top-1 -left-1 h-6 w-6 rounded-full bg-gradient-to-r from-indigo-500 to-blue-600 text-white flex items-center justify-center animate-bounce shadow-[0_0_14px_rgba(99,102,241,0.6)] ring-2 ring-indigo-400/80 z-30 text-xs leading-none"
+                      className="absolute -top-1 -left-1 h-6 w-6 rounded-full bg-[#151210] border border-[#FF9933]/50 text-[#FF9933] flex items-center justify-center animate-bounce shadow-[0_0_12px_rgba(255,153,51,0.3)] ring-1 ring-[#FF9933]/40 z-30 text-xs leading-none"
                       title={`${p.name} raised hand`}
                     >
                       ✋
@@ -1357,7 +1357,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                             e.stopPropagation();
                             handleGrantMic(p.userId, p.name);
                           }}
-                          className="w-full py-1 px-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[11px] font-semibold flex items-center justify-center gap-1 shadow-[0_0_12px_rgba(99,102,241,0.5)] transition-all animate-pulse active:scale-95 cursor-pointer"
+                          className="w-full py-1 px-2 rounded-lg bg-[#FF9933]/20 hover:bg-[#FF9933]/30 text-[#FF9933] border border-[#FF9933]/40 text-[11px] font-semibold flex items-center justify-center gap-1 shadow-[0_0_12px_rgba(255,153,51,0.2)] transition-all animate-pulse active:scale-95 cursor-pointer"
                           title="Allow participant to speak"
                         >
                           <MicIcon size={12} />
@@ -1437,11 +1437,11 @@ export default function TalkPage({ params }: TalkPageProps) {
               className={`inline-flex items-center rounded-xl transition-all ${
                 !isMuted
                   ? audioMenuOpen
-                    ? 'bg-gradient-brand-r text-black font-semibold ring-2 ring-[#FF9933]/50 shadow-brand-glow border border-[#F4C430]/40'
-                    : 'bg-gradient-brand-r text-black font-semibold shadow-brand-glow border border-[#F4C430]/30'
+                    ? 'bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/50 ring-1 ring-[#FF9933]/40 shadow-[0_0_18px_rgba(255,153,51,0.25)]'
+                    : 'bg-[#FF9933]/12 hover:bg-[#FF9933]/18 text-[#FF9933] border border-[#FF9933]/35 hover:border-[#FF9933]/50 shadow-[0_0_12px_rgba(255,153,51,0.15)]'
                   : audioMenuOpen
-                  ? 'bg-[#181820] text-[#fcfdff] border border-amber-500/50 ring-1 ring-amber-500/40 shadow-[0_0_20px_rgba(245,158,11,0.2)]'
-                  : 'bg-[#121216] hover:bg-[#18181f] text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16] shadow-sm'
+                  ? 'bg-[#181820] text-[#fcfdff] border border-white/[0.20] ring-1 ring-white/10 shadow-sm'
+                  : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16] shadow-sm'
               }`}
             >
               <button
@@ -1454,7 +1454,7 @@ export default function TalkPage({ params }: TalkPageProps) {
               </button>
               <div
                 className={`w-px h-4.5 ${
-                  !isMuted ? 'bg-white/25' : audioMenuOpen ? 'bg-amber-500/40' : 'bg-white/[0.10]'
+                  !isMuted ? 'bg-[#FF9933]/30' : audioMenuOpen ? 'bg-white/20' : 'bg-white/[0.10]'
                 }`}
               />
               {/* Up-Arrow Trigger & Popover Anchor */}
@@ -1464,14 +1464,18 @@ export default function TalkPage({ params }: TalkPageProps) {
                   data-media-menu-toggle="audio"
                   onClick={() => setAudioMenuOpen((prev) => !prev)}
                   className={`h-10 px-2 rounded-r-xl flex items-center justify-center hover:bg-white/[0.08] transition-all cursor-pointer ${
-                    audioMenuOpen ? 'bg-white/[0.12] text-amber-300' : 'text-[#888e90] hover:text-[#fcfdff]'
+                    audioMenuOpen
+                      ? 'bg-white/[0.10] text-[#FF9933]'
+                      : !isMuted
+                      ? 'text-[#FF9933]/80 hover:text-[#FF9933]'
+                      : 'text-[#888e90] hover:text-[#fcfdff]'
                   }`}
                   title="Audio & Speaker Settings"
                 >
                   <ChevronUpIcon
                     size={14}
                     className={`transition-transform duration-200 pointer-events-none ${
-                      audioMenuOpen ? 'rotate-180 text-amber-300' : ''
+                      audioMenuOpen ? 'rotate-180 text-[#FF9933]' : ''
                     }`}
                   />
                 </button>
@@ -1520,7 +1524,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 onClick={() => setAudioMenuOpen((prev) => !prev)}
                 className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${
                   audioMenuOpen
-                    ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 ring-1 ring-amber-500/30 shadow-[0_0_15px_rgba(245,158,11,0.25)]'
+                    ? 'bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/40 ring-1 ring-[#FF9933]/30 shadow-[0_0_15px_rgba(255,153,51,0.25)]'
                     : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
                 }`}
                 title="Audio & Speaker Settings"
@@ -1539,8 +1543,8 @@ export default function TalkPage({ params }: TalkPageProps) {
               !isRaiseHandAllowed && !handRaised
                 ? 'opacity-40 cursor-not-allowed bg-[#121216] text-[#888e90] border border-white/[0.06]'
                 : handRaised
-                ? 'bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-[0_0_18px_rgba(99,102,241,0.5)] ring-2 ring-indigo-400/80 font-semibold active:scale-95'
-                : 'bg-[#121216] hover:bg-[#18181f] text-[#fcfdff] border border-white/[0.10] hover:border-indigo-500/40'
+                ? 'bg-[#FF9933]/15 hover:bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/40 shadow-[0_0_14px_rgba(255,153,51,0.18)] font-semibold active:scale-95'
+                : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
             }`}
             title={
               !isRaiseHandAllowed && !handRaised
@@ -1559,7 +1563,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           {/* Emoji Reactions Picker */}
           <ReactionPicker
             onSelectReaction={handleSendReaction}
-            accentColor="rose"
+            accentColor="orange"
           />
 
           <button
@@ -1567,16 +1571,16 @@ export default function TalkPage({ params }: TalkPageProps) {
               setParticipantsOpen(!participantsOpen);
               if (!participantsOpen) setChatOpen(false);
             }}
-            className={`relative h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
+            className={`relative h-10 w-10 rounded-xl flex items-center justify-center transition-all ${
               participantsOpen
-                ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 shadow-sm'
-                : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
+                ? 'bg-[#FF9933]/15 text-[#FF9933] border border-[#FF9933]/40 shadow-sm'
+                : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
             }`}
             title="People in lounge"
           >
             <UsersIcon size={17} />
             {participants.length > 0 && (
-              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#f59e0b] text-black font-mono text-[9px] font-bold flex items-center justify-center shadow-lg">
+              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#FF9933] text-black font-mono text-[9px] font-bold flex items-center justify-center shadow-lg">
                 {participants.length}
               </span>
             )}
@@ -1590,16 +1594,16 @@ export default function TalkPage({ params }: TalkPageProps) {
                 setUnreadChatCount(0);
               }
             }}
-            className={`relative h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
+            className={`relative h-10 w-10 rounded-xl flex items-center justify-center transition-all ${
               chatOpen
-                ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 shadow-sm'
-                : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
+                ? 'bg-[#FF9933]/15 text-[#FF9933] border border-[#FF9933]/40 shadow-sm'
+                : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
             }`}
             title="In-Call Messages"
           >
             <MessageSquareIcon size={17} />
             {unreadChatCount > 0 && !chatOpen && (
-              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#f59e0b] text-black font-mono text-[9px] font-bold flex items-center justify-center shadow-lg animate-pulse">
+              <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#FF9933] text-black font-mono text-[9px] font-bold flex items-center justify-center shadow-lg animate-pulse">
                 {unreadChatCount}
               </span>
             )}
@@ -1610,7 +1614,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           <button
             onClick={handleLeaveClick}
             disabled={leaving || ending}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#101012] hover:bg-[#18181c] text-[#888e90] hover:text-[#fcfdff] font-medium text-xs transition-all border border-white/[0.08] disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 h-10 rounded-xl bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] font-medium text-xs transition-all border border-white/[0.10] hover:border-white/[0.16] disabled:opacity-50"
           >
             {leaving ? (
               <>
@@ -1629,7 +1633,7 @@ export default function TalkPage({ params }: TalkPageProps) {
             <button
               onClick={handleEndRoom}
               disabled={leaving || ending}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#ff2047] hover:bg-[#ff2047]/90 text-white font-medium text-xs transition-all shadow-[0_0_16px_rgba(252,32,71,0.3)] disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3.5 h-10 rounded-xl bg-[#ff2047] hover:bg-[#ff2047]/90 text-white font-medium text-xs transition-all shadow-[0_0_16px_rgba(252,32,71,0.3)] disabled:opacity-50"
             >
               {ending ? (
                 <>
