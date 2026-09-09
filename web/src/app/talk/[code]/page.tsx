@@ -752,7 +752,9 @@ export default function TalkPage({ params }: TalkPageProps) {
     },
   });
 
-  webrtcRef.current = webrtc;
+  useEffect(() => {
+    webrtcRef.current = webrtc;
+  }, [webrtc]);
 
   // Ensure mic is stopped when component unmounts
   useEffect(() => {

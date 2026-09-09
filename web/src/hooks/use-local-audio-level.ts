@@ -28,8 +28,13 @@ export function useLocalAudioLevel({
   const animFrameRef = useRef<number | null>(null);
   const lastSpeakingTimeRef = useRef<number>(0);
 
+  const isAudioActive =
+    isEnabled &&
+    (externalStream === undefined ||
+      Boolean(externalStream && externalStream.getAudioTracks().length > 0));
+
   useEffect(() => {
-    if (!isEnabled) {
+    if (!isAudioActive) {
       return;
     }
 
@@ -48,17 +53,6 @@ export function useLocalAudioLevel({
     window.addEventListener('keydown', handleResume);
 
     let ownStreamCreated = false;
-
-    // If an external stream prop is provided, do NOT open a duplicate getUserMedia mic session.
-    // Simply wait for the external stream to arrive with active audio tracks.
-    if (externalStream !== undefined) {
-      if (!externalStream || externalStream.getAudioTracks().length === 0) {
-        setVolume(0);
-        setIsSpeaking(false);
-        setFrequencyBands([0, 0, 0, 0, 0]);
-        return;
-      }
-    }
 
     const startAudioAnalysis = async () => {
       try {
@@ -188,11 +182,11 @@ export function useLocalAudioLevel({
       setIsSpeaking(false);
       setFrequencyBands([0, 0, 0, 0, 0]);
     };
-  }, [isEnabled, deviceId, externalStream]);
+  }, [isAudioActive, deviceId, externalStream]);
 
   return {
-    volume: isEnabled ? volume : 0,
-    isSpeaking: isEnabled ? isSpeaking : false,
-    frequencyBands: isEnabled ? frequencyBands : [0, 0, 0, 0, 0],
+    volume: isAudioActive ? volume : 0,
+    isSpeaking: isAudioActive ? isSpeaking : false,
+    frequencyBands: isAudioActive ? frequencyBands : [0, 0, 0, 0, 0],
   };
 }

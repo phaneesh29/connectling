@@ -681,7 +681,6 @@ export function useWebRTC({
   // Main lifecycle: Initialize WebRTC and subscribe to socket signaling
   useEffect(() => {
     if (!enabled || !currentUserId || !roomCode) {
-      stopAllMediaTracks();
       return;
     }
 

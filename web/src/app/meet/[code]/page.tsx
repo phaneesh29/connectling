@@ -641,7 +641,9 @@ export default function MeetPage({ params }: MeetPageProps) {
     },
   });
 
-  webrtcRef.current = webrtc;
+  useEffect(() => {
+    webrtcRef.current = webrtc;
+  }, [webrtc]);
 
   // Ensure camera, mic, and screen share are stopped when component unmounts
   useEffect(() => {
