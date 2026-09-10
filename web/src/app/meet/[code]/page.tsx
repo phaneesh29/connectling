@@ -307,7 +307,10 @@ export default function MeetPage({ params }: MeetPageProps) {
         }
       } catch {}
 
-      const apiUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000';
+      const apiUrl =
+        process.env.NEXT_PUBLIC_SERVER_URL ||
+        process.env.NEXT_PUBLIC_API_URL ||
+        'http://localhost:3000';
       try {
         fetch(`${apiUrl}/api/v1/rooms/${roomCode}/leave`, {
           method: 'POST',
