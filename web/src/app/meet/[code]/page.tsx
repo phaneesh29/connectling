@@ -1207,13 +1207,11 @@ export default function MeetPage({ params }: MeetPageProps) {
     const isOtherHost = p.userId === room.hostId;
     const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'U';
     const remoteStream = webrtc.remoteStreams.get(p.userId);
-    const hasRemoteVideoTrack = Boolean(
-      remoteStream &&
-        remoteStream.getVideoTracks().some((t) => t.readyState === 'live' && t.enabled && !t.muted)
-    );
     const isThisPresenter = Boolean(p.isScreenSharing);
     const isVideoActive = Boolean(
-      !isCompact && p.isScreenSharing ? true : (p.isVideoOn ?? true) && hasRemoteVideoTrack && (!isCompact || !isThisPresenter)
+      !isCompact && p.isScreenSharing
+        ? true
+        : Boolean(p.isVideoOn) && (!isCompact || !isThisPresenter)
     );
     const remoteAudio = webrtc.remoteAudioLevels[p.userId];
     const isSpeaking = remoteAudio ? remoteAudio.isSpeaking : !p.isMuted;

@@ -80,9 +80,8 @@ export function RemoteVideo({ stream, isVideoActive, className }: RemoteVideoPro
     }
 
     const attachAndPlay = () => {
-      const hasLiveVideo = stream.getVideoTracks().some((t) => t.readyState === 'live' && !t.muted);
+      const hasLiveVideo = stream.getVideoTracks().some((t) => t.readyState !== 'ended');
       if (!hasLiveVideo) {
-        el.srcObject = null;
         return;
       }
       if (el.srcObject !== stream) {
@@ -102,13 +101,26 @@ export function RemoteVideo({ stream, isVideoActive, className }: RemoteVideoPro
 
     attachAndPlay();
 
+    const handleUnmute = () => {
+      attachAndPlay();
+    };
+
     stream.addEventListener('addtrack', attachAndPlay);
     stream.addEventListener('removetrack', attachAndPlay);
+    const videoTracks = stream.getVideoTracks();
+    videoTracks.forEach((track) => {
+      track.addEventListener('unmute', handleUnmute);
+    });
 
     return () => {
       stream.removeEventListener('addtrack', attachAndPlay);
       stream.removeEventListener('removetrack', attachAndPlay);
-      if (el) el.srcObject = null;
+      videoTracks.forEach((track) => {
+        track.removeEventListener('unmute', handleUnmute);
+      });
+      if (el && !isVideoActive) {
+        el.srcObject = null;
+      }
     };
   }, [stream, isVideoActive]);
 
