@@ -21,26 +21,49 @@ export function LocalVideo({ stream, isActive, isMirrored = false, className }: 
     }
 
     const attachAndPlay = () => {
+      const currentEl = videoRef.current;
+      if (!currentEl) return;
       const hasLiveVideo = stream.getVideoTracks().some((t) => t.readyState === 'live');
       if (!hasLiveVideo) {
-        el.srcObject = null;
+        currentEl.srcObject = null;
         return;
       }
-      if (el.srcObject !== stream) {
-        el.srcObject = stream;
+      if (currentEl.srcObject !== stream) {
+        currentEl.srcObject = stream;
       }
-      el.muted = true;
-      el.play().catch(() => {});
+      currentEl.muted = true;
+      currentEl.play().catch(() => {});
     };
 
     attachAndPlay();
 
-    stream.addEventListener('addtrack', attachAndPlay);
+    const boundTracks = new Set<MediaStreamTrack>();
+    const bindTrack = (track: MediaStreamTrack) => {
+      if (boundTracks.has(track)) return;
+      boundTracks.add(track);
+      track.addEventListener('unmute', attachAndPlay);
+    };
+
+    stream.getVideoTracks().forEach(bindTrack);
+
+    const onAddTrack = (e: Event) => {
+      const trackEvent = e as MediaStreamTrackEvent;
+      if (trackEvent.track) {
+        bindTrack(trackEvent.track);
+      }
+      attachAndPlay();
+    };
+
+    stream.addEventListener('addtrack', onAddTrack);
     stream.addEventListener('removetrack', attachAndPlay);
 
     return () => {
-      stream.removeEventListener('addtrack', attachAndPlay);
+      stream.removeEventListener('addtrack', onAddTrack);
       stream.removeEventListener('removetrack', attachAndPlay);
+      boundTracks.forEach((track) => {
+        track.removeEventListener('unmute', attachAndPlay);
+      });
+      boundTracks.clear();
       if (el) el.srcObject = null;
     };
   }, [stream, isActive]);
@@ -79,45 +102,69 @@ export function RemoteVideo({ stream, isVideoActive, className }: RemoteVideoPro
       return;
     }
 
-    const attachAndPlay = () => {
-      const hasLiveVideo = stream.getVideoTracks().some((t) => t.readyState !== 'ended');
-      if (!hasLiveVideo) {
-        return;
+    if (el.srcObject !== stream) {
+      el.srcObject = stream;
+    }
+    el.muted = true; // Video element is muted so audio doesn't conflict with RemoteAudio
+
+    const playVideo = () => {
+      const currentEl = videoRef.current;
+      if (!currentEl) return;
+      if (currentEl.srcObject !== stream) {
+        currentEl.srcObject = stream;
       }
-      if (el.srcObject !== stream) {
-        el.srcObject = stream;
+      currentEl.muted = true;
+      const playPromise = currentEl.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          const unlock = () => {
+            currentEl.play().catch(() => {});
+            window.removeEventListener('click', unlock);
+            window.removeEventListener('keydown', unlock);
+          };
+          window.addEventListener('click', unlock, { once: true });
+          window.addEventListener('keydown', unlock, { once: true });
+        });
       }
-      el.muted = true; // Video element is muted so audio doesn't conflict with RemoteAudio
-      el.play().catch(() => {
-        const unlock = () => {
-          el.play().catch(() => {});
-          window.removeEventListener('click', unlock);
-          window.removeEventListener('keydown', unlock);
-        };
-        window.addEventListener('click', unlock, { once: true });
-        window.addEventListener('keydown', unlock, { once: true });
-      });
     };
 
-    attachAndPlay();
+    playVideo();
 
-    const handleUnmute = () => {
-      attachAndPlay();
+    const boundTracks = new Set<MediaStreamTrack>();
+    const bindTrack = (track: MediaStreamTrack) => {
+      if (boundTracks.has(track)) return;
+      boundTracks.add(track);
+      track.addEventListener('unmute', playVideo);
     };
 
-    stream.addEventListener('addtrack', attachAndPlay);
-    stream.addEventListener('removetrack', attachAndPlay);
-    const videoTracks = stream.getVideoTracks();
-    videoTracks.forEach((track) => {
-      track.addEventListener('unmute', handleUnmute);
-    });
+    stream.getVideoTracks().forEach(bindTrack);
+
+    const onAddTrack = (e: Event) => {
+      const trackEvent = e as MediaStreamTrackEvent;
+      if (trackEvent.track) {
+        bindTrack(trackEvent.track);
+      }
+      playVideo();
+    };
+
+    const handleLoadedMetadata = () => {
+      playVideo();
+    };
+
+    stream.addEventListener('addtrack', onAddTrack);
+    stream.addEventListener('removetrack', playVideo);
+    el.addEventListener('loadedmetadata', handleLoadedMetadata);
+    el.addEventListener('canplay', handleLoadedMetadata);
 
     return () => {
-      stream.removeEventListener('addtrack', attachAndPlay);
-      stream.removeEventListener('removetrack', attachAndPlay);
-      videoTracks.forEach((track) => {
-        track.removeEventListener('unmute', handleUnmute);
+      stream.removeEventListener('addtrack', onAddTrack);
+      stream.removeEventListener('removetrack', playVideo);
+      el.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      el.removeEventListener('canplay', handleLoadedMetadata);
+      boundTracks.forEach((track) => {
+        track.removeEventListener('unmute', playVideo);
       });
+      boundTracks.clear();
       if (el && !isVideoActive) {
         el.srcObject = null;
       }

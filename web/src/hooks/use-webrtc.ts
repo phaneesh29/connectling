@@ -72,6 +72,7 @@ interface PeerConnectionEntry {
   ignoreOffer: boolean;
   pendingCandidates: RTCIceCandidateInit[];
   analyserCleanup?: () => void;
+  needsRenegotiation?: boolean;
 }
 
 export function useWebRTC({
@@ -313,6 +314,32 @@ export function useWebRTC({
     }
   }, [selectedAudioOutputId]);
 
+  // Explicit renegotiation helper for Perfect Negotiation
+  const triggerRenegotiation = useCallback(async (entry: PeerConnectionEntry) => {
+    if (entry.pc.signalingState !== 'stable') {
+      entry.needsRenegotiation = true;
+      return;
+    }
+    try {
+      entry.makingOffer = true;
+      const offer = await entry.pc.createOffer();
+      await entry.pc.setLocalDescription(offer);
+      const socket = getSocket();
+      socket.emit('webrtc:signal', {
+        roomCode: roomCodeRef.current,
+        targetUserId: entry.userId,
+        signal: {
+          type: 'offer',
+          sdp: entry.pc.localDescription?.sdp,
+        },
+      });
+    } catch (err) {
+      console.warn(`Renegotiation error for peer ${entry.userId}:`, err);
+    } finally {
+      entry.makingOffer = false;
+    }
+  }, []);
+
   // Create or get Peer Connection
   const getOrCreatePeer = useCallback(
     (targetUserId: string): PeerConnectionEntry => {
@@ -411,6 +438,11 @@ export function useWebRTC({
         }
 
         currentEntry.remoteStream.addTrack(event.track);
+        try {
+          currentEntry.remoteStream.dispatchEvent(
+            new MediaStreamTrackEvent('addtrack', { track: event.track })
+          );
+        } catch {}
 
         // Attach to DOM element if already registered
         const mediaEl = mediaElementsRef.current.get(targetUserId);
@@ -455,8 +487,20 @@ export function useWebRTC({
         }
       };
 
+      // Monitor signaling state for deferred renegotiation
+      pc.onsignalingstatechange = () => {
+        if (pc.signalingState === 'stable' && entry.needsRenegotiation) {
+          entry.needsRenegotiation = false;
+          void triggerRenegotiation(entry);
+        }
+      };
+
       // Perfect Negotiation pattern: negotiationneeded handler
       pc.onnegotiationneeded = async () => {
+        if (pc.signalingState !== 'stable') {
+          entry.needsRenegotiation = true;
+          return;
+        }
         try {
           entry.makingOffer = true;
           await pc.setLocalDescription();
@@ -480,7 +524,7 @@ export function useWebRTC({
       updateRemoteStreamsState();
       return entry;
     },
-    [setupPeerAudioAnalysis, updateRemoteStreamsState]
+    [setupPeerAudioAnalysis, triggerRenegotiation, updateRemoteStreamsState]
   );
 
   // Close and clean up a peer connection
@@ -497,6 +541,7 @@ export function useWebRTC({
       entry.pc.ontrack = null;
       entry.pc.onnegotiationneeded = null;
       entry.pc.onconnectionstatechange = null;
+      entry.pc.onsignalingstatechange = null;
 
       try {
         entry.pc.close();
@@ -567,28 +612,63 @@ export function useWebRTC({
     setIsConnected(false);
   }, [closePeer]);
 
-  // Explicit renegotiation helper for Perfect Negotiation
-  const triggerRenegotiation = useCallback(async (entry: PeerConnectionEntry) => {
-    if (entry.pc.signalingState !== 'stable') return;
-    try {
-      entry.makingOffer = true;
-      const offer = await entry.pc.createOffer();
-      await entry.pc.setLocalDescription(offer);
-      const socket = getSocket();
-      socket.emit('webrtc:signal', {
-        roomCode: roomCodeRef.current,
-        targetUserId: entry.userId,
-        signal: {
-          type: 'offer',
-          sdp: entry.pc.localDescription?.sdp,
-        },
-      });
-    } catch (err) {
-      console.warn(`Renegotiation error for peer ${entry.userId}:`, err);
-    } finally {
-      entry.makingOffer = false;
-    }
-  }, []);
+  // Update both audio and video senders across all connected peers in a single coordinated renegotiation
+  const setLocalTracksOnPeers = useCallback(
+    async (audioTrack: MediaStreamTrack | null, videoTrack: MediaStreamTrack | null) => {
+      for (const [, entry] of peersRef.current.entries()) {
+        try {
+          let renegotiateNeeded = false;
+
+          // Update audio transceiver
+          const audioTransceiver = entry.pc.getTransceivers().find(
+            (t) => t.receiver?.track?.kind === 'audio' || t.sender?.track?.kind === 'audio'
+          );
+          if (audioTransceiver) {
+            if (audioTrack) {
+              if (audioTransceiver.direction !== 'sendrecv') {
+                audioTransceiver.direction = 'sendrecv';
+              }
+              await audioTransceiver.sender.replaceTrack(audioTrack);
+              renegotiateNeeded = true;
+            } else {
+              await audioTransceiver.sender.replaceTrack(null);
+            }
+          } else if (audioTrack) {
+            entry.pc.addTrack(audioTrack, localStreamRef.current || new MediaStream());
+          }
+
+          // Update video transceiver
+          const videoTransceiver = entry.pc.getTransceivers().find(
+            (t) => t.receiver?.track?.kind === 'video' || t.sender?.track?.kind === 'video'
+          );
+          if (videoTransceiver) {
+            if (videoTrack) {
+              if (videoTransceiver.direction !== 'sendrecv') {
+                videoTransceiver.direction = 'sendrecv';
+              }
+              await videoTransceiver.sender.replaceTrack(videoTrack);
+              renegotiateNeeded = true;
+            } else {
+              await videoTransceiver.sender.replaceTrack(null);
+            }
+          } else if (videoTrack) {
+            entry.pc.addTrack(videoTrack, localStreamRef.current || new MediaStream());
+          }
+
+          if (renegotiateNeeded) {
+            if (entry.pc.signalingState === 'stable') {
+              void triggerRenegotiation(entry);
+            } else {
+              entry.needsRenegotiation = true;
+            }
+          }
+        } catch (err) {
+          console.warn(`Error setting local tracks on peer ${entry.userId}:`, err);
+        }
+      }
+    },
+    [triggerRenegotiation]
+  );
 
   // Update video sender across all connected peers with transceiver direction and renegotiation support
   const setLocalVideoTrackOnPeers = useCallback(
@@ -605,8 +685,10 @@ export function useWebRTC({
                 transceiver.direction = 'sendrecv';
               }
               await transceiver.sender.replaceTrack(track);
-              if (transceiver.currentDirection !== 'sendrecv' && entry.pc.signalingState === 'stable') {
+              if (entry.pc.signalingState === 'stable') {
                 void triggerRenegotiation(entry);
+              } else {
+                entry.needsRenegotiation = true;
               }
             } else {
               await transceiver.sender.replaceTrack(null);
@@ -637,8 +719,10 @@ export function useWebRTC({
                 transceiver.direction = 'sendrecv';
               }
               await transceiver.sender.replaceTrack(track);
-              if (transceiver.currentDirection !== 'sendrecv' && entry.pc.signalingState === 'stable') {
+              if (entry.pc.signalingState === 'stable') {
                 void triggerRenegotiation(entry);
+              } else {
+                entry.needsRenegotiation = true;
               }
             } else {
               await transceiver.sender.replaceTrack(null);
@@ -789,18 +873,15 @@ export function useWebRTC({
         }
       }
 
-      // Update all existing peer connections with the newly acquired tracks
-      await setLocalAudioTrackOnPeers(audioTrack);
-      if (currentType === 'meet') {
-        await setLocalVideoTrackOnPeers(videoTrack);
-      }
+      // Update all existing peer connections with newly acquired tracks in a single atomic pass
+      await setLocalTracksOnPeers(audioTrack, currentType === 'meet' ? videoTrack : null);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to access camera or microphone';
       console.warn('WebRTC getUserMedia failed:', msg);
       setConnectionError(msg);
       onErrorRef.current?.(msg);
     }
-  }, [setLocalAudioTrackOnPeers, setLocalVideoTrackOnPeers]);
+  }, [setLocalTracksOnPeers]);
 
   // Main lifecycle: Initialize WebRTC and subscribe to socket signaling
   useEffect(() => {
@@ -838,6 +919,7 @@ export function useWebRTC({
           }
 
           if (offerCollision) {
+            entry.needsRenegotiation = true;
             await pc.setLocalDescription({ type: 'rollback' });
           }
 
@@ -867,6 +949,11 @@ export function useWebRTC({
               sdp: pc.localDescription?.sdp,
             },
           });
+
+          if (entry.needsRenegotiation && (pc.signalingState as RTCSignalingState) === 'stable') {
+            entry.needsRenegotiation = false;
+            void triggerRenegotiation(entry);
+          }
         } else if (signal.type === 'answer' && signal.sdp) {
           if (pc.signalingState === 'have-local-offer') {
             await pc.setRemoteDescription(
@@ -884,6 +971,11 @@ export function useWebRTC({
                   console.warn(`Error flushing ICE candidate for ${fromUserId}:`, candErr);
                 }
               }
+            }
+
+            if (entry.needsRenegotiation && (pc.signalingState as RTCSignalingState) === 'stable') {
+              entry.needsRenegotiation = false;
+              void triggerRenegotiation(entry);
             }
           }
         } else if (signal.type === 'candidate' && signal.candidate) {
@@ -950,7 +1042,7 @@ export function useWebRTC({
 
       stopAllMediaTracks();
     };
-  }, [enabled, currentUserId, roomCode, acquireLocalMedia, getOrCreatePeer, closePeer, stopAllMediaTracks]);
+  }, [enabled, currentUserId, roomCode, acquireLocalMedia, getOrCreatePeer, closePeer, stopAllMediaTracks, triggerRenegotiation]);
 
   // Handle selected audio input (microphone) switching
   useEffect(() => {
