@@ -58,7 +58,10 @@ export function useLocalAudioLevel({
       try {
         let stream: MediaStream;
 
-        if (externalStream && externalStream.getAudioTracks().length > 0) {
+        if (externalStream !== undefined) {
+          if (!externalStream || externalStream.getAudioTracks().length === 0) {
+            return;
+          }
           stream = externalStream;
           ownStreamCreated = false;
         } else {

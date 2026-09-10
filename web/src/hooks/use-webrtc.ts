@@ -118,6 +118,8 @@ export function useWebRTC({
   const onErrorRef = useRef(onError);
   const enabledRef = useRef(enabled);
   const isDestroyedRef = useRef(false);
+  const isMicInitialRef = useRef(true);
+  const isVideoInitialRef = useRef(true);
 
   useEffect(() => {
     enabledRef.current = enabled;
@@ -414,6 +416,14 @@ export function useWebRTC({
           updateRemoteStreamsState();
         };
 
+        event.track.onmute = () => {
+          updateRemoteStreamsState();
+        };
+
+        event.track.onunmute = () => {
+          updateRemoteStreamsState();
+        };
+
         updateRemoteStreamsState();
       };
 
@@ -556,7 +566,7 @@ export function useWebRTC({
       const videoInputId = selectedVideoInputIdRef.current;
       const currentType = mediaTypeRef.current;
       const micDesired = isMicOnRef.current;
-      const videoDesired = isVideoOnRef.current;
+      const videoDesired = currentType === 'meet' && isVideoOnRef.current && !isScreenSharingRef.current;
 
       const audioConstraints: MediaTrackConstraints = {
         echoCancellation: true,
@@ -567,67 +577,81 @@ export function useWebRTC({
           : {}),
       };
 
+      const videoConstraints: MediaTrackConstraints = {
+        width: { ideal: 1280, max: 1920 },
+        height: { ideal: 720, max: 1080 },
+        frameRate: { ideal: 30 },
+        ...(videoInputId && videoInputId !== 'default'
+          ? { deviceId: { exact: videoInputId } }
+          : {}),
+      };
+
       let stream: MediaStream;
 
-      if (currentType === 'meet') {
-        // Meet space: try requesting both audio and video
-        if (videoDesired) {
-          const videoConstraints: MediaTrackConstraints = {
-            width: { ideal: 1280, max: 1920 },
-            height: { ideal: 720, max: 1080 },
-            frameRate: { ideal: 30 },
-            ...(videoInputId && videoInputId !== 'default'
-              ? { deviceId: { exact: videoInputId } }
-              : {}),
-          };
-
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              audio: audioConstraints,
-              video: videoConstraints,
-            });
-          } catch {
-            // If strict device constraint failed, retry with generic audio & video
-            try {
-              stream = await navigator.mediaDevices.getUserMedia({
-                audio: true,
-                video: { width: { ideal: 1280 }, height: { ideal: 720 } },
-              });
-            } catch {
-              // If video still failed (e.g. no camera), fallback to audio only
-              stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            }
-          }
-        } else {
-          // Video starting as disabled: request audio only
-          try {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
-          } catch {
-            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-          }
-        }
-      } else {
-        // Talk stage: audio only
+      if (!micDesired && !videoDesired) {
+        stream = new MediaStream();
+      } else if (micDesired && !videoDesired) {
         try {
           stream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
         } catch {
-          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          } catch {
+            stream = new MediaStream();
+          }
+        }
+      } else if (!micDesired && videoDesired) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
+        } catch {
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+            });
+          } catch {
+            stream = new MediaStream();
+          }
+        }
+      } else {
+        // Both micDesired and videoDesired
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            audio: audioConstraints,
+            video: videoConstraints,
+          });
+        } catch {
+          // If strict device constraints failed, retry with generic audio & video
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+              video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+            });
+          } catch {
+            // If video still failed (e.g. no camera), fallback to audio only
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch {
+              stream = new MediaStream();
+            }
+          }
         }
       }
 
       // Sync track enabled states with current user toggles
-      const audioTrack = stream.getAudioTracks()[0];
+      const audioTrack = stream.getAudioTracks()[0] || null;
       if (audioTrack) {
-        audioTrack.enabled = micDesired;
+        audioTrack.enabled = true;
       }
 
-      const videoTrack = stream.getVideoTracks()[0];
+      const videoTrack = stream.getVideoTracks()[0] || null;
       if (videoTrack) {
-        videoTrack.enabled = videoDesired;
+        videoTrack.enabled = true;
         if ('contentHint' in videoTrack) {
           videoTrack.contentHint = 'motion';
         }
         cameraVideoTrackRef.current = videoTrack;
+      } else {
+        cameraVideoTrackRef.current = null;
       }
 
       // If hook was destroyed or disabled while getUserMedia was awaiting, stop all newly acquired tracks immediately
@@ -654,19 +678,30 @@ export function useWebRTC({
 
       // Attach to local video element if rendered
       if (localVideoElRef.current) {
-        localVideoElRef.current.srcObject = stream;
-        localVideoElRef.current.muted = true;
-        void localVideoElRef.current.play().catch(() => {});
+        if (videoTrack) {
+          localVideoElRef.current.srcObject = stream;
+          localVideoElRef.current.muted = true;
+          void localVideoElRef.current.play().catch(() => {});
+        } else {
+          localVideoElRef.current.srcObject = null;
+        }
       }
 
       // Update all existing peer connections with the newly acquired tracks
       for (const [, entry] of peersRef.current.entries()) {
-        for (const track of stream.getTracks()) {
-          const sender = track.kind === 'video' ? getVideoSender(entry.pc) : getAudioSender(entry.pc);
-          if (sender) {
-            void sender.replaceTrack(track);
-          } else {
-            entry.pc.addTrack(track, stream);
+        const audioSender = getAudioSender(entry.pc);
+        if (audioSender) {
+          void audioSender.replaceTrack(audioTrack).catch(() => {});
+        } else if (audioTrack) {
+          entry.pc.addTrack(audioTrack, stream);
+        }
+
+        if (currentType === 'meet') {
+          const videoSender = getVideoSender(entry.pc);
+          if (videoSender) {
+            void videoSender.replaceTrack(videoTrack).catch(() => {});
+          } else if (videoTrack) {
+            entry.pc.addTrack(videoTrack, stream);
           }
         }
       }
@@ -829,6 +864,7 @@ export function useWebRTC({
   // Handle selected audio input (microphone) switching
   useEffect(() => {
     if (!localStreamRef.current || !selectedAudioInputId) return;
+    if (!isMicOnRef.current || localStreamRef.current.getAudioTracks().length === 0) return;
 
     let isCancelled = false;
 
@@ -844,7 +880,7 @@ export function useWebRTC({
         };
 
         const newStream = await navigator.mediaDevices.getUserMedia({ audio: constraints });
-        if (isCancelled || isDestroyedRef.current || !enabledRef.current) {
+        if (isCancelled || isDestroyedRef.current || !enabledRef.current || !isMicOnRef.current) {
           newStream.getTracks().forEach((t) => {
             try {
               t.stop();
@@ -856,13 +892,13 @@ export function useWebRTC({
         const newAudioTrack = newStream.getAudioTracks()[0];
         if (!newAudioTrack) return;
 
-        newAudioTrack.enabled = isMicOnRef.current;
+        newAudioTrack.enabled = true;
 
         // Replace track across all peer connections
         for (const [, entry] of peersRef.current.entries()) {
           const sender = getAudioSender(entry.pc);
           if (sender) {
-            void sender.replaceTrack(newAudioTrack);
+            void sender.replaceTrack(newAudioTrack).catch(() => {});
           }
         }
 
@@ -870,7 +906,9 @@ export function useWebRTC({
         const oldAudioTracks = localStreamRef.current?.getAudioTracks() || [];
         oldAudioTracks.forEach((track) => {
           localStreamRef.current?.removeTrack(track);
-          track.stop();
+          try {
+            track.stop();
+          } catch {}
         });
         localStreamRef.current?.addTrack(newAudioTrack);
 
@@ -891,6 +929,7 @@ export function useWebRTC({
   useEffect(() => {
     if (!localStreamRef.current || !selectedVideoInputId || isScreenSharingRef.current) return;
     if (mediaType !== 'meet') return;
+    if (!isVideoOnRef.current || localStreamRef.current.getVideoTracks().length === 0) return;
 
     let isCancelled = false;
 
@@ -906,7 +945,7 @@ export function useWebRTC({
         };
 
         const newStream = await navigator.mediaDevices.getUserMedia({ video: constraints });
-        if (isCancelled || isDestroyedRef.current || !enabledRef.current) {
+        if (isCancelled || isDestroyedRef.current || !enabledRef.current || !isVideoOnRef.current) {
           newStream.getTracks().forEach((t) => {
             try {
               t.stop();
@@ -918,14 +957,14 @@ export function useWebRTC({
         const newVideoTrack = newStream.getVideoTracks()[0];
         if (!newVideoTrack) return;
 
-        newVideoTrack.enabled = isVideoOnRef.current;
+        newVideoTrack.enabled = true;
         cameraVideoTrackRef.current = newVideoTrack;
 
         // Replace track across all peer connections
         for (const [, entry] of peersRef.current.entries()) {
           const sender = getVideoSender(entry.pc);
           if (sender) {
-            void sender.replaceTrack(newVideoTrack);
+            void sender.replaceTrack(newVideoTrack).catch(() => {});
           }
         }
 
@@ -933,7 +972,9 @@ export function useWebRTC({
         const oldVideoTracks = localStreamRef.current?.getVideoTracks() || [];
         oldVideoTracks.forEach((track) => {
           localStreamRef.current?.removeTrack(track);
-          track.stop();
+          try {
+            track.stop();
+          } catch {}
         });
         localStreamRef.current?.addTrack(newVideoTrack);
 
@@ -958,78 +999,278 @@ export function useWebRTC({
 
   // Handle local microphone toggle (mute/unmute)
   useEffect(() => {
-    const audioTrack = localStreamRef.current?.getAudioTracks()[0];
-    if (audioTrack) {
-      audioTrack.enabled = isMicOn;
+    if (isMicInitialRef.current) {
+      isMicInitialRef.current = false;
+      return;
     }
+
+    if (!isMicOn) {
+      // Mute: physically stop all audio tracks to release microphone hardware sensor
+      const audioTracks = localStreamRef.current?.getAudioTracks() || [];
+      audioTracks.forEach((track) => {
+        try {
+          track.stop();
+        } catch {}
+        localStreamRef.current?.removeTrack(track);
+      });
+
+      // Clear audio track from all peer connections
+      for (const [, entry] of peersRef.current.entries()) {
+        const sender = getAudioSender(entry.pc);
+        if (sender) {
+          void sender.replaceTrack(null).catch(() => {});
+        }
+      }
+
+      const updatedStream = new MediaStream(localStreamRef.current?.getTracks() || []);
+      localStreamRef.current = updatedStream;
+      setLocalStream(updatedStream);
+      return;
+    }
+
+    // Unmute: acquire fresh audio track from microphone
+    let isCancelled = false;
+
+    const acquireMic = async () => {
+      try {
+        const audioInputId = selectedAudioInputIdRef.current;
+        const constraints: MediaTrackConstraints = {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          ...(audioInputId && audioInputId !== 'default'
+            ? { deviceId: { exact: audioInputId } }
+            : {}),
+        };
+
+        let tempStream: MediaStream;
+        try {
+          tempStream = await navigator.mediaDevices.getUserMedia({ audio: constraints });
+        } catch {
+          try {
+            tempStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          } catch {
+            return;
+          }
+        }
+
+        if (isCancelled || isDestroyedRef.current || !enabledRef.current || !isMicOnRef.current) {
+          tempStream.getTracks().forEach((t) => {
+            try {
+              t.stop();
+            } catch {}
+          });
+          return;
+        }
+
+        const newTrack = tempStream.getAudioTracks()[0];
+        if (!newTrack) return;
+        newTrack.enabled = true;
+
+        if (!localStreamRef.current) {
+          localStreamRef.current = new MediaStream();
+        }
+
+        // Clean up any stale audio tracks
+        localStreamRef.current.getAudioTracks().forEach((t) => {
+          try {
+            t.stop();
+          } catch {}
+          localStreamRef.current?.removeTrack(t);
+        });
+
+        localStreamRef.current.addTrack(newTrack);
+
+        // Mix or send over peers
+        if (isScreenSharingRef.current && displayAudioTrackRef.current && audioMixerContextRef.current) {
+          try {
+            const ctx = audioMixerContextRef.current;
+            if (ctx.state === 'suspended') void ctx.resume();
+            const dest = ctx.createMediaStreamDestination();
+            const micSource = ctx.createMediaStreamSource(new MediaStream([newTrack]));
+            micSource.connect(dest);
+            const displaySource = ctx.createMediaStreamSource(new MediaStream([displayAudioTrackRef.current]));
+            displaySource.connect(dest);
+            const mixedTrack = dest.stream.getAudioTracks()[0];
+            if (mixedTrack) {
+              for (const [, entry] of peersRef.current.entries()) {
+                const sender = getAudioSender(entry.pc);
+                if (sender) void sender.replaceTrack(mixedTrack).catch(() => {});
+              }
+            }
+          } catch (mixErr) {
+            console.warn('Could not mix mic into screen share audio:', mixErr);
+            for (const [, entry] of peersRef.current.entries()) {
+              const sender = getAudioSender(entry.pc);
+              if (sender) void sender.replaceTrack(newTrack).catch(() => {});
+            }
+          }
+        } else {
+          for (const [, entry] of peersRef.current.entries()) {
+            const sender = getAudioSender(entry.pc);
+            if (sender) {
+              void sender.replaceTrack(newTrack).catch(() => {});
+            } else if (localStreamRef.current) {
+              entry.pc.addTrack(newTrack, localStreamRef.current);
+            }
+          }
+        }
+
+        const updatedStream = new MediaStream(localStreamRef.current.getTracks());
+        localStreamRef.current = updatedStream;
+        setLocalStream(updatedStream);
+      } catch (err) {
+        console.warn('Could not turn on microphone:', err);
+        onErrorRef.current?.('Could not access microphone');
+      }
+    };
+
+    void acquireMic();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [isMicOn]);
 
   // Handle local video toggle (camera on/off)
   useEffect(() => {
-    if (mediaType !== 'meet' || isScreenSharingRef.current) return;
+    if (mediaType !== 'meet') return;
 
-    const existingVideoTrack = localStreamRef.current?.getVideoTracks()[0];
-
-    if (isVideoOn) {
-      if (existingVideoTrack) {
-        existingVideoTrack.enabled = true;
-      } else {
-        // Need to acquire camera track if not already present
-        void (async () => {
-          try {
-            const videoInputId = selectedVideoInputIdRef.current;
-            const constraints: MediaTrackConstraints = {
-              width: { ideal: 1280, max: 1920 },
-              height: { ideal: 720, max: 1080 },
-              frameRate: { ideal: 30 },
-              ...(videoInputId && videoInputId !== 'default'
-                ? { deviceId: { exact: videoInputId } }
-                : {}),
-            };
-            const tempStream = await navigator.mediaDevices.getUserMedia({ video: constraints });
-            if (isDestroyedRef.current || !enabledRef.current || !isVideoOnRef.current) {
-              tempStream.getTracks().forEach((t) => {
-                try {
-                  t.stop();
-                } catch {}
-              });
-              return;
-            }
-
-            const newTrack = tempStream.getVideoTracks()[0];
-            if (!newTrack) return;
-
-            newTrack.enabled = true;
-            cameraVideoTrackRef.current = newTrack;
-            localStreamRef.current?.addTrack(newTrack);
-
-            for (const [, entry] of peersRef.current.entries()) {
-              const sender = getVideoSender(entry.pc);
-              if (sender) {
-                void sender.replaceTrack(newTrack);
-              } else if (localStreamRef.current) {
-                entry.pc.addTrack(newTrack, localStreamRef.current);
-              }
-            }
-
-            const updatedStream = new MediaStream(localStreamRef.current?.getTracks() || []);
-            localStreamRef.current = updatedStream;
-            setLocalStream(updatedStream);
-
-            if (localVideoElRef.current) {
-              localVideoElRef.current.srcObject = updatedStream;
-              void localVideoElRef.current.play().catch(() => {});
-            }
-          } catch (err) {
-            console.warn('Could not turn on camera track:', err);
-          }
-        })();
-      }
-    } else {
-      if (existingVideoTrack) {
-        existingVideoTrack.enabled = false;
-      }
+    if (isVideoInitialRef.current) {
+      isVideoInitialRef.current = false;
+      return;
     }
+
+    if (isScreenSharingRef.current) return;
+
+    if (!isVideoOn) {
+      // Turn off camera: physically stop track so hardware light turns off
+      if (cameraVideoTrackRef.current) {
+        try {
+          cameraVideoTrackRef.current.stop();
+        } catch {}
+        cameraVideoTrackRef.current = null;
+      }
+
+      const videoTracks = localStreamRef.current?.getVideoTracks() || [];
+      videoTracks.forEach((track) => {
+        try {
+          track.stop();
+        } catch {}
+        localStreamRef.current?.removeTrack(track);
+      });
+
+      // Clear video from peer senders so remote peers show avatar
+      for (const [, entry] of peersRef.current.entries()) {
+        const sender = getVideoSender(entry.pc);
+        if (sender) {
+          void sender.replaceTrack(null).catch(() => {});
+        }
+      }
+
+      if (localVideoElRef.current) {
+        localVideoElRef.current.srcObject = null;
+      }
+
+      const updatedStream = new MediaStream(localStreamRef.current?.getTracks() || []);
+      localStreamRef.current = updatedStream;
+      setLocalStream(updatedStream);
+      return;
+    }
+
+    // Turn on camera: acquire camera track fresh
+    let isCancelled = false;
+
+    const acquireCamera = async () => {
+      try {
+        const videoInputId = selectedVideoInputIdRef.current;
+        const constraints: MediaTrackConstraints = {
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          frameRate: { ideal: 30 },
+          ...(videoInputId && videoInputId !== 'default'
+            ? { deviceId: { exact: videoInputId } }
+            : {}),
+        };
+
+        let tempStream: MediaStream;
+        try {
+          tempStream = await navigator.mediaDevices.getUserMedia({ video: constraints });
+        } catch {
+          try {
+            tempStream = await navigator.mediaDevices.getUserMedia({
+              video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+            });
+          } catch {
+            return;
+          }
+        }
+
+        if (
+          isCancelled ||
+          isDestroyedRef.current ||
+          !enabledRef.current ||
+          !isVideoOnRef.current ||
+          isScreenSharingRef.current
+        ) {
+          tempStream.getTracks().forEach((t) => {
+            try {
+              t.stop();
+            } catch {}
+          });
+          return;
+        }
+
+        const newTrack = tempStream.getVideoTracks()[0];
+        if (!newTrack) return;
+
+        newTrack.enabled = true;
+        if ('contentHint' in newTrack) {
+          newTrack.contentHint = 'motion';
+        }
+        cameraVideoTrackRef.current = newTrack;
+
+        if (!localStreamRef.current) {
+          localStreamRef.current = new MediaStream();
+        }
+        // Remove any old video tracks first
+        localStreamRef.current.getVideoTracks().forEach((t) => {
+          try {
+            t.stop();
+          } catch {}
+          localStreamRef.current?.removeTrack(t);
+        });
+        localStreamRef.current.addTrack(newTrack);
+
+        for (const [, entry] of peersRef.current.entries()) {
+          const sender = getVideoSender(entry.pc);
+          if (sender) {
+            void sender.replaceTrack(newTrack).catch(() => {});
+          } else {
+            entry.pc.addTrack(newTrack, localStreamRef.current);
+          }
+        }
+
+        const updatedStream = new MediaStream(localStreamRef.current.getTracks());
+        localStreamRef.current = updatedStream;
+        setLocalStream(updatedStream);
+
+        if (localVideoElRef.current) {
+          localVideoElRef.current.srcObject = updatedStream;
+          localVideoElRef.current.muted = true;
+          void localVideoElRef.current.play().catch(() => {});
+        }
+      } catch (err) {
+        console.warn('Could not turn on camera track:', err);
+        onErrorRef.current?.('Could not access camera');
+      }
+    };
+
+    void acquireCamera();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [isVideoOn, mediaType]);
 
   // Handle screen sharing toggle with audio support (microphone + tab/system audio mixing)
@@ -1081,6 +1322,14 @@ export function useWebRTC({
             onScreenShareEndedRef.current?.();
           };
 
+          // Turn off camera track to free hardware sensor while screen sharing
+          if (cameraVideoTrackRef.current) {
+            try {
+              cameraVideoTrackRef.current.stop();
+            } catch {}
+            cameraVideoTrackRef.current = null;
+          }
+
           // Update local preview and sync localStreamRef
           const audioTracks = localStreamRef.current?.getAudioTracks() || [];
           const previewStream = new MediaStream([...audioTracks, screenTrack]);
@@ -1091,7 +1340,7 @@ export function useWebRTC({
           for (const [, entry] of peersRef.current.entries()) {
             const sender = getVideoSender(entry.pc);
             if (sender) {
-              void sender.replaceTrack(screenTrack);
+              void sender.replaceTrack(screenTrack).catch(() => {});
             } else {
               entry.pc.addTrack(screenTrack, previewStream);
             }
@@ -1111,11 +1360,11 @@ export function useWebRTC({
                 audioMixerContextRef.current = null;
               }
               const currentMic = localStreamRef.current?.getAudioTracks()[0];
-              if (currentMic) {
+              if (currentMic && isMicOnRef.current) {
                 for (const [, entry] of peersRef.current.entries()) {
                   const aSender = getAudioSender(entry.pc);
                   if (aSender) {
-                    void aSender.replaceTrack(currentMic);
+                    void aSender.replaceTrack(currentMic).catch(() => {});
                   }
                 }
               }
@@ -1130,7 +1379,7 @@ export function useWebRTC({
               if (ctx.state === 'suspended') void ctx.resume();
 
               const dest = ctx.createMediaStreamDestination();
-              if (micTrack && micTrack.readyState === 'live') {
+              if (micTrack && micTrack.readyState === 'live' && isMicOnRef.current) {
                 const micSource = ctx.createMediaStreamSource(new MediaStream([micTrack]));
                 micSource.connect(dest);
               }
@@ -1152,7 +1401,7 @@ export function useWebRTC({
             for (const [, entry] of peersRef.current.entries()) {
               const aSender = getAudioSender(entry.pc);
               if (aSender) {
-                void aSender.replaceTrack(audioTrackToSend);
+                void aSender.replaceTrack(audioTrackToSend).catch(() => {});
               }
             }
           }
@@ -1184,50 +1433,116 @@ export function useWebRTC({
 
       // Restore original mic track on all audio senders
       const originalMicTrack = localStreamRef.current?.getAudioTracks()[0];
-      if (originalMicTrack) {
-        originalMicTrack.enabled = isMicOnRef.current;
+      if (originalMicTrack && isMicOnRef.current) {
+        originalMicTrack.enabled = true;
         for (const [, entry] of peersRef.current.entries()) {
           const aSender = getAudioSender(entry.pc);
           if (aSender) {
-            void aSender.replaceTrack(originalMicTrack);
+            void aSender.replaceTrack(originalMicTrack).catch(() => {});
+          }
+        }
+      } else {
+        for (const [, entry] of peersRef.current.entries()) {
+          const aSender = getAudioSender(entry.pc);
+          if (aSender) {
+            void aSender.replaceTrack(null).catch(() => {});
           }
         }
       }
 
-      const cameraTrack = cameraVideoTrackRef.current;
-      const shouldResumeCamera = Boolean(cameraTrack && isVideoOnRef.current);
+      if (isVideoOnRef.current) {
+        // Re-acquire camera track
+        void (async () => {
+          try {
+            const videoInputId = selectedVideoInputIdRef.current;
+            const constraints: MediaTrackConstraints = {
+              width: { ideal: 1280, max: 1920 },
+              height: { ideal: 720, max: 1080 },
+              frameRate: { ideal: 30 },
+              ...(videoInputId && videoInputId !== 'default'
+                ? { deviceId: { exact: videoInputId } }
+                : {}),
+            };
+            let stream: MediaStream;
+            try {
+              stream = await navigator.mediaDevices.getUserMedia({ video: constraints });
+            } catch {
+              try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                  video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+                });
+              } catch {
+                return;
+              }
+            }
 
-      if (shouldResumeCamera && cameraTrack) {
-        cameraTrack.enabled = true;
-        for (const [, entry] of peersRef.current.entries()) {
-          const sender = getVideoSender(entry.pc);
-          if (sender) {
-            void sender.replaceTrack(cameraTrack);
+            if (isDestroyedRef.current || !enabledRef.current || !isVideoOnRef.current || isScreenSharingRef.current) {
+              stream.getTracks().forEach((t) => {
+                try {
+                  t.stop();
+                } catch {}
+              });
+              return;
+            }
+
+            const newCamTrack = stream.getVideoTracks()[0];
+            if (!newCamTrack) return;
+            newCamTrack.enabled = true;
+            if ('contentHint' in newCamTrack) {
+              newCamTrack.contentHint = 'motion';
+            }
+            cameraVideoTrackRef.current = newCamTrack;
+
+            for (const [, entry] of peersRef.current.entries()) {
+              const sender = getVideoSender(entry.pc);
+              if (sender) {
+                void sender.replaceTrack(newCamTrack).catch(() => {});
+              }
+            }
+
+            if (localStreamRef.current) {
+              localStreamRef.current.getVideoTracks().forEach((t) => {
+                try {
+                  t.stop();
+                } catch {}
+                localStreamRef.current?.removeTrack(t);
+              });
+              localStreamRef.current.addTrack(newCamTrack);
+              const restoredStream = new MediaStream(localStreamRef.current.getTracks());
+              localStreamRef.current = restoredStream;
+              setLocalStream(restoredStream);
+
+              if (localVideoElRef.current) {
+                localVideoElRef.current.srcObject = restoredStream;
+                localVideoElRef.current.muted = true;
+                void localVideoElRef.current.play().catch(() => {});
+              }
+            }
+          } catch (err) {
+            console.warn('Could not re-acquire camera after screen share:', err);
           }
-        }
+        })();
       } else {
         // Camera was off: clear video sender track so remote peers display avatar
         for (const [, entry] of peersRef.current.entries()) {
           const sender = getVideoSender(entry.pc);
           if (sender) {
-            void sender.replaceTrack(null);
+            void sender.replaceTrack(null).catch(() => {});
           }
         }
-      }
+        if (localStreamRef.current) {
+          localStreamRef.current.getVideoTracks().forEach((t) => {
+            try {
+              t.stop();
+            } catch {}
+            localStreamRef.current?.removeTrack(t);
+          });
+          const restoredStream = new MediaStream(localStreamRef.current.getTracks());
+          localStreamRef.current = restoredStream;
+          setLocalStream(restoredStream);
 
-      if (localStreamRef.current) {
-        const audioTracks = localStreamRef.current.getAudioTracks();
-        const tracks = shouldResumeCamera && cameraTrack
-          ? [...audioTracks, cameraTrack]
-          : [...audioTracks];
-        const restoredStream = new MediaStream(tracks);
-        localStreamRef.current = restoredStream;
-        setLocalStream(restoredStream);
-
-        if (localVideoElRef.current) {
-          localVideoElRef.current.srcObject = restoredStream;
-          if (shouldResumeCamera) {
-            void localVideoElRef.current.play().catch(() => {});
+          if (localVideoElRef.current) {
+            localVideoElRef.current.srcObject = null;
           }
         }
       }

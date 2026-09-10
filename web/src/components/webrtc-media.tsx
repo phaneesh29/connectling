@@ -15,12 +15,17 @@ export function LocalVideo({ stream, isActive, isMirrored = false, className }: 
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
-    if (!stream) {
+    if (!stream || !isActive) {
       el.srcObject = null;
       return;
     }
 
     const attachAndPlay = () => {
+      const hasLiveVideo = stream.getVideoTracks().some((t) => t.readyState === 'live');
+      if (!hasLiveVideo) {
+        el.srcObject = null;
+        return;
+      }
       if (el.srcObject !== stream) {
         el.srcObject = stream;
       }
@@ -38,7 +43,7 @@ export function LocalVideo({ stream, isActive, isMirrored = false, className }: 
       stream.removeEventListener('removetrack', attachAndPlay);
       if (el) el.srcObject = null;
     };
-  }, [stream]);
+  }, [stream, isActive]);
 
   return (
     <video
@@ -69,12 +74,17 @@ export function RemoteVideo({ stream, isVideoActive, className }: RemoteVideoPro
   useEffect(() => {
     const el = videoRef.current;
     if (!el) return;
-    if (!stream) {
+    if (!stream || !isVideoActive) {
       el.srcObject = null;
       return;
     }
 
     const attachAndPlay = () => {
+      const hasLiveVideo = stream.getVideoTracks().some((t) => t.readyState === 'live' && !t.muted);
+      if (!hasLiveVideo) {
+        el.srcObject = null;
+        return;
+      }
       if (el.srcObject !== stream) {
         el.srcObject = stream;
       }
@@ -100,7 +110,7 @@ export function RemoteVideo({ stream, isVideoActive, className }: RemoteVideoPro
       stream.removeEventListener('removetrack', attachAndPlay);
       if (el) el.srcObject = null;
     };
-  }, [stream]);
+  }, [stream, isVideoActive]);
 
   return (
     <video

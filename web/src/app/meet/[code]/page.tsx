@@ -1042,7 +1042,11 @@ export default function MeetPage({ params }: MeetPageProps) {
   }
 
   const otherParticipants = participants.filter((p) => p.userId !== session?.user?.id);
-  const isLocalVideoLive = Boolean((isVideoOn || isScreenSharing) && webrtc.localStream);
+  const isLocalVideoLive = Boolean(
+    (isVideoOn || isScreenSharing) &&
+      webrtc.localStream &&
+      webrtc.localStream.getVideoTracks().some((t) => t.readyState === 'live')
+  );
 
   // Presenter detection for Google Meet style focused screen share
   const remotePresenter = otherParticipants.find((p) => p.isScreenSharing);
@@ -1205,7 +1209,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     const remoteStream = webrtc.remoteStreams.get(p.userId);
     const hasRemoteVideoTrack = Boolean(
       remoteStream &&
-        remoteStream.getVideoTracks().some((t) => t.readyState === 'live' && t.enabled)
+        remoteStream.getVideoTracks().some((t) => t.readyState === 'live' && t.enabled && !t.muted)
     );
     const isThisPresenter = Boolean(p.isScreenSharing);
     const isVideoActive = Boolean(

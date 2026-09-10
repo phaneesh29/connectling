@@ -2182,6 +2182,22 @@ export default function TalkPage({ params }: TalkPageProps) {
         />
       )}
 
+      {/* Permanent Audio Sinks for all remote participants */}
+      <div className="sr-only pointer-events-none" aria-hidden="true">
+        {participants
+          .filter((p) => p.userId !== session?.user?.id)
+          .map((p) => {
+            const stream = webrtc.remoteStreams.get(p.userId);
+            return (
+              <RemoteAudio
+                key={`permanent-audio-${p.userId}`}
+                stream={stream}
+                audioOutputId={mediaDevices.selectedAudioOutputId}
+              />
+            );
+          })}
+      </div>
+
       {/* Floating Reactions Stream */}
       <FloatingReactions reactions={floatingReactions} />
     </div>
