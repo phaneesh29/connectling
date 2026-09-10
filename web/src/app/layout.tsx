@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter, Newsreader, Geist_Mono } from 'next/font/google';
 import { Navbar } from '@/components/navbar';
+import { Analytics } from '@vercel/analytics/next';
 import './globals.css';
 
 const inter = Inter({
@@ -40,6 +41,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-black text-[#fcfdff] selection:bg-white/20 selection:text-white">
         <Navbar />
         <div className="flex-1">{children}</div>
+        <Analytics />
       </body>
     </html>
   );
