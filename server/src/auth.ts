@@ -84,13 +84,13 @@ export const auth = betterAuth({
   },
   account: {
     encryptOAuthTokens: true,
+    skipStateCookieCheck: true,
   },
   advanced: {
     useSecureCookies: env.NODE_ENV === 'production',
     defaultCookieAttributes: {
       sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
       secure: env.NODE_ENV === 'production',
-      partitioned: env.NODE_ENV === 'production',
     },
     ipAddress: {
       ipAddressHeaders: ['x-forwarded-for', 'x-real-ip'],
