@@ -334,15 +334,27 @@ export default function MeetPage({ params }: MeetPageProps) {
   useEffect(() => {
     if (!roomId) return;
     const socket = getSocket();
-    socket.connect();
+    const sendRoomJoin = () => {
+      socket.emit('room:join', {
+        roomCode: code,
+        isMuted: !isMicOnRef.current,
+        isVideoOn: isVideoOnRef.current,
+        isScreenSharing: false,
+        handRaised: handRaisedRef.current,
+      });
+    };
 
-    socket.emit('room:join', {
-      roomCode: code,
-      isMuted: !isMicOnRef.current,
-      isVideoOn: isVideoOnRef.current,
-      isScreenSharing: false,
-      handRaised: handRaisedRef.current,
-    });
+    if (socket.connected) {
+      sendRoomJoin();
+    } else {
+      socket.connect();
+    }
+
+    const handleConnect = () => {
+      sendRoomJoin();
+    };
+
+    socket.on('connect', handleConnect);
 
     const handleNewMessage = (msg: ChatMessage) => {
       setMessages((prev) => {
@@ -597,6 +609,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     socket.on('room:ended', handleRoomEnded);
 
     return () => {
+      socket.off('connect', handleConnect);
       socket.off('chat:new-message', handleNewMessage);
       socket.off('room:roster', handleRoster);
       socket.off('room:user-joined', handleUserJoined);

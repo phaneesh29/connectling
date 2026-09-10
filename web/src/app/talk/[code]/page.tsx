@@ -380,13 +380,26 @@ export default function TalkPage({ params }: TalkPageProps) {
   useEffect(() => {
     if (!roomId) return;
     const socket = getSocket();
-    socket.connect();
 
-    socket.emit('room:join', {
-      roomCode: code,
-      isMuted: isMutedRef.current,
-      handRaised: handRaisedRef.current,
-    });
+    const sendRoomJoin = () => {
+      socket.emit('room:join', {
+        roomCode: code,
+        isMuted: isMutedRef.current,
+        handRaised: handRaisedRef.current,
+      });
+    };
+
+    if (socket.connected) {
+      sendRoomJoin();
+    } else {
+      socket.connect();
+    }
+
+    const handleConnect = () => {
+      sendRoomJoin();
+    };
+
+    socket.on('connect', handleConnect);
 
     const handleNewMessage = (msg: ChatMessage) => {
       setMessages((prev) => {
@@ -706,6 +719,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     socket.on('room:ended', handleRoomEnded);
 
     return () => {
+      socket.off('connect', handleConnect);
       socket.off('chat:new-message', handleNewMessage);
       socket.off('room:roster', handleRoster);
       socket.off('room:user-joined', handleUserJoined);
@@ -1322,7 +1336,6 @@ export default function TalkPage({ params }: TalkPageProps) {
               ? isLocalMicActive && localAudio.isSpeaking
               : remoteAudio ? remoteAudio.isSpeaking : !p.isMuted;
             const liveVolume = isMe ? localAudio.volume : remoteAudio?.volume;
-            const remoteStream = webrtc.remoteStreams.get(p.userId);
 
             return (
               <div
@@ -1334,13 +1347,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                   isSpeaking ? 'ring-1 ring-emerald-500/50' : ''
                 }`}
               >
-                {/* Live WebRTC Remote Audio element for other participants */}
-                {!isMe && (
-                  <RemoteAudio
-                    stream={remoteStream}
-                    audioOutputId={mediaDevices.selectedAudioOutputId}
-                  />
-                )}
+
 
                 {/* Subtle top edge specular highlight line */}
                 <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent pointer-events-none" />

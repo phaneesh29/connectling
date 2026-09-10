@@ -144,6 +144,10 @@ export function RemoteVideo({ stream, isVideoActive, className }: RemoteVideoPro
       if (trackEvent.track) {
         bindTrack(trackEvent.track);
       }
+      const currentEl = videoRef.current;
+      if (currentEl) {
+        currentEl.srcObject = stream;
+      }
       playVideo();
     };
 
