@@ -17,6 +17,7 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackURL = searchParams.get('callbackURL') || '/';
+  const urlError = searchParams.get('error');
 
   const { data: session, isPending } = useSession();
   const [signingIn, setSigningIn] = useState(false);
@@ -45,6 +46,7 @@ function LoginContent() {
       await signIn.social({
         provider: 'google',
         callbackURL: redirectTarget,
+        errorCallbackURL: `${window.location.origin}/login?error=auth_error`,
       });
     } catch {
       setSigningIn(false);
@@ -79,6 +81,17 @@ function LoginContent() {
             <strong className="text-[#fcfdff] font-medium">Zero-data architecture:</strong> We do not store meeting recordings, persistent chat transcripts, or user presence histories.
           </p>
         </div>
+
+        {urlError && (
+          <div className="p-3 rounded-xl bg-red-500/[0.08] border border-red-500/30 flex items-start gap-2 relative z-10 text-xs text-red-400">
+            <span className="font-semibold text-red-300 shrink-0">Notice:</span>
+            <span>
+              {urlError === 'state_mismatch'
+                ? 'Sign-in verification failed because cookies were blocked or expired. Please try again.'
+                : `Authentication encountered an issue (${urlError}). Please try again.`}
+            </span>
+          </div>
+        )}
 
         {isPending ? (
           <div className="flex justify-center py-8">

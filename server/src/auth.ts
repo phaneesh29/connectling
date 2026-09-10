@@ -9,15 +9,7 @@ const parsedOrigins = env.CORS_ORIGIN.includes(',')
   ? env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
   : [env.CORS_ORIGIN];
 
-const trustedOrigins = Array.from(
-  new Set([
-    ...parsedOrigins,
-    'http://localhost:3001',
-    'http://127.0.0.1:3001',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-  ])
-);
+const trustedOrigins = Array.from(new Set(parsedOrigins));
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
@@ -98,6 +90,7 @@ export const auth = betterAuth({
     defaultCookieAttributes: {
       sameSite: env.NODE_ENV === 'production' ? 'none' : 'lax',
       secure: env.NODE_ENV === 'production',
+      partitioned: env.NODE_ENV === 'production',
     },
     ipAddress: {
       ipAddressHeaders: ['x-forwarded-for', 'x-real-ip'],
