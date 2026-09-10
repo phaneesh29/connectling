@@ -56,10 +56,12 @@ const server = createServer(app);
 
 export const io = initRealtimeGateway(server);
 
-const port = process.env.PORT || 3000;
-server.listen(port, () => {
-  logger.info(`listening on http://localhost:${port}`);
-});
+if (!process.env.VERCEL) {
+  const port = process.env.PORT || 3000;
+  server.listen(port, () => {
+    logger.info(`listening on http://localhost:${port}`);
+  });
+}
 
 export { app, server };
 export default server;
