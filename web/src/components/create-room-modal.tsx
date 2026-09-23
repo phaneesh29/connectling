@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { roomsApi, type CreateRoomPayload } from '@/lib/rooms-api';
+import { generateRandomRoomTitle } from '@/lib/room-names';
+import { Dices } from 'lucide-react';
 import {
   VideoIcon,
   AudioWaveformIcon,
@@ -64,6 +67,7 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
   const isMeet = defaultType === 'meet';
   const themeColor = isMeet ? 'bg-[#ff7a1a]' : 'bg-[#f59e0b]';
 
+  const [mounted, setMounted] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [micForAll, setMicForAll] = useState(true);
@@ -76,7 +80,17 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const handleGenerateTitle = () => {
+    const nextTitle = generateRandomRoomTitle(defaultType, title);
+    setTitle(nextTitle);
+    if (error) setError(null);
+  };
+
+  if (!isOpen || !mounted) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -123,9 +137,15 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="w-full max-w-lg bg-[#0a0a0c] border border-white/[0.14] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] relative">
+  const modalNode = (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 pointer-events-auto"
+      onClick={() => !loading && onClose()}
+    >
+      <div
+        className="w-full max-w-lg bg-[#0a0a0c] border border-white/[0.14] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] relative pointer-events-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Subtle Atmospheric Top Glow in Modal */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-32 blur-3xl pointer-events-none opacity-30 bg-gradient-brand-r" />
 
@@ -151,8 +171,9 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
             </div>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="text-[#888e90] hover:text-[#fcfdff] p-1.5 rounded-lg hover:bg-[#101012] transition-colors shrink-0 ml-2"
+            className="text-[#888e90] hover:text-[#fcfdff] p-1.5 rounded-lg hover:bg-[#101012] transition-colors shrink-0 ml-2 cursor-pointer"
           >
             <XIcon size={15} />
           </button>
@@ -172,15 +193,29 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
 
           {/* Title */}
           <div>
-            <label className="block text-xs font-medium text-[#fcfdff]/80 mb-1">
-              Space Title <span className="text-[#ff2047]">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-medium text-[#fcfdff]/80">
+                Space Title <span className="text-[#ff2047]">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={handleGenerateTitle}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-medium text-[#ff7a1a] hover:text-[#ff9933] bg-[#ff7a1a]/10 hover:bg-[#ff7a1a]/20 border border-[#ff7a1a]/25 transition-all cursor-pointer select-none active:scale-95"
+                title={`Generate random ${isMeet ? 'meeting' : 'stage'} name`}
+              >
+                <Dices size={12} className="shrink-0" />
+                <span>Random name</span>
+              </button>
+            </div>
             <input
               type="text"
               required
               placeholder={isMeet ? 'e.g. Core Architecture Sync' : 'e.g. Friday Open Mic & Demo'}
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (error) setError(null);
+              }}
               className="w-full px-3.5 py-2.5 rounded-lg border border-white/[0.10] bg-[#06060a] text-[#fcfdff] placeholder-[#464a4d] focus:outline-none focus:border-white/40 transition-all text-base sm:text-xs"
             />
           </div>
@@ -340,4 +375,6 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
       </div>
     </div>
   );
+
+  return createPortal(modalNode, document.body);
 }
