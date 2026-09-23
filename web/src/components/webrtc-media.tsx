@@ -155,16 +155,24 @@ export function RemoteVideo({ stream, isVideoActive, className }: RemoteVideoPro
       playVideo();
     };
 
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        playVideo();
+      }
+    };
+
     stream.addEventListener('addtrack', onAddTrack);
     stream.addEventListener('removetrack', playVideo);
     el.addEventListener('loadedmetadata', handleLoadedMetadata);
     el.addEventListener('canplay', handleLoadedMetadata);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       stream.removeEventListener('addtrack', onAddTrack);
       stream.removeEventListener('removetrack', playVideo);
       el.removeEventListener('loadedmetadata', handleLoadedMetadata);
       el.removeEventListener('canplay', handleLoadedMetadata);
+      document.removeEventListener('visibilitychange', handleVisibility);
       boundTracks.forEach((track) => {
         track.removeEventListener('unmute', playVideo);
       });
@@ -203,12 +211,14 @@ export function RemoteAudio({ stream, audioOutputId }: RemoteAudioProps) {
     }
 
     const attachAndPlay = () => {
-      if (el.srcObject !== stream) {
-        el.srcObject = stream;
+      const currentEl = audioRef.current;
+      if (!currentEl) return;
+      if (currentEl.srcObject !== stream) {
+        currentEl.srcObject = stream;
       }
-      el.play().catch(() => {
+      currentEl.play().catch(() => {
         const unlock = () => {
-          el.play().catch(() => {});
+          currentEl.play().catch(() => {});
           window.removeEventListener('click', unlock);
           window.removeEventListener('keydown', unlock);
         };
@@ -219,12 +229,41 @@ export function RemoteAudio({ stream, audioOutputId }: RemoteAudioProps) {
 
     attachAndPlay();
 
-    stream.addEventListener('addtrack', attachAndPlay);
+    const boundTracks = new Set<MediaStreamTrack>();
+    const bindTrack = (track: MediaStreamTrack) => {
+      if (boundTracks.has(track)) return;
+      boundTracks.add(track);
+      track.addEventListener('unmute', attachAndPlay);
+    };
+
+    stream.getAudioTracks().forEach(bindTrack);
+
+    const onAddTrack = (e: Event) => {
+      const trackEvent = e as MediaStreamTrackEvent;
+      if (trackEvent.track) {
+        bindTrack(trackEvent.track);
+      }
+      attachAndPlay();
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        attachAndPlay();
+      }
+    };
+
+    stream.addEventListener('addtrack', onAddTrack);
     stream.addEventListener('removetrack', attachAndPlay);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
-      stream.removeEventListener('addtrack', attachAndPlay);
+      stream.removeEventListener('addtrack', onAddTrack);
       stream.removeEventListener('removetrack', attachAndPlay);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      boundTracks.forEach((track) => {
+        track.removeEventListener('unmute', attachAndPlay);
+      });
+      boundTracks.clear();
       if (el) el.srcObject = null;
     };
   }, [stream]);

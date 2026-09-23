@@ -104,6 +104,7 @@ export function useWebRTC({
   const peersRef = useRef<Map<string, PeerConnectionEntry>>(new Map());
   const mediaElementsRef = useRef<Map<string, HTMLMediaElement>>(new Map());
   const localVideoElRef = useRef<HTMLVideoElement | null>(null);
+  const disconnectTimersRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // Keep latest prop values in refs for async event callbacks
   const isMicOnRef = useRef(isMicOn);
@@ -344,11 +345,63 @@ export function useWebRTC({
     }
   }, []);
 
+  // Close and clean up a peer connection
+  const closePeer = useCallback(
+    (targetUserId: string) => {
+      const timer = disconnectTimersRef.current.get(targetUserId);
+      if (timer) {
+        clearTimeout(timer);
+        disconnectTimersRef.current.delete(targetUserId);
+      }
+
+      const entry = peersRef.current.get(targetUserId);
+      if (!entry) return;
+
+      if (entry.analyserCleanup) {
+        entry.analyserCleanup();
+      }
+
+      entry.pc.onicecandidate = null;
+      entry.pc.ontrack = null;
+      entry.pc.onnegotiationneeded = null;
+      entry.pc.onconnectionstatechange = null;
+      entry.pc.onsignalingstatechange = null;
+
+      try {
+        entry.pc.close();
+      } catch {
+        // Ignored
+      }
+
+      entry.remoteStream.getTracks().forEach((track) => track.stop());
+      peersRef.current.delete(targetUserId);
+      mediaElementsRef.current.delete(targetUserId);
+      updateRemoteStreamsState();
+
+      let anyConnected = false;
+      for (const [, p] of peersRef.current) {
+        if (p.pc.connectionState === 'connected') {
+          anyConnected = true;
+          break;
+        }
+      }
+      setIsConnected(anyConnected);
+    },
+    [updateRemoteStreamsState]
+  );
+
   // Create or get Peer Connection
   const getOrCreatePeer = useCallback(
     (targetUserId: string): PeerConnectionEntry => {
       const existing = peersRef.current.get(targetUserId);
-      if (existing) return existing;
+      if (existing) {
+        const state = existing.pc.connectionState;
+        const sigState = existing.pc.signalingState;
+        if (state !== 'closed' && state !== 'failed' && sigState !== 'closed') {
+          return existing;
+        }
+        closePeer(targetUserId);
+      }
 
       const myId = currentUserIdRef.current || '';
       const isPolite = myId < targetUserId;
@@ -487,17 +540,55 @@ export function useWebRTC({
 
       // Monitor connection state & restart ICE if needed
       pc.onconnectionstatechange = () => {
-        if (pc.connectionState === 'connected') {
+        const state = pc.connectionState;
+        if (state === 'connected') {
           setIsConnected(true);
-        } else if (pc.connectionState === 'failed') {
+          const t = disconnectTimersRef.current.get(targetUserId);
+          if (t) {
+            clearTimeout(t);
+            disconnectTimersRef.current.delete(targetUserId);
+          }
+        } else if (state === 'disconnected') {
+          updateConnectedState();
+          // Attempt automatic ICE restart if still disconnected after 3.5s
+          if (!disconnectTimersRef.current.has(targetUserId)) {
+            const timer = setTimeout(() => {
+              disconnectTimersRef.current.delete(targetUserId);
+              const currentEntry = peersRef.current.get(targetUserId);
+              if (
+                currentEntry &&
+                (currentEntry.pc.connectionState === 'disconnected' ||
+                  currentEntry.pc.connectionState === 'failed')
+              ) {
+                try {
+                  currentEntry.pc.restartIce();
+                  void triggerRenegotiation(currentEntry);
+                } catch {
+                  closePeer(targetUserId);
+                }
+              }
+            }, 3500);
+            disconnectTimersRef.current.set(targetUserId, timer);
+          }
+        } else if (state === 'failed') {
+          const t = disconnectTimersRef.current.get(targetUserId);
+          if (t) {
+            clearTimeout(t);
+            disconnectTimersRef.current.delete(targetUserId);
+          }
           try {
             pc.restartIce();
             void triggerRenegotiation(entry);
           } catch {
-            // Ignored
+            closePeer(targetUserId);
           }
           updateConnectedState();
-        } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'closed') {
+        } else if (state === 'closed') {
+          const t = disconnectTimersRef.current.get(targetUserId);
+          if (t) {
+            clearTimeout(t);
+            disconnectTimersRef.current.delete(targetUserId);
+          }
           updateConnectedState();
         }
       };
@@ -519,47 +610,9 @@ export function useWebRTC({
       updateRemoteStreamsState();
       return entry;
     },
-    [setupPeerAudioAnalysis, triggerRenegotiation, updateRemoteStreamsState]
+    [setupPeerAudioAnalysis, triggerRenegotiation, updateRemoteStreamsState, closePeer]
   );
 
-  // Close and clean up a peer connection
-  const closePeer = useCallback(
-    (targetUserId: string) => {
-      const entry = peersRef.current.get(targetUserId);
-      if (!entry) return;
-
-      if (entry.analyserCleanup) {
-        entry.analyserCleanup();
-      }
-
-      entry.pc.onicecandidate = null;
-      entry.pc.ontrack = null;
-      entry.pc.onnegotiationneeded = null;
-      entry.pc.onconnectionstatechange = null;
-      entry.pc.onsignalingstatechange = null;
-
-      try {
-        entry.pc.close();
-      } catch {
-        // Ignored
-      }
-
-      entry.remoteStream.getTracks().forEach((track) => track.stop());
-      peersRef.current.delete(targetUserId);
-      mediaElementsRef.current.delete(targetUserId);
-      updateRemoteStreamsState();
-
-      let anyConnected = false;
-      for (const [, p] of peersRef.current) {
-        if (p.pc.connectionState === 'connected') {
-          anyConnected = true;
-          break;
-        }
-      }
-      setIsConnected(anyConnected);
-    },
-    [updateRemoteStreamsState]
-  );
 
   // Synchronously stop all local media tracks (camera, mic, screen share, tab audio) and clean up
   const stopAllMediaTracks = useCallback(() => {
@@ -889,6 +942,18 @@ export function useWebRTC({
     }) => {
       if (!isMounted || !fromUserId || fromUserId === currentUserIdRef.current) return;
 
+      if (signal.type === 'offer') {
+        const existing = peersRef.current.get(fromUserId);
+        if (
+          existing &&
+          (existing.pc.connectionState === 'closed' ||
+            existing.pc.connectionState === 'failed' ||
+            existing.pc.signalingState === 'closed')
+        ) {
+          closePeer(fromUserId);
+        }
+      }
+
       const entry = getOrCreatePeer(fromUserId);
       const pc = entry.pc;
 
@@ -1016,10 +1081,54 @@ export function useWebRTC({
       closePeer(userId);
     };
 
+    // Recover all peer connections on socket reconnect
+    const handleSocketReconnect = () => {
+      if (!isMounted) return;
+      for (const [peerId, entry] of peersRef.current.entries()) {
+        const state = entry.pc.connectionState;
+        if (state === 'failed' || state === 'disconnected') {
+          try {
+            entry.pc.restartIce();
+            void triggerRenegotiation(entry);
+          } catch {
+            closePeer(peerId);
+          }
+        }
+      }
+    };
+
+    // Recover connections when tab becomes active again
+    const handleVisibilityChange = () => {
+      if (!isMounted) return;
+      if (document.visibilityState === 'visible') {
+        const local = localStreamRef.current;
+        if (local) {
+          const hasDeadTracks = local.getTracks().some((t) => t.readyState === 'ended');
+          if (hasDeadTracks && enabledRef.current) {
+            void acquireLocalMedia();
+          }
+        }
+
+        for (const [peerId, entry] of peersRef.current.entries()) {
+          const state = entry.pc.connectionState;
+          if (state === 'failed' || state === 'disconnected') {
+            try {
+              entry.pc.restartIce();
+              void triggerRenegotiation(entry);
+            } catch {
+              closePeer(peerId);
+            }
+          }
+        }
+      }
+    };
+
     socket.on('webrtc:signal', handleSignal);
     socket.on('room:user-joined', handleUserJoined);
     socket.on('room:roster', handleRoster);
     socket.on('room:user-left', handleUserLeft);
+    socket.on('connect', handleSocketReconnect);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       isMounted = false;
@@ -1027,6 +1136,13 @@ export function useWebRTC({
       socket.off('room:user-joined', handleUserJoined);
       socket.off('room:roster', handleRoster);
       socket.off('room:user-left', handleUserLeft);
+      socket.off('connect', handleSocketReconnect);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+      for (const timer of disconnectTimersRef.current.values()) {
+        clearTimeout(timer);
+      }
+      disconnectTimersRef.current.clear();
 
       stopAllMediaTracks();
     };

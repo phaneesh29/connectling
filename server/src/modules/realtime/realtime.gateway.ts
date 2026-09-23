@@ -306,8 +306,8 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       credentials: true,
     },
     transports: ['websocket'],
-    pingTimeout: 5000,
-    pingInterval: 3000,
+    pingTimeout: 30000,
+    pingInterval: 25000,
   });
 
   io.on('participant:update', (userId, updates) => {
