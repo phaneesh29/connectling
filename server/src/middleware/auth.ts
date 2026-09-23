@@ -30,3 +30,20 @@ export const requireAuth = async (req: Request, _res: Response, next: NextFuncti
     next(error);
   }
 };
+
+export const optionalAuth = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const sessionData = await auth.api.getSession({
+      headers: fromNodeHeaders(req.headers),
+    });
+
+    if (sessionData) {
+      req.user = sessionData.user;
+      req.session = sessionData.session;
+    }
+
+    next();
+  } catch {
+    next();
+  }
+};
