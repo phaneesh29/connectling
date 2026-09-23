@@ -5,7 +5,8 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut, useSession } from '@/lib/auth-client';
-import { AudioWaveformIcon, LogOutIcon, SparklesIcon } from '@animateicons/react/lucide';
+import { AudioWaveformIcon, LogOutIcon, SparklesIcon, MessageSquareIcon } from '@animateicons/react/lucide';
+import { ReportModal } from './report-modal';
 
 export function Navbar() {
   const pathname = usePathname();
@@ -13,6 +14,7 @@ export function Navbar() {
   const { data: session, isPending } = useSession();
   const [signingOut, setSigningOut] = useState(false);
   const [imgError, setImgError] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   // Hidden inside meeting and audio room viewports
   if (pathname.startsWith('/meet/') || pathname.startsWith('/talk/')) {
@@ -83,8 +85,19 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Right: Auth User Capsule / Sign In Button */}
-        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+        {/* Right: Auth User Capsule / Feedback / Sign In Button */}
+        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+          {/* Feedback & Report Button */}
+          <button
+            type="button"
+            onClick={() => setReportModalOpen(true)}
+            title="Report an issue or give feedback"
+            className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.10] hover:border-white/[0.20] text-[#888e90] hover:text-[#fcfdff] text-xs transition-all cursor-pointer"
+          >
+            <MessageSquareIcon size={13} className="text-[#ff7a1a]" />
+            <span className="hidden xs:inline text-[11px] sm:text-xs">Feedback</span>
+          </button>
+
           {isPending ? (
             <div className="h-7 w-16 sm:w-20 bg-white/[0.06] animate-pulse rounded-full" />
           ) : session ? (
@@ -141,6 +154,11 @@ export function Navbar() {
           )}
         </div>
       </div>
+
+      <ReportModal
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+      />
     </header>
   );
 }

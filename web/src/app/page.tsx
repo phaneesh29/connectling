@@ -7,6 +7,7 @@ import { useSession } from '@/lib/auth-client';
 import { roomsApi, type AvailableRoomItem } from '@/lib/rooms-api';
 import { CreateRoomModal } from '@/components/create-room-modal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { ReportModal } from '@/components/report-modal';
 import {
   VideoIcon,
   AudioWaveformIcon,
@@ -31,6 +32,7 @@ export default function DashboardPage() {
   const [activeMode, setActiveMode] = useState<'meet' | 'audio'>('meet');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'meet' | 'audio'>('meet');
+  const [reportModalOpen, setReportModalOpen] = useState(false);
   const [codeInput, setCodeInput] = useState('');
   const [joining, setJoining] = useState(false);
   const [myRooms, setMyRooms] = useState<AvailableRoomItem[]>([]);
@@ -463,6 +465,32 @@ export default function DashboardPage() {
         )}
       </main>
 
+      <footer className="mt-14 sm:mt-18 pt-8 pb-12 border-t border-white/[0.06] text-center space-y-3">
+        <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 text-xs text-[#888e90]">
+          <button
+            type="button"
+            onClick={() => setReportModalOpen(true)}
+            className="hover:text-[#fcfdff] transition-colors cursor-pointer text-[#888e90]"
+          >
+            Report Issue &amp; Feedback
+          </button>
+          <span>•</span>
+          <Link href="/terms" className="hover:text-[#fcfdff] transition-colors">
+            Privacy &amp; Zero-Data Terms
+          </Link>
+          <span>•</span>
+          <a
+            href="mailto:sreephaneesha2005@gmail.com"
+            className="text-[#ff7a1a] hover:underline font-mono"
+          >
+            Any issue? Contact sreephaneesha2005@gmail.com
+          </a>
+        </div>
+        <p className="text-[11px] text-[#555a5e]">
+          Connectling — Ephemeral, zero-data real-time communication.
+        </p>
+      </footer>
+
       <CreateRoomModal
         key={`${modalType}-${modalOpen}`}
         isOpen={modalOpen}
@@ -482,6 +510,11 @@ export default function DashboardPage() {
         isLoading={Boolean(deletingCode)}
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteConfirmRoom(null)}
+      />
+
+      <ReportModal
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
       />
     </div>
   );

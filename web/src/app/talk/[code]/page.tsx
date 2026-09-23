@@ -36,6 +36,7 @@ import { InRoomChat } from '@/components/in-room-chat';
 import { InRoomParticipants } from '@/components/in-room-participants';
 import { TransferHostModal } from '@/components/transfer-host-modal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { ReportModal } from '@/components/report-modal';
 import { MediaDeviceMenu } from '@/components/media-device-menu';
 import { AudioWaveform, AudioRipple } from '@/components/audio-waveform';
 import { useMediaDevices } from '@/hooks/use-media-devices';
@@ -166,6 +167,7 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [updatingKey, setUpdatingKey] = useState<'micForAll' | 'allowChat' | 'allowRaiseHand' | null>(null);
   const [grantedSpeaker, setGrantedSpeaker] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -1250,6 +1252,16 @@ export default function TalkPage({ params }: TalkPageProps) {
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => setReportModalOpen(true)}
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#888e90] hover:text-[#fcfdff] transition-colors border border-white/[0.08] cursor-pointer"
+            title="Report issue or feedback"
+          >
+            <MessageSquareIcon size={13} className="text-[#ff7a1a]" />
+            <span className="hidden md:inline font-mono text-[11px]">Report</span>
+          </button>
+
           {/* Stage Settings (Host) or Permissions (Audience) */}
           {settings && (
             <button
@@ -2209,6 +2221,13 @@ export default function TalkPage({ params }: TalkPageProps) {
 
       {/* Floating Reactions Stream */}
       <FloatingReactions reactions={floatingReactions} />
+
+      {/* Report Issue & Feedback Modal */}
+      <ReportModal
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        roomCode={room?.code || code}
+      />
     </div>
   );
 }
