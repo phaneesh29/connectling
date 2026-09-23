@@ -4,7 +4,7 @@ import { report } from '../../db/report-schema.js';
 import type { CreateReportInput } from './report.validation.js';
 
 export const reportService = {
-  async createReport(input: CreateReportInput, userId?: string) {
+  async createReport(input: CreateReportInput, userId: string) {
     const id = randomUUID();
 
     const [created] = await db
@@ -13,7 +13,7 @@ export const reportService = {
         id,
         category: input.category,
         content: input.content,
-        userId: userId || null,
+        userId: userId,
         roomCode: input.roomCode || null,
       })
       .returning();

@@ -3,7 +3,7 @@ import { reportService } from './report.service.js';
 import type { CreateReportInput } from './report.validation.js';
 
 export const createReportHandler = async (req: Request, res: Response): Promise<void> => {
-  const userId = req.user?.id;
+  const userId = req.user!.id;
   const body = req.body as CreateReportInput;
 
   const result = await reportService.createReport(body, userId);
