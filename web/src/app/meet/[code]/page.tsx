@@ -1074,8 +1074,8 @@ export default function MeetPage({ params }: MeetPageProps) {
         key="local-tile"
         className={`relative bg-[#0a0a0c] overflow-hidden flex items-center justify-center shadow-2xl group transition-all duration-300 ${
           isCompact
-            ? 'rounded-xl aspect-video w-40 sm:w-44 lg:w-full min-h-[90px] lg:min-h-[105px] shrink-0'
-            : 'rounded-2xl min-h-[220px] w-full h-full'
+            ? 'rounded-xl aspect-video w-36 sm:w-44 lg:w-full min-h-[75px] sm:min-h-[90px] lg:min-h-[105px] shrink-0'
+            : 'rounded-2xl min-h-[140px] sm:min-h-[220px] w-full h-full'
         } ${
           isMicOn && localAudio.isSpeaking
             ? 'border border-[#11ff99]/50 ring-2 ring-[#11ff99]/40 shadow-[0_0_35px_rgba(17,255,153,0.18)]'
@@ -1128,7 +1128,7 @@ export default function MeetPage({ params }: MeetPageProps) {
               <AudioRipple isActive={isMicOn} isSpeaking={localAudio.isSpeaking} size={isCompact ? 'sm' : 'md'} />
               <div
                 className={`${
-                  isCompact ? 'h-10 w-10 text-xs' : 'h-14 w-14'
+                  isCompact ? 'h-9 w-9 text-xs' : 'h-12 w-12 sm:h-14 sm:w-14'
                 } rounded-full bg-[#101012] border border-white/[0.08] text-[#888e90] flex items-center justify-center relative z-10 transition-all ${
                   isMicOn && localAudio.isSpeaking ? 'ring-2 ring-emerald-400/90 text-emerald-300' : ''
                 }`}
@@ -1137,14 +1137,14 @@ export default function MeetPage({ params }: MeetPageProps) {
                   <Image
                     src={session.user.image}
                     alt={session.user.name || 'User'}
-                    width={isCompact ? 40 : 56}
-                    height={isCompact ? 40 : 56}
+                    width={isCompact ? 36 : 56}
+                    height={isCompact ? 36 : 56}
                     unoptimized
                     referrerPolicy="no-referrer"
                     className="h-full w-full rounded-full object-cover"
                   />
                 ) : (
-                  <CameraIcon size={isCompact ? 16 : 20} />
+                  <CameraIcon size={isCompact ? 14 : 20} />
                 )}
               </div>
               {isHost && (
@@ -1178,9 +1178,9 @@ export default function MeetPage({ params }: MeetPageProps) {
 
         {/* Bottom Name & Mic Badge */}
         <div
-          className={`absolute bottom-2.5 left-2.5 bg-[#0a0a0c]/85 backdrop-blur-md ${
-            isCompact ? 'px-2 py-1' : 'px-3 py-1.5'
-          } rounded-full text-xs font-medium flex items-center gap-1.5 text-[#fcfdff] border transition-all duration-200 z-20 shadow-lg ${
+          className={`absolute bottom-2 left-2 sm:bottom-2.5 sm:left-2.5 bg-[#0a0a0c]/85 backdrop-blur-md ${
+            isCompact ? 'px-1.5 py-0.5 sm:px-2 sm:py-1' : 'px-2 sm:px-3 py-1 sm:py-1.5'
+          } rounded-full text-xs font-medium flex items-center gap-1 sm:gap-1.5 text-[#fcfdff] border transition-all duration-200 z-20 shadow-lg ${
             isMicOn && localAudio.isSpeaking
               ? 'border-[#11ff99]/40 ring-1 ring-[#11ff99]/30'
               : 'border-white/[0.10]'
@@ -1205,9 +1205,9 @@ export default function MeetPage({ params }: MeetPageProps) {
           ) : (
             <MicOffIcon size={11} className="text-[#ff2047]" />
           )}
-          <span className="text-[11px] truncate max-w-[90px] sm:max-w-[120px]">{session?.user.name}</span>
+          <span className="text-[10px] sm:text-[11px] truncate max-w-[70px] xs:max-w-[90px] sm:max-w-[120px]">{session?.user.name}</span>
           {isHost && (
-            <span className="text-[8px] font-mono bg-white/10 text-[#fcfdff] px-1 py-0.2 rounded uppercase tracking-wider font-semibold">
+            <span className="text-[7px] sm:text-[8px] font-mono bg-white/10 text-[#fcfdff] px-1 py-0.2 rounded uppercase tracking-wider font-semibold">
               HOST
             </span>
           )}
@@ -1234,8 +1234,8 @@ export default function MeetPage({ params }: MeetPageProps) {
         key={p.userId}
         className={`relative bg-[#0a0a0c] overflow-hidden flex items-center justify-center shadow-2xl group transition-all duration-300 ${
           isCompact
-            ? 'rounded-xl aspect-video w-40 sm:w-44 lg:w-full min-h-[90px] lg:min-h-[105px] shrink-0'
-            : 'rounded-2xl min-h-[220px] w-full h-full'
+            ? 'rounded-xl aspect-video w-36 sm:w-44 lg:w-full min-h-[75px] sm:min-h-[90px] lg:min-h-[105px] shrink-0'
+            : 'rounded-2xl min-h-[140px] sm:min-h-[220px] w-full h-full'
         } ${
           isSpeaking
             ? 'border border-[#11ff99]/40 ring-1 ring-[#11ff99]/30 shadow-[0_0_30px_rgba(17,255,153,0.12)]'
@@ -1289,7 +1289,7 @@ export default function MeetPage({ params }: MeetPageProps) {
               <AudioRipple isActive={isSpeaking} size={isCompact ? 'sm' : 'md'} />
               <div
                 className={`${
-                  isCompact ? 'h-10 w-10 text-xs' : 'h-14 w-14'
+                  isCompact ? 'h-9 w-9 text-xs' : 'h-12 w-12 sm:h-14 sm:w-14'
                 } rounded-full bg-[#101012] border border-white/[0.08] text-[#888e90] flex items-center justify-center relative z-10 transition-all ${
                   isSpeaking ? 'ring-2 ring-emerald-400/80 text-emerald-300' : ''
                 }`}
@@ -1298,14 +1298,14 @@ export default function MeetPage({ params }: MeetPageProps) {
                   <Image
                     src={p.image}
                     alt={p.name || 'Participant'}
-                    width={isCompact ? 40 : 56}
-                    height={isCompact ? 40 : 56}
+                    width={isCompact ? 36 : 56}
+                    height={isCompact ? 36 : 56}
                     unoptimized
                     referrerPolicy="no-referrer"
                     className="h-full w-full rounded-full object-cover"
                   />
                 ) : (
-                  <span className={`font-serif ${isCompact ? 'text-sm' : 'text-xl'} text-[#fcfdff]`}>{initial}</span>
+                  <span className={`font-serif ${isCompact ? 'text-xs' : 'text-lg sm:text-xl'} text-[#fcfdff]`}>{initial}</span>
                 )}
               </div>
               {isOtherHost && (
@@ -1400,9 +1400,9 @@ export default function MeetPage({ params }: MeetPageProps) {
 
         {/* Bottom Name & Mic Badge */}
         <div
-          className={`absolute bottom-2.5 left-2.5 bg-[#0a0a0c]/85 backdrop-blur-md ${
-            isCompact ? 'px-2 py-1' : 'px-3 py-1.5'
-          } rounded-full text-xs font-medium flex items-center gap-1.5 text-[#fcfdff] border transition-all duration-200 z-20 shadow-lg ${
+          className={`absolute bottom-2 left-2 sm:bottom-2.5 sm:left-2.5 bg-[#0a0a0c]/85 backdrop-blur-md ${
+            isCompact ? 'px-1.5 py-0.5 sm:px-2 sm:py-1' : 'px-2 sm:px-3 py-1 sm:py-1.5'
+          } rounded-full text-xs font-medium flex items-center gap-1 sm:gap-1.5 text-[#fcfdff] border transition-all duration-200 z-20 shadow-lg ${
             isSpeaking
               ? 'border-[#11ff99]/40 ring-1 ring-[#11ff99]/30'
               : 'border-white/[0.10]'
@@ -1422,9 +1422,9 @@ export default function MeetPage({ params }: MeetPageProps) {
           ) : (
             <MicOffIcon size={11} className="text-[#ff2047]" />
           )}
-          <span className="text-[11px] truncate max-w-[90px] sm:max-w-[120px]">{p.name}</span>
+          <span className="text-[10px] sm:text-[11px] truncate max-w-[70px] xs:max-w-[90px] sm:max-w-[120px]">{p.name}</span>
           {isOtherHost && (
-            <span className="text-[8px] font-mono bg-white/10 text-[#fcfdff] px-1 py-0.2 rounded uppercase tracking-wider font-semibold">
+            <span className="text-[7px] sm:text-[8px] font-mono bg-white/10 text-[#fcfdff] px-1 py-0.2 rounded uppercase tracking-wider font-semibold">
               HOST
             </span>
           )}
@@ -1441,24 +1441,24 @@ export default function MeetPage({ params }: MeetPageProps) {
           <span className="text-[#fcfdff] font-medium">{roomToast.text}</span>
         </div>
       )}
-      <header className="h-14 border-b border-white/[0.06] px-4 sm:px-6 flex items-center justify-between bg-black/60 backdrop-blur-xl">
-        <div className="flex items-center gap-3">
-          <span className="h-2 w-2 rounded-full bg-[#11ff99] shadow-[0_0_8px_#11ff99]" />
-          <div>
-            <h1 className="font-serif-headline text-sm font-normal text-[#fcfdff] truncate max-w-[200px] sm:max-w-md tracking-tight">
+      <header className="h-14 border-b border-white/[0.06] px-3 sm:px-6 flex items-center justify-between bg-black/60 backdrop-blur-xl shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <span className="h-2 w-2 rounded-full bg-[#11ff99] shadow-[0_0_8px_#11ff99] shrink-0" />
+          <div className="min-w-0">
+            <h1 className="font-serif-headline text-xs sm:text-sm font-normal text-[#fcfdff] truncate max-w-[130px] xs:max-w-[200px] sm:max-w-md tracking-tight">
               {room.title}
             </h1>
-            <p className="text-[11px] text-[#888e90] font-mono">ID: {room.code}</p>
+            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate">ID: {room.code}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <button
             onClick={() => {
               setParticipantsOpen(!participantsOpen);
               if (!participantsOpen) setChatOpen(false);
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
               participantsOpen
                 ? 'bg-orange-500/20 text-[#ff7a1a] border-orange-500/40'
                 : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
@@ -1471,7 +1471,7 @@ export default function MeetPage({ params }: MeetPageProps) {
 
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08]"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08] cursor-pointer"
           >
             {copied ? <CheckIcon size={13} className="text-[#11ff99]" /> : <CopyIcon size={13} />}
             <span className="hidden sm:inline font-mono text-[11px]">{copied ? 'Copied' : 'Share Space'}</span>
@@ -1480,7 +1480,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           {isHost && (
             <button
               onClick={() => setSettingsOpen(true)}
-              className="px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08] flex items-center gap-1.5"
+              className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08] flex items-center gap-1.5 cursor-pointer"
             >
               <SettingsIcon size={13} />
               <span className="hidden sm:inline">Settings</span>
@@ -1491,7 +1491,7 @@ export default function MeetPage({ params }: MeetPageProps) {
 
       <main
         className={`flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center ${
-          isAnyoneScreenSharing ? 'p-1.5 sm:p-2.5' : 'p-3 sm:p-5'
+          isAnyoneScreenSharing ? 'p-1.5 sm:p-2.5' : 'p-2 sm:p-5'
         }`}
       >
         {isAnyoneScreenSharing ? (
@@ -1516,34 +1516,34 @@ export default function MeetPage({ params }: MeetPageProps) {
               ) : null}
 
               {/* Top Presentation Bar: Unified Header for Presenter Info & Controls */}
-              <div className="absolute top-2.5 sm:top-3.5 inset-x-2.5 sm:inset-x-4 z-20 flex items-center justify-between gap-2 pointer-events-none">
+              <div className="absolute top-2 sm:top-3.5 inset-x-2 sm:inset-x-4 z-20 flex items-center justify-between gap-1.5 sm:gap-2 pointer-events-none">
                 {/* Left: Presenter Status Pill */}
-                <div className="flex items-center gap-2 bg-[#0a0a0c]/85 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/[0.12] shadow-xl text-xs font-medium text-[#fcfdff] pointer-events-auto min-w-0 max-w-[55%] sm:max-w-none">
-                  <span className="h-2 w-2 rounded-full bg-[#11ff99] animate-pulse shrink-0" />
-                  <MonitorIcon size={14} className="text-[#ff7a1a] shrink-0" />
-                  <span className="font-mono text-[11px] font-semibold tracking-wide truncate">
+                <div className="flex items-center gap-1.5 sm:gap-2 bg-[#0a0a0c]/85 backdrop-blur-md px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border border-white/[0.12] shadow-xl text-xs font-medium text-[#fcfdff] pointer-events-auto min-w-0 max-w-[45%] sm:max-w-none">
+                  <span className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full bg-[#11ff99] animate-pulse shrink-0" />
+                  <MonitorIcon size={13} className="text-[#ff7a1a] shrink-0" />
+                  <span className="font-mono text-[10px] sm:text-[11px] font-semibold tracking-wide truncate">
                     {isScreenSharing ? 'You are presenting' : `${remotePresenter?.name || 'Participant'} is presenting`}
                   </span>
                 </div>
 
                 {/* Right: Controls (Tiles toggle, Fullscreen, Stop) */}
-                <div className="flex items-center gap-1.5 sm:gap-2 pointer-events-auto shrink-0">
+                <div className="flex items-center gap-1 sm:gap-2 pointer-events-auto shrink-0">
                   {/* Toggle Filmstrip Tiles */}
                   <button
                     type="button"
                     onClick={() => setFilmstripCollapsed(!filmstripCollapsed)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#0a0a0c]/85 hover:bg-[#141418] text-[#fcfdff] border border-white/[0.14] text-xs font-medium transition-colors shadow-xl active:scale-95 cursor-pointer backdrop-blur-md"
+                    className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-[#0a0a0c]/85 hover:bg-[#141418] text-[#fcfdff] border border-white/[0.14] text-xs font-medium transition-colors shadow-xl active:scale-95 cursor-pointer backdrop-blur-md"
                     title={filmstripCollapsed ? 'Show participant tiles' : 'Hide participant tiles'}
                   >
                     {filmstripCollapsed ? (
                       <>
                         <UsersIcon size={13} className="text-[#ff7a1a]" />
-                        <span className="text-[11px] font-mono">Show Tiles ({Math.max(1, participants.length)})</span>
+                        <span className="text-[10px] sm:text-[11px] font-mono">Tiles ({Math.max(1, participants.length)})</span>
                       </>
                     ) : (
                       <>
                         <UsersIcon size={13} className="text-[#888e90]" />
-                        <span className="text-[11px] font-mono hidden sm:inline">Hide Tiles</span>
+                        <span className="text-[10px] sm:text-[11px] font-mono hidden sm:inline">Hide Tiles</span>
                       </>
                     )}
                   </button>
@@ -1552,7 +1552,7 @@ export default function MeetPage({ params }: MeetPageProps) {
                   <button
                     type="button"
                     onClick={toggleFullscreen}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors shadow-xl active:scale-95 cursor-pointer backdrop-blur-md ${
+                    className={`flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border text-xs font-medium transition-colors shadow-xl active:scale-95 cursor-pointer backdrop-blur-md ${
                       isFullscreen
                         ? 'bg-orange-500/20 text-[#ff7a1a] border-orange-500/40 shadow-sm'
                         : 'bg-[#0a0a0c]/85 hover:bg-[#141418] text-[#fcfdff] border-white/[0.14]'
@@ -1562,12 +1562,12 @@ export default function MeetPage({ params }: MeetPageProps) {
                     {isFullscreen ? (
                       <>
                         <Minimize2 size={13} className="text-[#ff7a1a]" />
-                        <span className="text-[11px] font-mono">Exit Fullscreen</span>
+                        <span className="text-[10px] sm:text-[11px] font-mono hidden sm:inline">Exit Fullscreen</span>
                       </>
                     ) : (
                       <>
                         <Maximize2 size={13} />
-                        <span className="text-[11px] font-mono hidden sm:inline">Fullscreen</span>
+                        <span className="text-[10px] sm:text-[11px] font-mono hidden sm:inline">Fullscreen</span>
                       </>
                     )}
                   </button>
@@ -1577,10 +1577,11 @@ export default function MeetPage({ params }: MeetPageProps) {
                     <button
                       type="button"
                       onClick={handleToggleScreenShare}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 border border-red-500/40 text-xs font-medium transition-colors shadow-xl active:scale-95 cursor-pointer backdrop-blur-md"
+                      className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 border border-red-500/40 text-xs font-medium transition-colors shadow-xl active:scale-95 cursor-pointer backdrop-blur-md"
                     >
                       <XIcon size={13} />
-                      <span className="text-[11px] font-mono">Stop Presenting</span>
+                      <span className="text-[10px] sm:text-[11px] font-mono hidden sm:inline">Stop Presenting</span>
+                      <span className="text-[10px] sm:text-[11px] font-mono sm:hidden">Stop</span>
                     </button>
                   )}
                 </div>
@@ -1597,14 +1598,14 @@ export default function MeetPage({ params }: MeetPageProps) {
           </div>
         ) : (
           <div
-            className={`w-full max-w-5xl grid gap-4 h-full max-h-[72vh] ${
+            className={`w-full max-w-5xl grid gap-2 sm:gap-4 h-full max-h-[76vh] sm:max-h-[72vh] overflow-y-auto sm:overflow-hidden ${
               otherParticipants.length === 0
-                ? 'grid-cols-1 md:grid-cols-2'
+                ? 'grid-cols-1'
                 : otherParticipants.length === 1
-                ? 'grid-cols-1 md:grid-cols-2'
+                ? 'grid-cols-1 grid-rows-2 sm:grid-cols-2 sm:grid-rows-1'
                 : otherParticipants.length <= 3
-                ? 'grid-cols-1 sm:grid-cols-2'
-                : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+                ? 'grid-cols-2 grid-rows-2'
+                : 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-3'
             }`}
           >
             {renderLocalTile(false)}
@@ -1635,8 +1636,8 @@ export default function MeetPage({ params }: MeetPageProps) {
         )}
       </main>
 
-      <footer className="relative z-40 h-20 border-t border-white/[0.06] px-4 sm:px-6 flex items-center justify-center bg-black/75 backdrop-blur-xl">
-        <div className="flex items-center gap-3 sm:gap-4 p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-xl shadow-2xl">
+      <footer className="relative z-40 h-auto py-2.5 sm:py-0 sm:h-20 border-t border-white/[0.06] px-2 sm:px-6 flex items-center justify-center bg-black/85 backdrop-blur-xl pb-[calc(0.6rem+env(safe-area-inset-bottom,0px))]">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 p-1 sm:p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl shadow-2xl max-w-full overflow-x-auto no-scrollbar">
           {/* Microphone Split Button */}
           <div
             className={`inline-flex items-center rounded-xl transition-all ${
@@ -1655,7 +1656,7 @@ export default function MeetPage({ params }: MeetPageProps) {
               type="button"
               onClick={handleToggleMic}
               disabled={!isMicAllowed && !isMicOn}
-              className="h-10 px-3 rounded-l-xl flex items-center justify-center hover:bg-white/[0.06] transition-all cursor-pointer disabled:cursor-not-allowed"
+              className="h-9 sm:h-10 px-2.5 sm:px-3 rounded-l-xl flex items-center justify-center hover:bg-white/[0.06] transition-all cursor-pointer disabled:cursor-not-allowed"
               title={
                 !isMicAllowed && !isMicOn
                   ? 'Microphone disabled by host'
@@ -1664,10 +1665,10 @@ export default function MeetPage({ params }: MeetPageProps) {
                   : 'Unmute Microphone'
               }
             >
-              {isMicOn ? <MicIcon size={17} /> : <MicOffIcon size={17} />}
+              {isMicOn ? <MicIcon size={16} /> : <MicOffIcon size={16} />}
             </button>
             <div
-              className={`w-px h-4.5 ${
+              className={`w-px h-4 sm:h-4.5 ${
                 isMicOn ? (audioMenuOpen ? 'bg-[#FF9933]/40' : 'bg-[#FF9933]/30') : 'bg-white/20'
               }`}
             />
@@ -1680,7 +1681,7 @@ export default function MeetPage({ params }: MeetPageProps) {
                   setAudioMenuOpen((prev) => !prev);
                   setVideoMenuOpen(false);
                 }}
-                className={`h-10 px-2 rounded-r-xl flex items-center justify-center hover:bg-white/[0.08] transition-all cursor-pointer ${
+                className={`h-9 sm:h-10 px-1.5 sm:px-2 rounded-r-xl flex items-center justify-center hover:bg-white/[0.08] transition-all cursor-pointer ${
                   audioMenuOpen
                     ? 'bg-white/[0.12] text-[#FF9933]'
                     : isMicOn
@@ -1690,7 +1691,7 @@ export default function MeetPage({ params }: MeetPageProps) {
                 title="Microphone & Speaker Settings"
               >
                 <ChevronUpIcon
-                  size={14}
+                  size={13}
                   className={`transition-transform duration-200 pointer-events-none ${
                     audioMenuOpen ? 'rotate-180 text-[#FF9933]' : isMicOn ? 'text-[#FF9933]' : ''
                   }`}
@@ -1735,7 +1736,7 @@ export default function MeetPage({ params }: MeetPageProps) {
               type="button"
               onClick={handleToggleVideo}
               disabled={!isVideoAllowed && !isVideoOn}
-              className="h-10 px-3 rounded-l-xl flex items-center justify-center hover:bg-white/[0.06] transition-all cursor-pointer disabled:cursor-not-allowed"
+              className="h-9 sm:h-10 px-2.5 sm:px-3 rounded-l-xl flex items-center justify-center hover:bg-white/[0.06] transition-all cursor-pointer disabled:cursor-not-allowed"
               title={
                 !isVideoAllowed && !isVideoOn
                   ? 'Camera disabled by host'
@@ -1744,10 +1745,10 @@ export default function MeetPage({ params }: MeetPageProps) {
                   : 'Turn On Camera'
               }
             >
-              {isVideoOn ? <VideoIcon size={17} /> : <CameraIcon size={17} />}
+              {isVideoOn ? <VideoIcon size={16} /> : <CameraIcon size={16} />}
             </button>
             <div
-              className={`w-px h-4.5 ${
+              className={`w-px h-4 sm:h-4.5 ${
                 isVideoOn ? (videoMenuOpen ? 'bg-[#ff7a1a]/40' : 'bg-white/[0.10]') : 'bg-white/20'
               }`}
             />
@@ -1760,13 +1761,13 @@ export default function MeetPage({ params }: MeetPageProps) {
                   setVideoMenuOpen((prev) => !prev);
                   setAudioMenuOpen(false);
                 }}
-                className={`h-10 px-2 rounded-r-xl flex items-center justify-center hover:bg-white/[0.08] transition-all cursor-pointer ${
+                className={`h-9 sm:h-10 px-1.5 sm:px-2 rounded-r-xl flex items-center justify-center hover:bg-white/[0.08] transition-all cursor-pointer ${
                   videoMenuOpen ? 'bg-white/[0.12] text-[#ff7a1a]' : 'text-[#888e90] hover:text-[#fcfdff]'
                 }`}
                 title="Camera Settings"
               >
                 <ChevronUpIcon
-                  size={14}
+                  size={13}
                   className={`transition-transform duration-200 pointer-events-none ${
                     videoMenuOpen ? 'rotate-180 text-[#ff7a1a]' : ''
                   }`}
@@ -1789,7 +1790,7 @@ export default function MeetPage({ params }: MeetPageProps) {
             type="button"
             onClick={handleToggleScreenShare}
             disabled={!isScreenShareAllowed && !isScreenSharing}
-            className={`h-10 w-10 rounded-lg flex items-center justify-center transition-all cursor-pointer ${
+            className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 ${
               !isScreenShareAllowed && !isScreenSharing
                 ? 'opacity-40 cursor-not-allowed bg-[#101012] text-[#888e90]'
                 : isScreenSharing
@@ -1804,7 +1805,7 @@ export default function MeetPage({ params }: MeetPageProps) {
                 : 'Share Screen'
             }
           >
-            <MonitorIcon size={17} />
+            <MonitorIcon size={16} />
           </button>
 
           {/* Universal Raise Hand Button */}
@@ -1812,7 +1813,7 @@ export default function MeetPage({ params }: MeetPageProps) {
             type="button"
             onClick={handleToggleHandRaise}
             disabled={!isRaiseHandAllowed && !handRaised}
-            className={`h-10 px-3 rounded-xl flex items-center gap-1.5 font-medium text-xs transition-all cursor-pointer ${
+            className={`h-9 px-2 sm:h-10 sm:px-3 rounded-xl flex items-center gap-1.5 font-medium text-xs transition-all cursor-pointer shrink-0 ${
               !isRaiseHandAllowed && !handRaised
                 ? 'opacity-40 cursor-not-allowed bg-[#121216] text-[#888e90] border border-white/[0.06]'
                 : handRaised
@@ -1836,14 +1837,14 @@ export default function MeetPage({ params }: MeetPageProps) {
               setParticipantsOpen(!participantsOpen);
               if (!participantsOpen) setChatOpen(false);
             }}
-            className={`relative h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
+            className={`relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 ${
               participantsOpen
                 ? 'bg-orange-500/20 text-[#ff7a1a] border border-orange-500/40 shadow-sm'
                 : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
             }`}
             title="People in space"
           >
-            <UsersIcon size={17} />
+            <UsersIcon size={16} />
             {participants.length > 0 && (
               <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#ff7a1a] text-black font-mono text-[9px] font-bold flex items-center justify-center shadow-lg">
                 {participants.length}
@@ -1859,14 +1860,14 @@ export default function MeetPage({ params }: MeetPageProps) {
                 setUnreadChatCount(0);
               }
             }}
-            className={`relative h-10 w-10 rounded-lg flex items-center justify-center transition-all ${
+            className={`relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 ${
               chatOpen
                 ? 'bg-orange-500/20 text-[#ff7a1a] border border-orange-500/40 shadow-sm'
                 : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
             }`}
             title="In-Call Messages"
           >
-            <MessageSquareIcon size={17} />
+            <MessageSquareIcon size={16} />
             {unreadChatCount > 0 && !chatOpen && (
               <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#ff7a1a] text-black font-mono text-[9px] font-bold flex items-center justify-center shadow-lg animate-pulse">
                 {unreadChatCount}
@@ -1874,22 +1875,22 @@ export default function MeetPage({ params }: MeetPageProps) {
             )}
           </button>
 
-          <div className="h-6 w-px bg-white/[0.08] mx-1" />
+          <div className="h-5 sm:h-6 w-px bg-white/[0.08] mx-0.5 sm:mx-1 shrink-0" />
 
           <button
             onClick={handleLeaveClick}
             disabled={leaving || ending}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#101012] hover:bg-[#18181c] text-[#888e90] hover:text-[#fcfdff] font-medium text-xs transition-all border border-white/[0.08] disabled:opacity-50"
+            className="flex items-center gap-1.5 h-9 px-2 sm:h-10 sm:px-3.5 rounded-xl bg-[#101012] hover:bg-[#18181c] text-[#888e90] hover:text-[#fcfdff] font-medium text-xs transition-all border border-white/[0.08] disabled:opacity-50 cursor-pointer shrink-0"
           >
             {leaving ? (
               <>
                 <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
-                <span>Leaving...</span>
+                <span className="hidden sm:inline">Leaving...</span>
               </>
             ) : (
               <>
                 <LogOutIcon size={13} />
-                <span>Leave</span>
+                <span className="hidden sm:inline">Leave</span>
               </>
             )}
           </button>
@@ -1898,17 +1899,18 @@ export default function MeetPage({ params }: MeetPageProps) {
             <button
               onClick={handleEndRoom}
               disabled={leaving || ending}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#ff2047] hover:bg-[#ff2047]/90 text-white font-medium text-xs transition-all shadow-[0_0_16px_rgba(255,32,71,0.3)] disabled:opacity-50"
+              className="flex items-center gap-1.5 h-9 px-2 sm:h-10 sm:px-3.5 rounded-xl bg-[#ff2047] hover:bg-[#ff2047]/90 text-white font-medium text-xs transition-all shadow-[0_0_16px_rgba(255,32,71,0.3)] disabled:opacity-50 cursor-pointer shrink-0"
             >
               {ending ? (
                 <>
                   <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
-                  <span>Ending Space...</span>
+                  <span className="hidden sm:inline">Ending...</span>
                 </>
               ) : (
                 <>
                   <PhoneCallIcon size={13} />
-                  <span>End Space</span>
+                  <span className="hidden sm:inline">End Space</span>
+                  <span className="text-[11px] sm:hidden">End</span>
                 </>
               )}
             </button>

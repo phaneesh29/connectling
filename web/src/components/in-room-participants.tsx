@@ -108,7 +108,7 @@ export function InRoomParticipants({
             placeholder="Search participants..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs text-[#fcfdff] placeholder-[#888e90] focus:outline-none focus:border-white/30 transition-all font-sans"
+            className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-base sm:text-xs text-[#fcfdff] placeholder-[#888e90] focus:outline-none focus:border-white/30 transition-all font-sans"
           />
         </div>
       </div>
@@ -337,7 +337,7 @@ export function InRoomParticipants({
       </div>
 
       {/* Invite Link Footer */}
-      <div className="p-3 border-t border-white/[0.08] bg-[#06060a] shrink-0">
+      <div className="p-3 border-t border-white/[0.08] bg-[#06060a] shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
         <button
           onClick={onCopyLink}
           className="w-full flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-[#101012] hover:bg-[#18181c] border border-white/[0.12] text-xs font-medium text-[#fcfdff] transition-all"

@@ -95,14 +95,14 @@ export function MediaDeviceMenu({
   return (
     <div
       ref={menuRef}
-      className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-80 sm:w-84 max-w-[calc(100vw-24px)] max-h-[min(520px,calc(100vh-110px))] overflow-y-auto no-scrollbar bg-[#0c0c10]/95 border border-white/[0.14] rounded-2xl p-4 shadow-[0_25px_70px_-10px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] text-[#fcfdff] z-50 backdrop-blur-2xl animate-in zoom-in-95 fade-in slide-in-from-bottom-2 duration-150 ring-1 ring-white/10"
+      className="fixed inset-x-3 bottom-20 z-50 sm:absolute sm:bottom-full sm:mb-3 sm:left-1/2 sm:-translate-x-1/2 sm:inset-x-auto w-auto sm:w-84 max-w-[calc(100vw-24px)] max-h-[min(520px,calc(100vh-110px))] overflow-y-auto no-scrollbar bg-[#0c0c10]/95 border border-white/[0.14] rounded-2xl p-3.5 sm:p-4 shadow-[0_25px_70px_-10px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] text-[#fcfdff] backdrop-blur-2xl animate-in zoom-in-95 fade-in slide-in-from-bottom-2 duration-150 ring-1 ring-white/10"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Top Ambient Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-16 blur-2xl pointer-events-none opacity-30 bg-gradient-brand-r" />
 
-      {/* Bottom Notch Anchor directly over Up-Arrow */}
-      <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#0c0c10] border-r border-b border-white/[0.14] rotate-45 pointer-events-none" />
+      {/* Bottom Notch Anchor directly over Up-Arrow (desktop only) */}
+      <div className="hidden sm:block absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#0c0c10] border-r border-b border-white/[0.14] rotate-45 pointer-events-none" />
 
       {/* Header */}
       <div className="flex items-center justify-between pb-3 mb-3.5 border-b border-white/[0.08] relative z-10">

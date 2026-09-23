@@ -94,15 +94,15 @@ export function ConfirmDialog({
         />
 
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-[#06060a]/60 relative z-10">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/[0.06] bg-[#06060a]/60 relative z-10">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div
               className={`h-9 w-9 rounded-lg flex items-center justify-center border shrink-0 ${iconBox}`}
             >
               {icon}
             </div>
-            <div>
-              <h3 className="font-serif-headline text-base font-normal text-[#fcfdff] tracking-tight">
+            <div className="min-w-0">
+              <h3 className="font-serif-headline text-base font-normal text-[#fcfdff] tracking-tight truncate">
                 {title}
               </h3>
             </div>
@@ -111,7 +111,7 @@ export function ConfirmDialog({
             <button
               onClick={onCancel}
               disabled={isLoading}
-              className="text-[#888e90] hover:text-[#fcfdff] p-1.5 rounded-lg hover:bg-[#101012] transition-colors cursor-pointer disabled:opacity-50"
+              className="text-[#888e90] hover:text-[#fcfdff] p-1.5 rounded-lg hover:bg-[#101012] transition-colors cursor-pointer disabled:opacity-50 shrink-0 ml-2"
             >
               <XIcon size={14} />
             </button>
@@ -119,17 +119,17 @@ export function ConfirmDialog({
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 relative z-10 space-y-4">
+        <div className="p-4 sm:p-6 relative z-10 space-y-4">
           <p className="text-xs text-[#888e90] leading-relaxed">{description}</p>
 
           {/* Action Buttons */}
-          <div className="pt-3 border-t border-white/[0.06] flex items-center justify-end gap-2.5">
+          <div className="pt-3 border-t border-white/[0.06] flex flex-col-reverse xs:flex-row items-stretch xs:items-center justify-end gap-2 sm:gap-2.5">
             {!alertOnly && onCancel && (
               <button
                 type="button"
                 disabled={isLoading}
                 onClick={onCancel}
-                className="px-4 py-2 text-xs font-medium text-[#888e90] hover:text-[#fcfdff] bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-xl transition-all disabled:opacity-50 cursor-pointer"
+                className="px-4 py-2 text-xs font-medium text-[#888e90] hover:text-[#fcfdff] bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-xl transition-all disabled:opacity-50 cursor-pointer text-center justify-center"
               >
                 {cancelText}
               </button>
@@ -138,7 +138,7 @@ export function ConfirmDialog({
               type="button"
               disabled={isLoading}
               onClick={onConfirm}
-              className={`px-4 py-2 text-xs font-medium rounded-xl transition-all flex items-center gap-2 cursor-pointer ${confirmBtn} disabled:opacity-50`}
+              className={`px-4 py-2 text-xs font-medium rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${confirmBtn} disabled:opacity-50 text-center`}
             >
               {isLoading && (
                 <div className="animate-spin h-3 w-3 border border-current/30 border-t-current rounded-full" />

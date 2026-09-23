@@ -159,7 +159,7 @@ export function InRoomChat({
       )}
       <form
         onSubmit={handleSend}
-        className="p-3 border-t border-white/[0.08] bg-[#06060a] flex items-center gap-2 shrink-0"
+        className="p-3 border-t border-white/[0.08] bg-[#06060a] flex items-center gap-2 shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]"
       >
         <input
           ref={inputRef}
@@ -174,7 +174,7 @@ export function InRoomChat({
           }
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          className="flex-1 px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-xs text-[#fcfdff] placeholder-[#888e90] focus:outline-none focus:border-white/40 transition-all font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-base sm:text-xs text-[#fcfdff] placeholder-[#888e90] focus:outline-none focus:border-white/40 transition-all font-sans disabled:opacity-50 disabled:cursor-not-allowed"
         />
 
         <button

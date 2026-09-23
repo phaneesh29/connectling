@@ -1232,24 +1232,24 @@ export default function TalkPage({ params }: TalkPageProps) {
           <span className="text-[#fcfdff] font-medium">{roomToast.text}</span>
         </div>
       )}
-      <header className="h-14 border-b border-white/[0.06] px-4 sm:px-6 flex items-center justify-between bg-black/60 backdrop-blur-xl">
-        <div className="flex items-center gap-3">
-          <div className="h-7 w-7 rounded-lg bg-[#101012] border border-white/[0.08] text-[#f59e0b] flex items-center justify-center">
+      <header className="h-14 border-b border-white/[0.06] px-3 sm:px-6 flex items-center justify-between bg-black/60 backdrop-blur-xl">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <div className="h-7 w-7 rounded-lg bg-[#101012] border border-white/[0.08] text-[#f59e0b] flex items-center justify-center shrink-0">
             <AudioWaveformIcon size={14} />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-serif-headline text-sm font-normal text-[#fcfdff] truncate max-w-[200px] sm:max-w-md tracking-tight">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <h1 className="font-serif-headline text-xs sm:text-sm font-normal text-[#fcfdff] truncate max-w-[110px] xs:max-w-[180px] sm:max-w-md tracking-tight">
                 {room.title}
               </h1>
-              <span className="text-[9px] font-mono px-2 py-0.5 bg-[#101012] text-[#f59e0b] border border-white/[0.08] rounded-full uppercase tracking-wider font-semibold">
+              <span className="hidden xs:inline-block text-[9px] font-mono px-2 py-0.5 bg-[#101012] text-[#f59e0b] border border-white/[0.08] rounded-full uppercase tracking-wider font-semibold shrink-0">
                 STAGE LIVE
               </span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Stage Settings (Host) or Permissions (Audience) */}
           {settings && (
             <button
@@ -1258,7 +1258,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 setParticipantsOpen(false);
                 setChatOpen(false);
               }}
-              className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+              className={`relative flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
                 isHost && pendingHandRaisesCount > 0
                   ? 'bg-[#ffc53d]/15 text-[#ffc53d] border-[#ffc53d]/40 shadow-[0_0_12px_rgba(255,197,61,0.2)]'
                   : settingsOpen
@@ -1291,7 +1291,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 setSettingsOpen(false);
               }
             }}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
               participantsOpen
                 ? 'bg-amber-500/20 text-[#f59e0b] border-amber-500/40'
                 : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
@@ -1304,7 +1304,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08]"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08]"
           >
             {copied ? <CheckIcon size={13} className="text-[#11ff99]" /> : <CopyIcon size={13} />}
             <span className="hidden sm:inline font-mono text-[11px]">{copied ? 'Copied' : 'Share Stage'}</span>
@@ -1312,10 +1312,10 @@ export default function TalkPage({ params }: TalkPageProps) {
         </div>
       </header>
 
-      <main className="flex-1 p-4 sm:p-6 overflow-y-auto max-w-5xl mx-auto w-full space-y-6">
+      <main className="flex-1 p-3.5 sm:p-6 overflow-y-auto max-w-5xl mx-auto w-full space-y-4 sm:space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className="text-xs font-mono text-[#888e90] uppercase tracking-wider">
+            <span className="text-[11px] sm:text-xs font-mono text-[#888e90] uppercase tracking-wider">
               Stage Participants & Listeners
             </span>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#101012] border border-white/[0.06] text-[#f59e0b] font-medium">
@@ -1324,7 +1324,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-4">
           {displayParticipants.map((p) => {
             const isPHost = p.userId === room.hostId;
             const isMe = p.userId === session?.user?.id;
@@ -1341,7 +1341,7 @@ export default function TalkPage({ params }: TalkPageProps) {
               <div
                 key={p.userId}
                 style={gradient.containerStyle}
-                className={`relative p-5 border rounded-2xl flex flex-col items-center justify-center text-center space-y-3 transition-all duration-200 group overflow-hidden min-h-[160px] ${
+                className={`relative p-3.5 sm:p-5 border rounded-2xl flex flex-col items-center justify-center text-center space-y-2.5 sm:space-y-3 transition-all duration-200 group overflow-hidden min-h-[140px] sm:min-h-[160px] ${
                   gradient.borderClass
                 } ${
                   isSpeaking ? 'ring-1 ring-emerald-500/50' : ''
@@ -1418,7 +1418,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                     size="md"
                   />
                   <div
-                    className={`h-16 w-16 rounded-full bg-[#121216] border border-white/[0.10] flex items-center justify-center overflow-hidden shadow-lg transition-transform duration-200 group-hover:scale-[1.02] relative z-10 ${
+                    className={`h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-[#121216] border border-white/[0.10] flex items-center justify-center overflow-hidden shadow-lg transition-transform duration-200 group-hover:scale-[1.02] relative z-10 ${
                       isSpeaking ? 'ring-2 ring-emerald-400/80 ring-offset-2 ring-offset-[#09090b]' : ''
                     }`}
                   >
@@ -1433,7 +1433,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <span className="font-serif text-2xl text-[#fcfdff] font-normal">{initial}</span>
+                      <span className="font-serif text-xl sm:text-2xl text-[#fcfdff] font-normal">{initial}</span>
                     )}
                   </div>
 
@@ -1527,7 +1527,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
                   {/* Host Direct Unmute / Remote Mute / Speaker Controls on Participant Tile */}
                   {isHost && !isPHost && (
-                    <div className="pt-2 flex justify-center w-full">
+                    <div className="pt-1.5 sm:pt-2 flex justify-center w-full">
                       {p.handRaised && !p.canSpeak ? (
                         <button
                           type="button"
@@ -1535,11 +1535,11 @@ export default function TalkPage({ params }: TalkPageProps) {
                             e.stopPropagation();
                             handleGrantMic(p.userId, p.name);
                           }}
-                          className="w-full py-1 px-2 rounded-lg bg-[#FF9933]/20 hover:bg-[#FF9933]/30 text-[#FF9933] border border-[#FF9933]/40 text-[11px] font-semibold flex items-center justify-center gap-1 shadow-[0_0_12px_rgba(255,153,51,0.2)] transition-all animate-pulse active:scale-95 cursor-pointer"
+                          className="w-full py-1 px-1.5 sm:px-2 rounded-lg bg-[#FF9933]/20 hover:bg-[#FF9933]/30 text-[#FF9933] border border-[#FF9933]/40 text-[10px] sm:text-[11px] font-semibold flex items-center justify-center gap-1 shadow-[0_0_12px_rgba(255,153,51,0.2)] transition-all animate-pulse active:scale-95 cursor-pointer truncate"
                           title="Allow participant to speak"
                         >
-                          <MicIcon size={12} />
-                          <span>Allow to Speak</span>
+                          <MicIcon size={12} className="shrink-0" />
+                          <span className="truncate">Allow to Speak</span>
                         </button>
                       ) : !p.isMuted ? (
                         <button
@@ -1548,25 +1548,25 @@ export default function TalkPage({ params }: TalkPageProps) {
                             e.stopPropagation();
                             handleRemoteMute(p.userId, p.name);
                           }}
-                          className="w-full py-0.5 px-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer"
+                          className="w-full py-0.5 px-1.5 sm:px-2 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-[9px] sm:text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer truncate"
                           title="Mute participant"
                         >
-                          <MicOffIcon size={11} />
+                          <MicOffIcon size={11} className="shrink-0" />
                           <span>Mute</span>
                         </button>
                       ) : p.canSpeak ? (
-                        <div className="flex items-center gap-1.5 w-full">
+                        <div className="flex items-center gap-1 sm:gap-1.5 w-full">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleRequestUnmute(p.userId, p.name);
                             }}
-                            className="flex-1 py-0.5 px-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer"
+                            className="flex-1 min-w-0 py-0.5 px-1.5 sm:px-2 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-[9px] sm:text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer"
                             title="Ask speaker to unmute"
                           >
-                            <MicIcon size={11} />
-                            <span>Ask Unmute</span>
+                            <MicIcon size={11} className="shrink-0" />
+                            <span className="truncate">Ask Unmute</span>
                           </button>
                           <button
                             type="button"
@@ -1574,11 +1574,11 @@ export default function TalkPage({ params }: TalkPageProps) {
                               e.stopPropagation();
                               handleRevokeMic(p.userId, p.name);
                             }}
-                            className="py-0.5 px-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer"
+                            className="py-0.5 px-1.5 sm:px-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[9px] sm:text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer shrink-0"
                             title="Revoke speaking access"
                           >
-                            <MicOffIcon size={11} />
-                            <span>Revoke</span>
+                            <MicOffIcon size={11} className="shrink-0" />
+                            <span className="hidden xs:inline">Revoke</span>
                           </button>
                         </div>
                       ) : (
@@ -1588,10 +1588,10 @@ export default function TalkPage({ params }: TalkPageProps) {
                             e.stopPropagation();
                             handleGrantMic(p.userId, p.name);
                           }}
-                          className="opacity-0 group-hover:opacity-100 w-full py-0.5 px-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.08] text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer"
+                          className="opacity-0 group-hover:opacity-100 w-full py-0.5 px-1.5 sm:px-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.08] text-[9px] sm:text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer truncate"
                           title="Invite participant to speak"
                         >
-                          <MicIcon size={11} />
+                          <MicIcon size={11} className="shrink-0" />
                           <span>Allow Mic</span>
                         </button>
                       )}
@@ -1603,9 +1603,9 @@ export default function TalkPage({ params }: TalkPageProps) {
           })}
 
           {displayParticipants.length <= 1 && (
-            <div className="p-5 bg-[#09090b]/60 border border-dashed border-white/[0.08] hover:border-white/[0.14] rounded-2xl flex flex-col items-center justify-center text-center space-y-2.5 min-h-[160px] transition-all">
-              <div className="h-10 w-10 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#888e90]">
-                <HeadphonesIcon size={18} />
+            <div className="p-4 sm:p-5 bg-[#09090b]/60 border border-dashed border-white/[0.08] hover:border-white/[0.14] rounded-2xl flex flex-col items-center justify-center text-center space-y-2 sm:space-y-2.5 min-h-[140px] sm:min-h-[160px] transition-all">
+              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#888e90]">
+                <HeadphonesIcon size={17} />
               </div>
               <div className="space-y-0.5">
                 <p className="text-xs text-[#fcfdff] font-medium">Listening Lounge</p>
@@ -1622,11 +1622,11 @@ export default function TalkPage({ params }: TalkPageProps) {
         </div>
       </main>
 
-      <footer className="relative z-40 h-20 border-t border-white/[0.06] px-4 sm:px-6 flex items-center justify-center bg-black/75 backdrop-blur-xl">
-        <div className="flex items-center gap-3 sm:gap-4 p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-xl shadow-2xl">
+      <footer className="relative z-40 h-auto py-2.5 sm:py-0 sm:h-20 border-t border-white/[0.06] px-2 sm:px-6 flex items-center justify-center bg-black/80 backdrop-blur-xl pb-[calc(0.6rem+env(safe-area-inset-bottom,0px))]">
+        <div className="flex items-center gap-1.5 sm:gap-4 p-1 sm:p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-xl shadow-2xl max-w-full overflow-x-auto no-scrollbar">
           {isSpeaker ? (
             <div
-              className={`inline-flex items-center rounded-xl transition-all ${
+              className={`inline-flex items-center rounded-xl transition-all shrink-0 ${
                 !isMuted
                   ? audioMenuOpen
                     ? 'bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/50 ring-1 ring-[#FF9933]/40 shadow-[0_0_18px_rgba(255,153,51,0.25)]'
@@ -1639,13 +1639,13 @@ export default function TalkPage({ params }: TalkPageProps) {
               <button
                 type="button"
                 onClick={handleToggleMic}
-                className="h-10 px-3 rounded-l-xl flex items-center justify-center hover:bg-white/[0.06] transition-all cursor-pointer"
+                className="h-9 sm:h-10 px-2 sm:px-3 rounded-l-xl flex items-center justify-center hover:bg-white/[0.06] transition-all cursor-pointer"
                 title={!isMuted ? 'Mute microphone' : 'Unmute microphone'}
               >
-                {!isMuted ? <MicIcon size={17} /> : <MicOffIcon size={17} />}
+                {!isMuted ? <MicIcon size={16} /> : <MicOffIcon size={16} />}
               </button>
               <div
-                className={`w-px h-4.5 ${
+                className={`w-px h-4 sm:h-4.5 ${
                   !isMuted ? 'bg-[#FF9933]/30' : audioMenuOpen ? 'bg-white/20' : 'bg-white/[0.10]'
                 }`}
               />
@@ -1655,7 +1655,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                   type="button"
                   data-media-menu-toggle="audio"
                   onClick={() => setAudioMenuOpen((prev) => !prev)}
-                  className={`h-10 px-2 rounded-r-xl flex items-center justify-center hover:bg-white/[0.08] transition-all cursor-pointer ${
+                  className={`h-9 sm:h-10 px-1.5 sm:px-2 rounded-r-xl flex items-center justify-center hover:bg-white/[0.08] transition-all cursor-pointer ${
                     audioMenuOpen
                       ? 'bg-white/[0.10] text-[#FF9933]'
                       : !isMuted
@@ -1665,7 +1665,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                   title="Audio & Speaker Settings"
                 >
                   <ChevronUpIcon
-                    size={14}
+                    size={13}
                     className={`transition-transform duration-200 pointer-events-none ${
                       audioMenuOpen ? 'rotate-180 text-[#FF9933]' : ''
                     }`}
@@ -1692,7 +1692,7 @@ export default function TalkPage({ params }: TalkPageProps) {
               </div>
             </div>
           ) : (
-            <div className={`relative ${audioMenuOpen ? 'z-50' : 'z-10'}`}>
+            <div className={`relative shrink-0 ${audioMenuOpen ? 'z-50' : 'z-10'}`}>
               <MediaDeviceMenu
                 isOpen={audioMenuOpen}
                 onClose={() => setAudioMenuOpen(false)}
@@ -1714,14 +1714,14 @@ export default function TalkPage({ params }: TalkPageProps) {
                 type="button"
                 data-media-menu-toggle="audio"
                 onClick={() => setAudioMenuOpen((prev) => !prev)}
-                className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${
+                className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all ${
                   audioMenuOpen
                     ? 'bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/40 ring-1 ring-[#FF9933]/30 shadow-[0_0_15px_rgba(255,153,51,0.25)]'
                     : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
                 }`}
                 title="Audio & Speaker Settings"
               >
-                <HeadphonesIcon size={17} className="pointer-events-none" />
+                <HeadphonesIcon size={16} className="pointer-events-none" />
               </button>
             </div>
           )}
@@ -1731,7 +1731,7 @@ export default function TalkPage({ params }: TalkPageProps) {
             type="button"
             onClick={handleToggleHandRaise}
             disabled={!isRaiseHandAllowed && !handRaised}
-            className={`h-10 px-3 rounded-xl flex items-center gap-1.5 font-medium text-xs transition-all cursor-pointer ${
+            className={`h-9 sm:h-10 px-2 sm:px-3 rounded-xl flex items-center gap-1 sm:gap-1.5 font-medium text-xs transition-all cursor-pointer shrink-0 ${
               !isRaiseHandAllowed && !handRaised
                 ? 'opacity-40 cursor-not-allowed bg-[#121216] text-[#888e90] border border-white/[0.06]'
                 : handRaised
@@ -1748,7 +1748,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 : 'Raise Hand (Show presence / request mic)'
             }
           >
-            <span className="text-base leading-none">✋</span>
+            <span className="text-sm sm:text-base leading-none">✋</span>
             <span className="hidden sm:inline">{handRaised ? 'Hand Raised' : 'Raise Hand'}</span>
           </button>
 
@@ -1763,14 +1763,14 @@ export default function TalkPage({ params }: TalkPageProps) {
               setParticipantsOpen(!participantsOpen);
               if (!participantsOpen) setChatOpen(false);
             }}
-            className={`relative h-10 w-10 rounded-xl flex items-center justify-center transition-all ${
+            className={`relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all shrink-0 ${
               participantsOpen
                 ? 'bg-[#FF9933]/15 text-[#FF9933] border border-[#FF9933]/40 shadow-sm'
                 : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
             }`}
             title="People in lounge"
           >
-            <UsersIcon size={17} />
+            <UsersIcon size={16} />
             {participants.length > 0 && (
               <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#FF9933] text-black font-mono text-[9px] font-bold flex items-center justify-center shadow-lg">
                 {participants.length}
@@ -1786,14 +1786,14 @@ export default function TalkPage({ params }: TalkPageProps) {
                 setUnreadChatCount(0);
               }
             }}
-            className={`relative h-10 w-10 rounded-xl flex items-center justify-center transition-all ${
+            className={`relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all shrink-0 ${
               chatOpen
                 ? 'bg-[#FF9933]/15 text-[#FF9933] border border-[#FF9933]/40 shadow-sm'
                 : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
             }`}
             title="In-Call Messages"
           >
-            <MessageSquareIcon size={17} />
+            <MessageSquareIcon size={16} />
             {unreadChatCount > 0 && !chatOpen && (
               <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-[#FF9933] text-black font-mono text-[9px] font-bold flex items-center justify-center shadow-lg animate-pulse">
                 {unreadChatCount}
@@ -1801,22 +1801,23 @@ export default function TalkPage({ params }: TalkPageProps) {
             )}
           </button>
 
-          <div className="h-6 w-px bg-white/[0.08] mx-1" />
+          <div className="h-5 sm:h-6 w-px bg-white/[0.08] mx-0.5 sm:mx-1 shrink-0" />
 
           <button
             onClick={handleLeaveClick}
             disabled={leaving || ending}
-            className="flex items-center gap-1.5 px-3.5 h-10 rounded-xl bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] font-medium text-xs transition-all border border-white/[0.10] hover:border-white/[0.16] disabled:opacity-50"
+            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 h-9 sm:h-10 rounded-xl bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] font-medium text-xs transition-all border border-white/[0.10] hover:border-white/[0.16] disabled:opacity-50 shrink-0"
           >
             {leaving ? (
               <>
                 <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
-                <span>Leaving...</span>
+                <span className="hidden xs:inline">Leaving...</span>
               </>
             ) : (
               <>
                 <LogOutIcon size={13} />
-                <span>Leave Quietly</span>
+                <span className="hidden xs:inline">Leave Quietly</span>
+                <span className="xs:hidden">Leave</span>
               </>
             )}
           </button>
@@ -1825,17 +1826,18 @@ export default function TalkPage({ params }: TalkPageProps) {
             <button
               onClick={handleEndRoom}
               disabled={leaving || ending}
-              className="flex items-center gap-1.5 px-3.5 h-10 rounded-xl bg-[#ff2047] hover:bg-[#ff2047]/90 text-white font-medium text-xs transition-all shadow-[0_0_16px_rgba(252,32,71,0.3)] disabled:opacity-50"
+              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 h-9 sm:h-10 rounded-xl bg-[#ff2047] hover:bg-[#ff2047]/90 text-white font-medium text-xs transition-all shadow-[0_0_16px_rgba(252,32,71,0.3)] disabled:opacity-50 shrink-0"
             >
               {ending ? (
                 <>
                   <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
-                  <span>Ending Stage...</span>
+                  <span className="hidden xs:inline">Ending Stage...</span>
                 </>
               ) : (
                 <>
                   <PhoneCallIcon size={13} />
-                  <span>End Stage</span>
+                  <span className="hidden xs:inline">End Stage</span>
+                  <span className="xs:hidden">End</span>
                 </>
               )}
             </button>
@@ -1850,7 +1852,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           onClick={() => setSettingsOpen(false)}
         >
           <div
-            className="w-full max-w-md bg-[#0a0a0e] border border-white/[0.12] rounded-2xl p-5 sm:p-6 shadow-2xl relative overflow-hidden text-[#fcfdff] space-y-5"
+            className="w-full max-w-md bg-[#0a0a0e] border border-white/[0.12] rounded-2xl p-4 sm:p-6 shadow-2xl relative overflow-hidden text-[#fcfdff] space-y-4 sm:space-y-5 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Top specular highlight line */}

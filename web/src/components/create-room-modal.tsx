@@ -130,20 +130,20 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-72 h-32 blur-3xl pointer-events-none opacity-30 bg-gradient-brand-r" />
 
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] bg-[#06060a]/60 relative z-10">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/[0.06] bg-[#06060a]/60 relative z-10">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div
-              className={`h-9 w-9 rounded-lg flex items-center justify-center border border-white/[0.10] ${
+              className={`h-9 w-9 rounded-lg flex items-center justify-center border border-white/[0.10] shrink-0 ${
                 isMeet ? 'bg-[#FF9933]/10 text-[#FF9933]' : 'bg-[#F4C430]/10 text-[#F4C430]'
               }`}
             >
               {isMeet ? <VideoIcon size={18} /> : <AudioWaveformIcon size={18} />}
             </div>
-            <div>
-              <h2 className="font-serif-headline text-base font-normal text-[#fcfdff] tracking-tight">
+            <div className="min-w-0">
+              <h2 className="font-serif-headline text-base font-normal text-[#fcfdff] tracking-tight truncate">
                 {isMeet ? 'Create Video Meeting' : 'Create Voice Stage'}
               </h2>
-              <p className="text-[11px] text-[#888e90]">
+              <p className="text-[11px] text-[#888e90] truncate">
                 {isMeet
                   ? 'High-density video conference with screen sharing'
                   : 'Drop-in voice stage and podcast lounge'}
@@ -152,7 +152,7 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
           </div>
           <button
             onClick={onClose}
-            className="text-[#888e90] hover:text-[#fcfdff] p-1.5 rounded-lg hover:bg-[#101012] transition-colors"
+            className="text-[#888e90] hover:text-[#fcfdff] p-1.5 rounded-lg hover:bg-[#101012] transition-colors shrink-0 ml-2"
           >
             <XIcon size={15} />
           </button>
@@ -161,7 +161,7 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
         {/* Modal Form Body without scrollbar */}
         <form
           onSubmit={handleSubmit}
-          className="p-6 space-y-4 overflow-y-auto no-scrollbar flex-1 text-sm relative z-10"
+          className="p-4 sm:p-6 space-y-4 overflow-y-auto no-scrollbar flex-1 text-sm relative z-10"
         >
           {error && (
             <div className="p-3 bg-[#ff2047]/10 border border-[#ff2047]/30 text-[#ff2047] rounded-lg text-xs flex items-center gap-2 font-mono">
@@ -181,7 +181,7 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
               placeholder={isMeet ? 'e.g. Core Architecture Sync' : 'e.g. Friday Open Mic & Demo'}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-lg border border-white/[0.10] bg-[#06060a] text-[#fcfdff] placeholder-[#464a4d] focus:outline-none focus:border-white/40 transition-all text-xs"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-white/[0.10] bg-[#06060a] text-[#fcfdff] placeholder-[#464a4d] focus:outline-none focus:border-white/40 transition-all text-base sm:text-xs"
             />
           </div>
 
@@ -195,7 +195,7 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
               placeholder={isMeet ? 'Add meeting context or agenda...' : 'What will be discussed on stage?'}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-lg border border-white/[0.10] bg-[#06060a] text-[#fcfdff] placeholder-[#464a4d] focus:outline-none focus:border-white/40 transition-all text-xs resize-none"
+              className="w-full px-3.5 py-2 rounded-lg border border-white/[0.10] bg-[#06060a] text-[#fcfdff] placeholder-[#464a4d] focus:outline-none focus:border-white/40 transition-all text-base sm:text-xs resize-none"
             />
           </div>
 
@@ -303,25 +303,25 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
                 placeholder="Enter 4+ digit passcode"
                 value={passcode}
                 onChange={(e) => setPasscode(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-white/[0.12] bg-[#0a0a0c] text-[#fcfdff] placeholder-[#464a4d] focus:outline-none focus:border-white/40 text-xs font-mono"
+                className="w-full px-3 py-2 rounded-lg border border-white/[0.12] bg-[#0a0a0c] text-[#fcfdff] placeholder-[#464a4d] focus:outline-none focus:border-white/40 text-base sm:text-xs font-mono"
               />
             )}
           </div>
 
           {/* Footer Action Buttons */}
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/[0.06]">
+          <div className="flex flex-col-reverse xs:flex-row items-stretch xs:items-center justify-end gap-2 sm:gap-2.5 pt-3 border-t border-white/[0.06] pb-[calc(0.5rem+env(safe-area-inset-bottom,0px))]">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 text-xs font-medium text-[#888e90] hover:text-[#fcfdff] rounded-lg hover:bg-[#101012] transition-colors disabled:opacity-40"
+              className="px-4 py-2 text-xs font-medium text-[#888e90] hover:text-[#fcfdff] rounded-lg hover:bg-[#101012] transition-colors disabled:opacity-40 text-center"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center gap-1.5 px-5 py-2.5 text-xs font-semibold bg-gradient-brand-r hover:brightness-105 text-black rounded-lg transition-all active:scale-[0.98] shadow-brand-glow disabled:opacity-50 cursor-pointer"
+              className="inline-flex items-center justify-center gap-1.5 px-5 py-2.5 text-xs font-semibold bg-gradient-brand-r hover:brightness-105 text-black rounded-lg transition-all active:scale-[0.98] shadow-brand-glow disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <>

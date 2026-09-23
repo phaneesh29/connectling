@@ -30,11 +30,11 @@ export function ReactionPicker({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Close on outside click
+  // Close on outside click or touch
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
@@ -47,10 +47,12 @@ export function ReactionPicker({
     };
 
     window.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('touchstart', handleClickOutside);
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
       window.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('touchstart', handleClickOutside);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen]);
@@ -69,10 +71,10 @@ export function ReactionPicker({
 
   return (
     <div ref={containerRef} className={`relative ${className}`}>
-      {/* Floating Reaction Bar Popover (Directly above the button) */}
+      {/* Floating Reaction Bar Popover (Centered directly above the footer on mobile, above button on desktop) */}
       {isOpen && (
         <div
-          className={`absolute bottom-full left-1/2 -translate-x-1/2 mb-3.5 z-50 flex items-center gap-1.5 p-1.5 bg-[#0e0e14]/95 border ${popoverBorderClass} rounded-2xl shadow-[0_0_25px_rgba(255,153,51,0.15)] backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150`}
+          className={`fixed left-1/2 -translate-x-1/2 bottom-20 sm:bottom-auto sm:absolute sm:bottom-full mb-0 sm:mb-3.5 z-50 flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-[#0e0e14]/95 border ${popoverBorderClass} rounded-2xl shadow-[0_0_25px_rgba(255,153,51,0.15)] backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150`}
           role="dialog"
           aria-label="Send a reaction"
         >
@@ -83,7 +85,7 @@ export function ReactionPicker({
               onClick={() => {
                 onSelectReaction(emoji);
               }}
-              className="h-10 w-10 flex items-center justify-center rounded-xl hover:bg-white/[0.12] active:scale-90 hover:scale-125 transition-all text-2xl select-none cursor-pointer"
+              className="h-9 w-9 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl hover:bg-white/[0.12] active:scale-90 hover:scale-125 transition-all text-xl sm:text-2xl select-none cursor-pointer"
               title={label}
               aria-label={label}
             >
@@ -91,8 +93,8 @@ export function ReactionPicker({
             </button>
           ))}
 
-          {/* Bottom Caret indicator */}
-          <div className={`absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#0e0e14] border-r border-b ${popoverBorderClass} rotate-45 pointer-events-none`} />
+          {/* Bottom Caret indicator (desktop only) */}
+          <div className={`hidden sm:block absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#0e0e14] border-r border-b ${popoverBorderClass} rotate-45 pointer-events-none`} />
         </div>
       )}
 
@@ -100,7 +102,7 @@ export function ReactionPicker({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`relative h-10 w-10 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+        className={`relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
           isOpen
             ? `${activeColorClasses} border shadow-sm scale-105`
             : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
@@ -109,7 +111,7 @@ export function ReactionPicker({
         aria-label="Send Reaction"
         aria-expanded={isOpen}
       >
-        <SmileIcon size={17} className={`transition-transform duration-200 ${isOpen ? 'text-[#FF9933]' : 'text-[#888e90]'}`} />
+        <SmileIcon size={16} className={`transition-transform duration-200 ${isOpen ? 'text-[#FF9933]' : 'text-[#888e90]'}`} />
       </button>
     </div>
   );

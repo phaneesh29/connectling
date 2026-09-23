@@ -228,24 +228,24 @@ function LoginContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-lg bg-[#0e0e12] border border-white/[0.14] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.08] bg-[#121217]">
-              <div className="flex items-center gap-2.5">
-                <FileTextIcon size={18} className="text-[#ff7a1a]" />
-                <h3 className="font-serif-headline text-lg text-[#fcfdff]">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/[0.08] bg-[#121217]">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <FileTextIcon size={18} className="text-[#ff7a1a] shrink-0" />
+                <h3 className="font-serif-headline text-base sm:text-lg text-[#fcfdff] truncate">
                   Terms of Service & Privacy Notice
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setTermsModalOpen(false)}
-                className="h-7 w-7 rounded-lg hover:bg-white/[0.08] text-[#888e90] hover:text-[#fcfdff] flex items-center justify-center transition-all"
+                className="h-7 w-7 rounded-lg hover:bg-white/[0.08] text-[#888e90] hover:text-[#fcfdff] flex items-center justify-center transition-all shrink-0 ml-2"
               >
                 <XIcon size={16} />
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="p-6 overflow-y-auto space-y-4 text-xs text-[#a0a6a8] leading-relaxed">
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs text-[#a0a6a8] leading-relaxed">
               <div className="space-y-1">
                 <h4 className="font-medium text-[#fcfdff] text-sm">1. Zero-Data Commitment</h4>
                 <p>
@@ -283,20 +283,20 @@ function LoginContent() {
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-white/[0.08] bg-[#121217] flex items-center justify-between gap-3">
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-t border-white/[0.08] bg-[#121217] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <Link
                 href="/terms"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[11px] text-[#FF9933] hover:underline font-mono"
+                className="text-[11px] text-[#FF9933] hover:underline font-mono text-center sm:text-left"
               >
                 Full document ↗
               </Link>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setTermsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-medium text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06] transition-all"
+                  className="flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-medium text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06] transition-all text-center"
                 >
                   Close
                 </button>
@@ -307,7 +307,7 @@ function LoginContent() {
                     setTermsError(false);
                     setTermsModalOpen(false);
                   }}
-                  className="px-4 py-2 rounded-xl text-xs bg-gradient-brand-r hover:brightness-105 text-black transition-all font-semibold shadow-brand-glow cursor-pointer"
+                  className="flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs bg-gradient-brand-r hover:brightness-105 text-black transition-all font-semibold shadow-brand-glow cursor-pointer text-center whitespace-nowrap"
                 >
                   I Understand & Accept
                 </button>

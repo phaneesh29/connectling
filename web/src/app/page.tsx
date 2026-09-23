@@ -178,17 +178,17 @@ export default function DashboardPage() {
       <main className="max-w-5xl mx-auto px-4 sm:px-6 pb-16 space-y-8">
 
         {/* Hero Section */}
-        <section className="space-y-6 pt-1">
+        <section className="space-y-5 sm:space-y-6 pt-1">
           <div className="flex items-center justify-start">
             {/* Segmented Mode Selector */}
-            <div className="inline-flex p-1 bg-[#101012] border border-white/[0.08] rounded-full shadow-inner">
+            <div className="inline-flex p-1 bg-[#101012] border border-white/[0.08] rounded-full shadow-inner max-w-full">
               <button
                 type="button"
                 onClick={() => {
                   setActiveMode('meet');
                   setCodeInput('');
                 }}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
                   activeMode === 'meet'
                     ? 'bg-[#1e1e24] text-[#fcfdff] border border-white/[0.14] shadow-sm'
                     : 'text-[#888e90] hover:text-[#fcfdff]'
@@ -204,7 +204,7 @@ export default function DashboardPage() {
                   setActiveMode('audio');
                   setCodeInput('');
                 }}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
                   activeMode === 'audio'
                     ? 'bg-[#1e1e24] text-[#fcfdff] border border-white/[0.14] shadow-sm'
                     : 'text-[#888e90] hover:text-[#fcfdff]'
@@ -217,7 +217,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="space-y-3 max-w-3xl">
-            <h1 className="font-serif-headline text-4xl sm:text-5xl md:text-6xl font-normal text-[#fcfdff] tracking-tight leading-[1.05]">
+            <h1 className="font-serif-headline text-3xl sm:text-5xl md:text-6xl font-normal text-[#fcfdff] tracking-tight leading-[1.08] sm:leading-[1.05]">
               {activeMode === 'meet' ? (
                 <>
                   Video conferences <br />
@@ -230,7 +230,7 @@ export default function DashboardPage() {
                 </>
               )}
             </h1>
-            <p className="text-[#888e90] text-sm sm:text-base leading-relaxed max-w-xl font-normal">
+            <p className="text-[#888e90] text-xs sm:text-base leading-relaxed max-w-xl font-normal">
               {activeMode === 'meet'
                 ? 'High-density encrypted video conferences with crystal-clear screen sharing, grid autofocus, and single-click invites up to 4 participants.'
                 : 'Moderated Clubhouse-style audio lounges and casual team voice stages with open mic modes up to 10 participants.'}
@@ -239,35 +239,35 @@ export default function DashboardPage() {
         </section>
 
         {/* Action Panel: Launch & Join Space */}
-        <section className="relative glow-card rounded-2xl border border-white/[0.12] bg-[#0a0a0c] overflow-hidden p-6 sm:p-8 space-y-6">
+        <section className="relative glow-card rounded-2xl border border-white/[0.12] bg-[#0a0a0c] overflow-hidden p-4 sm:p-8 space-y-5 sm:space-y-6">
           <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-25 -mr-20 -mt-20 bg-gradient-brand-br" />
 
-          <div className="flex items-center justify-between border-b border-white/[0.06] pb-4 relative z-10">
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#ff2047]/80" />
-              <span className="h-2.5 w-2.5 rounded-full bg-[#ffc53d]/80" />
-              <span className="h-2.5 w-2.5 rounded-full bg-[#11ff99]/80" />
-              <span className="font-mono text-[11px] text-[#888e90] ml-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/[0.06] pb-3 sm:pb-4 relative z-10">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="h-2.5 w-2.5 rounded-full bg-[#ff2047]/80 shrink-0" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#ffc53d]/80 shrink-0" />
+              <span className="h-2.5 w-2.5 rounded-full bg-[#11ff99]/80 shrink-0" />
+              <span className="font-mono text-[11px] text-[#888e90] ml-1 sm:ml-2 truncate max-w-[130px] xs:max-w-[200px] sm:max-w-none">
                 connectling.com/{activeMode === 'meet' ? 'meet' : 'talk'}/[code]
               </span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] text-[#888e90] px-2.5 py-0.5 rounded bg-[#101012] border border-white/[0.06]">
-                {activeMode === 'meet' ? '4 Max Seats' : '10 Max Seats'}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <span className="font-mono text-[10px] text-[#888e90] px-2 sm:px-2.5 py-0.5 rounded bg-[#101012] border border-white/[0.06]">
+                {activeMode === 'meet' ? '4 Seats' : '10 Seats'}
               </span>
-              <span className="font-mono text-[10px] text-[#888e90] px-2.5 py-0.5 rounded bg-[#101012] border border-white/[0.06]">
+              <span className="font-mono text-[10px] text-[#888e90] px-2 sm:px-2.5 py-0.5 rounded bg-[#101012] border border-white/[0.06]">
                 24h Ephemeral
               </span>
             </div>
           </div>
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-1 relative z-10">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 pt-1 relative z-10">
             <div className="space-y-1">
               <h2 className="text-base sm:text-lg font-medium text-[#fcfdff]">
                 {activeMode === 'meet' ? 'Instant Video Meeting' : 'Instant Voice Stage'}
               </h2>
-              <p className="text-xs text-[#888e90]">
+              <p className="text-xs text-[#888e90] leading-relaxed">
                 {activeMode === 'meet'
                   ? 'Launch an encrypted session with screen sharing and custom permissions.'
                   : 'Start a drop-in voice stage with open mic or audience hand-raising moderation.'}
@@ -276,15 +276,15 @@ export default function DashboardPage() {
 
             <button
               onClick={() => openCreateModal(activeMode)}
-              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-lg transition-all active:scale-[0.98] shadow-brand-glow shrink-0 cursor-pointer"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl sm:rounded-lg transition-all active:scale-[0.98] shadow-brand-glow shrink-0 cursor-pointer"
             >
               <SparklesIcon size={13} />
               <span>Launch {activeMode === 'meet' ? 'Video Meeting' : 'Audio Stage'}</span>
             </button>
           </div>
 
-          <div className="pt-4 border-t border-white/[0.06] relative z-10">
-            <form onSubmit={handleJoin} className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="pt-3 sm:pt-4 border-t border-white/[0.06] relative z-10">
+            <form onSubmit={handleJoin} className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3">
               <div className="relative flex-1 w-full">
                 <input
                   type="text"
@@ -295,13 +295,13 @@ export default function DashboardPage() {
                   }
                   value={codeInput}
                   onChange={(e) => setCodeInput(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-white/[0.10] bg-[#06060a] text-[#fcfdff] placeholder-[#464a4d] text-xs font-mono focus:outline-none focus:border-white/40 transition-all"
+                  className="w-full px-3.5 py-2.5 rounded-xl sm:rounded-lg border border-white/[0.10] bg-[#06060a] text-[#fcfdff] placeholder-[#464a4d] text-base sm:text-xs font-mono focus:outline-none focus:border-white/40 transition-all"
                 />
               </div>
               <button
                 type="submit"
                 disabled={!codeInput.trim() || joining}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-[#101012] hover:bg-[#18181c] border border-white/[0.12] hover:border-white/25 text-[#fcfdff] font-medium text-xs rounded-lg transition-all disabled:opacity-40 shrink-0"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#101012] hover:bg-[#18181c] border border-white/[0.12] hover:border-white/25 text-[#fcfdff] font-medium text-xs rounded-xl sm:rounded-lg transition-all disabled:opacity-40 shrink-0 cursor-pointer"
               >
                 {joining ? (
                   <>
@@ -364,10 +364,10 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={r.id}
-                      className="p-5 rounded-2xl border border-white/[0.10] bg-[#0a0a0c] hover:border-white/20 transition-all space-y-4 relative group"
+                      className="p-4 sm:p-5 rounded-2xl border border-white/[0.10] bg-[#0a0a0c] hover:border-white/20 transition-all space-y-3.5 sm:space-y-4 relative group"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="space-y-1 min-w-0">
+                      <div className="flex items-start justify-between gap-2.5 sm:gap-3">
+                        <div className="space-y-1 min-w-0 flex-1">
                           <div className="flex items-center gap-2">
                             <span
                               className={`inline-flex items-center gap-1 text-[10px] font-medium font-mono px-2 py-0.5 rounded-md ${
@@ -404,7 +404,7 @@ export default function DashboardPage() {
                         {/* Room Code with Copy */}
                         <button
                           onClick={() => handleCopy(r.code)}
-                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.08] text-[11px] font-mono text-[#888e90] hover:text-[#fcfdff] transition-all shrink-0"
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.08] text-[11px] font-mono text-[#888e90] hover:text-[#fcfdff] transition-all shrink-0 cursor-pointer"
                           title="Copy room code"
                         >
                           <span>{r.code}</span>
@@ -416,10 +416,10 @@ export default function DashboardPage() {
                         </button>
                       </div>
 
-                      <div className="flex items-center justify-between pt-2 border-t border-white/[0.06] text-xs">
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/[0.06] text-xs">
                         <div className="flex items-center gap-1.5 text-[11px] font-mono text-[#888e90]">
                           <span
-                            className={`h-1.5 w-1.5 rounded-full ${
+                            className={`h-1.5 w-1.5 rounded-full shrink-0 ${
                               isFull ? 'bg-[#ff2047]' : 'bg-[#11ff99] animate-pulse'
                             }`}
                           />

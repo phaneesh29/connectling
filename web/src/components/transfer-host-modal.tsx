@@ -68,20 +68,20 @@ export function TransferHostModal({
       onClick={() => !transferring && onClose()}
     >
       <div
-        className="w-full max-w-md bg-[#0a0a0c] border border-white/[0.12] rounded-2xl p-6 space-y-4 shadow-2xl text-[#fcfdff]"
+        className="w-full max-w-md bg-[#0a0a0c] border border-white/[0.12] rounded-2xl p-4 sm:p-6 space-y-4 shadow-2xl text-[#fcfdff] max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="h-8 w-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="h-8 w-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
               <StarIcon size={16} />
             </div>
-            <div>
-              <h3 className="font-serif-headline text-base font-medium tracking-tight text-[#fcfdff]">
+            <div className="min-w-0">
+              <h3 className="font-serif-headline text-base font-medium tracking-tight text-[#fcfdff] truncate">
                 Transfer Host &amp; Leave
               </h3>
-              <p className="text-[11px] text-[#888e90]">
+              <p className="text-[11px] text-[#888e90] truncate">
                 Select a participant to take over as {label} host
               </p>
             </div>
@@ -90,7 +90,7 @@ export function TransferHostModal({
             type="button"
             onClick={onClose}
             disabled={transferring}
-            className="h-7 w-7 rounded-lg flex items-center justify-center text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06] transition-colors disabled:opacity-50"
+            className="h-7 w-7 rounded-lg flex items-center justify-center text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06] transition-colors disabled:opacity-50 shrink-0 ml-2"
           >
             <XIcon size={15} />
           </button>
@@ -104,7 +104,7 @@ export function TransferHostModal({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search participants by name..."
-            className="w-full pl-8 pr-8 py-2 rounded-xl bg-white/[0.03] border border-white/[0.08] text-xs text-[#fcfdff] placeholder-[#888e90] focus:outline-none focus:border-amber-500/50 transition-colors"
+            className="w-full pl-8 pr-8 py-2 rounded-xl bg-white/[0.03] border border-white/[0.08] text-base sm:text-xs text-[#fcfdff] placeholder-[#888e90] focus:outline-none focus:border-amber-500/50 transition-colors"
           />
           {searchQuery && (
             <button
@@ -189,7 +189,7 @@ export function TransferHostModal({
         </div>
 
         {/* Modal actions */}
-        <div className="flex items-center justify-between pt-3 border-t border-white/[0.06]">
+        <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t border-white/[0.06]">
           <button
             type="button"
             onClick={() => {
@@ -197,7 +197,7 @@ export function TransferHostModal({
               onEndRoom();
             }}
             disabled={transferring}
-            className="text-[11px] text-red-400 hover:text-red-300 transition-colors cursor-pointer flex items-center gap-1 disabled:opacity-50"
+            className="text-[11px] text-red-400 hover:text-red-300 transition-colors cursor-pointer flex items-center justify-center gap-1 disabled:opacity-50 py-1"
           >
             <PhoneCallIcon size={11} />
             <span>End {isAudio ? 'Stage' : 'Space'} Instead</span>
@@ -208,7 +208,7 @@ export function TransferHostModal({
               type="button"
               onClick={onClose}
               disabled={transferring}
-              className="px-3 py-1.5 rounded-lg text-xs text-[#888e90] hover:text-[#fcfdff] transition-colors cursor-pointer disabled:opacity-50"
+              className="flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs text-[#888e90] hover:text-[#fcfdff] transition-colors cursor-pointer disabled:opacity-50 text-center"
             >
               Cancel
             </button>
@@ -216,7 +216,7 @@ export function TransferHostModal({
               type="button"
               onClick={handleConfirm}
               disabled={!selectedUserId || transferring}
-              className="px-4 py-1.5 rounded-lg bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-semibold text-xs transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5 cursor-pointer"
+              className="flex-1 sm:flex-initial px-4 py-1.5 rounded-lg bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-semibold text-xs transition-all shadow-sm disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
             >
               {transferring ? (
                 <>
