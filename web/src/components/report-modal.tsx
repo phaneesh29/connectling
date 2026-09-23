@@ -8,6 +8,7 @@ import {
   MailIcon,
   TriangleAlertIcon,
 } from '@animateicons/react/lucide';
+import { Bug, Video, Lightbulb, MessageSquare } from 'lucide-react';
 import {
   reportsApi,
   createReportSchema,
@@ -24,26 +25,26 @@ export interface ReportModalProps {
 
 const CATEGORY_CONFIG: Record<
   ReportCategory,
-  { label: string; icon: string; description: string }
+  { label: string; icon: React.ReactNode; description: string }
 > = {
   bug: {
     label: 'Bug / Glitch',
-    icon: '🐛',
+    icon: <Bug className="w-4 h-4 text-rose-400 shrink-0" />,
     description: 'Something broke or isn’t behaving as expected',
   },
   audio_video: {
     label: 'Audio / Video',
-    icon: '🎙️',
+    icon: <Video className="w-4 h-4 text-amber-400 shrink-0" />,
     description: 'Mic, camera, speaker, or screen share issue',
   },
   feature: {
     label: 'Feature / Feedback',
-    icon: '💡',
+    icon: <Lightbulb className="w-4 h-4 text-emerald-400 shrink-0" />,
     description: 'Feature suggestion or general feedback',
   },
   other: {
     label: 'Other / Inquiries',
-    icon: '💬',
+    icon: <MessageSquare className="w-4 h-4 text-blue-400 shrink-0" />,
     description: 'General question, acquisition, or ownership inquiry',
   },
 };
@@ -219,7 +220,7 @@ export function ReportModal({
                           : 'bg-white/[0.02] border-white/[0.08] hover:bg-white/[0.05] text-[#888e90]'
                       }`}
                     >
-                      <span className="text-base">{cfg.icon}</span>
+                      <span className="shrink-0 flex items-center justify-center">{cfg.icon}</span>
                       <span className="text-xs font-medium truncate">{cfg.label}</span>
                     </button>
                   );
