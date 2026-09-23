@@ -56,9 +56,18 @@ export const reportsApi = {
       body: JSON.stringify(validated),
     });
 
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch {
+      throw new Error(res.statusText || 'Unable to submit report. Please check your connection.');
+    }
+
     if (!res.ok) {
-      throw new Error(data.message || 'Failed to submit report');
+      if (res.status === 401) {
+        throw new Error('Please sign in to submit feedback or reports.');
+      }
+      throw new Error(data?.message || 'Failed to submit report');
     }
 
     return data;
