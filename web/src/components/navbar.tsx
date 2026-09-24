@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut, useSession } from '@/lib/auth-client';
-import { AudioWaveformIcon, LogOutIcon, SparklesIcon, MessageSquareIcon } from '@animateicons/react/lucide';
+import { LogOutIcon, SparklesIcon, MessageSquareIcon } from '@animateicons/react/lucide';
 import { ReportModal } from './report-modal';
 
 export function Navbar() {
@@ -49,10 +49,14 @@ export function Navbar() {
           {/* Left: Brand Logo & Navigation */}
           <div className="flex items-center gap-2.5 sm:gap-6 min-w-0">
             <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group shrink-0">
-              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg sm:rounded-xl bg-gradient-brand-br flex items-center justify-center shadow-brand-glow group-hover:scale-105 transition-all duration-200">
-                <AudioWaveformIcon
-                  size={15}
-                  className="text-black group-hover:scale-110 transition-transform duration-200"
+              <div className="relative h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center shrink-0">
+                <Image
+                  src="/logo.png"
+                  alt="Connectling"
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(255,153,51,0.4)] group-hover:scale-110 transition-transform duration-200"
+                  priority
                 />
               </div>
               <span className="font-serif-headline text-sm sm:text-base text-[#fcfdff] tracking-tight font-normal">

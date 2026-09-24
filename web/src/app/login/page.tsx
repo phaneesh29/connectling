@@ -2,10 +2,10 @@
 
 import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { signIn, useSession } from '@/lib/auth-client';
 import {
-  AudioWaveformIcon,
   SparklesIcon,
   ShieldCheckIcon,
   CheckIcon,
@@ -61,8 +61,15 @@ function LoginContent() {
 
         {/* Header */}
         <div className="text-center space-y-3 relative z-10">
-          <div className="h-10 w-10 rounded-xl bg-gradient-brand-br text-black flex items-center justify-center mx-auto shadow-brand-glow">
-            <AudioWaveformIcon size={20} />
+          <div className="flex items-center justify-center mx-auto">
+            <Image
+              src="/logo.png"
+              alt="Connectling Logo"
+              width={64}
+              height={64}
+              className="w-14 h-14 object-contain filter drop-shadow-[0_0_24px_rgba(255,153,51,0.4)]"
+              priority
+            />
           </div>
           <div className="space-y-1">
             <h1 className="font-serif-headline text-2xl font-normal text-[#fcfdff] tracking-tight">

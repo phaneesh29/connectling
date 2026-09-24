@@ -45,17 +45,21 @@ export const metadata: Metadata = {
   authors: [{ name: 'Connectling Team', url: siteUrl }],
   generator: 'Next.js',
   keywords: [
-    'video conferencing',
-    'real-time meetings',
-    'drop-in audio stages',
-    'voice rooms',
+    'Connectling',
     'private video call',
+    'drop-in audio spaces',
+    'real-time meetings',
+    'voice rooms',
     'webrtc meeting',
     'zero data retention',
     'encrypted conference',
     'no recording meetings',
     'browser audio spaces',
-    'collaborative audio',
+    'ephemeral voice chat',
+    'peer-to-peer video',
+    'collaborative audio stage',
+    'zoom alternative private',
+    'clubhouse alternative web',
     'instant meet spaces',
   ],
   creator: 'Connectling',
@@ -76,6 +80,15 @@ export const metadata: Metadata = {
     title: 'Connectling — Private Real-Time Video & Drop-In Audio Spaces',
     description:
       'Instant, privacy-first video conferencing and drop-in audio stages with zero data retention and peer-to-peer WebRTC.',
+    images: [
+      {
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: 'Connectling — Private Real-Time Video & Drop-In Audio Spaces',
+        type: 'image/png',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
@@ -83,6 +96,8 @@ export const metadata: Metadata = {
     description:
       'Instant, privacy-first video conferencing and drop-in audio stages with zero data retention and peer-to-peer WebRTC.',
     creator: '@connectling',
+    site: '@connectling',
+    images: ['/opengraph-image'],
   },
   robots: {
     index: true,
@@ -97,37 +112,72 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/icon.png', type: 'image/png' },
-      { url: '/favicon.png', type: 'image/png' },
+      { url: '/favicon.ico', sizes: '16x16 32x32 48x48' },
+      { url: '/icon.png', sizes: '512x512', type: 'image/png' },
+      { url: '/favicon.png', sizes: '512x512', type: 'image/png' },
     ],
     apple: [
-      { url: '/apple-icon.png', type: 'image/png' },
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
     ],
   },
+  manifest: '/manifest.webmanifest',
   category: 'technology',
 };
 
 const jsonLd = {
   '@context': 'https://schema.org',
-  '@type': 'WebApplication',
-  name: 'Connectling',
-  url: siteUrl,
-  applicationCategory: 'CommunicationApplication',
-  operatingSystem: 'Any',
-  description:
-    'Instant, privacy-first video conferencing and drop-in audio stages with zero recordings and zero data retention.',
-  offers: {
-    '@type': 'Offer',
-    price: '0',
-    priceCurrency: 'USD',
-  },
-  featureList: [
-    'High-definition WebRTC video conferencing',
-    'Interactive drop-in audio spaces with host-moderated stages',
-    'Zero persistent data retention architecture',
-    'Instant room generation with one-click sharing',
-    'In-call ephemeral chat and real-time reactions',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${siteUrl}/#organization`,
+      name: 'Connectling',
+      url: siteUrl,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteUrl}/logo.png`,
+        width: 854,
+        height: 818,
+      },
+      description:
+        'Connectling provides privacy-first, zero-data real-time video conferencing and drop-in audio stages.',
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${siteUrl}/#website`,
+      url: siteUrl,
+      name: 'Connectling',
+      publisher: {
+        '@id': `${siteUrl}/#organization`,
+      },
+      inLanguage: 'en-US',
+      description:
+        'Private Real-Time Video & Drop-In Audio Spaces with zero recordings and zero data retention.',
+    },
+    {
+      '@type': 'WebApplication',
+      '@id': `${siteUrl}/#webapp`,
+      name: 'Connectling',
+      url: siteUrl,
+      applicationCategory: 'CommunicationApplication',
+      operatingSystem: 'All modern web browsers (Chrome, Firefox, Safari, Edge)',
+      description:
+        'Instant, privacy-first video conferencing and drop-in audio stages with zero recordings and zero data retention.',
+      screenshot: `${siteUrl}/og-image.png`,
+      image: `${siteUrl}/og-image.png`,
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'USD',
+      },
+      featureList: [
+        'High-definition WebRTC video conferencing',
+        'Interactive drop-in audio spaces with host-moderated stages',
+        'Zero persistent data retention architecture',
+        'Instant room generation with one-click sharing',
+        'In-call ephemeral chat and real-time reactions',
+      ],
+    },
   ],
 };
 

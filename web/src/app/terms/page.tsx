@@ -9,8 +9,18 @@ import {
 } from '@animateicons/react/lucide';
 
 export const metadata = {
-  title: 'Terms of Service & Privacy Policy — Connectling',
-  description: 'Our zero-data retention architecture, ephemeral spaces policy, and privacy commitments.',
+  title: 'Terms of Service & Privacy Policy',
+  description:
+    'Our zero-data retention architecture, ephemeral spaces policy, and privacy commitments.',
+  alternates: {
+    canonical: '/terms',
+  },
+  openGraph: {
+    title: 'Terms of Service & Privacy Policy | Connectling',
+    description:
+      'Learn about Connectling’s zero-data retention architecture, ephemeral spaces policy, and uncompromising privacy commitments.',
+    url: '/terms',
+  },
 };
 
 export default function TermsPage() {

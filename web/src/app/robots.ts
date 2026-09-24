@@ -8,9 +8,10 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: ['/', '/login', '/terms'],
-        disallow: ['/meet/*', '/talk/*', '/profile/*', '/api/*'],
+        disallow: ['/meet/', '/talk/', '/profile/', '/api/'],
       },
     ],
     sitemap: `${siteUrl}/sitemap.xml`,
+    host: siteUrl,
   };
 }
