@@ -1663,7 +1663,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       </main>
 
       <footer className="relative z-40 h-auto py-2.5 sm:py-0 sm:h-20 border-t border-white/[0.06] px-2 sm:px-6 flex items-center justify-center bg-black/85 backdrop-blur-xl pb-[calc(0.6rem+env(safe-area-inset-bottom,0px))]">
-        <div className="flex items-center gap-1.5 sm:gap-2.5 p-1 sm:p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl shadow-2xl max-w-full overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 p-1 sm:p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl shadow-2xl max-w-full overflow-x-auto sm:overflow-visible no-scrollbar">
           {/* Microphone Split Button */}
           <div
             className={`inline-flex items-center rounded-xl transition-all ${

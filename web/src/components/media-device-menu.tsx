@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   MicIcon,
   CameraIcon,
@@ -52,6 +53,44 @@ export function MediaDeviceMenu({
   micVolume = 0,
 }: MediaDeviceMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+  const [coords, setCoords] = useState<{ left: number; bottom: number; arrowLeft: number } | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const updatePosition = () => {
+      if (typeof window === 'undefined') return;
+      if (window.innerWidth < 640) {
+        setCoords(null);
+        return;
+      }
+
+      const toggle = document.querySelector(`[data-media-menu-toggle="${type}"]`);
+      if (toggle) {
+        const rect = toggle.getBoundingClientRect();
+        const menuWidth = 336; // 21rem (w-84)
+        const targetCenterX = rect.left + rect.width / 2;
+        const left = Math.max(12, Math.min(window.innerWidth - menuWidth - 12, targetCenterX - menuWidth / 2));
+        const bottom = Math.max(12, window.innerHeight - rect.top + 10);
+        const arrowLeft = Math.max(16, Math.min(menuWidth - 16, targetCenterX - left));
+
+        setCoords({ left, bottom, arrowLeft });
+      }
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
+  }, [isOpen, type]);
 
   // Close on outside click
   useEffect(() => {
@@ -87,22 +126,43 @@ export function MediaDeviceMenu({
     };
   }, [isOpen, onClose, type]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
   const hasAudioPermissions = audioInputs.some((d) => Boolean(d.label));
   const hasVideoPermissions = videoInputs.some((d) => Boolean(d.label));
 
-  return (
+  const isDesktop = coords !== null;
+  const desktopStyle: React.CSSProperties = isDesktop
+    ? {
+        position: 'fixed',
+        left: `${coords.left}px`,
+        bottom: `${coords.bottom}px`,
+        width: '336px',
+        zIndex: 9999,
+      }
+    : {};
+
+  const menuNode = (
     <div
       ref={menuRef}
-      className="fixed inset-x-3 bottom-20 z-50 sm:absolute sm:bottom-full sm:mb-3 sm:left-1/2 sm:-translate-x-1/2 sm:inset-x-auto w-auto sm:w-84 max-w-[calc(100vw-24px)] max-h-[min(520px,calc(100vh-110px))] overflow-y-auto no-scrollbar bg-[#0c0c10]/95 border border-white/[0.14] rounded-2xl p-3.5 sm:p-4 shadow-[0_25px_70px_-10px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] text-[#fcfdff] backdrop-blur-2xl animate-in zoom-in-95 fade-in slide-in-from-bottom-2 duration-150 ring-1 ring-white/10"
+      style={desktopStyle}
+      className={
+        isDesktop
+          ? 'max-w-[calc(100vw-24px)] max-h-[min(520px,calc(100vh-110px))] overflow-y-auto no-scrollbar bg-[#0c0c10]/95 border border-white/[0.14] rounded-2xl p-3.5 sm:p-4 shadow-[0_25px_70px_-10px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] text-[#fcfdff] backdrop-blur-2xl animate-in zoom-in-95 fade-in slide-in-from-bottom-2 duration-150 ring-1 ring-white/10'
+          : 'fixed inset-x-3 bottom-20 z-[9999] w-auto max-w-[calc(100vw-24px)] max-h-[min(520px,calc(100vh-110px))] overflow-y-auto no-scrollbar bg-[#0c0c10]/95 border border-white/[0.14] rounded-2xl p-3.5 sm:p-4 shadow-[0_25px_70px_-10px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] text-[#fcfdff] backdrop-blur-2xl animate-in zoom-in-95 fade-in slide-in-from-bottom-2 duration-150 ring-1 ring-white/10'
+      }
       onClick={(e) => e.stopPropagation()}
     >
       {/* Top Ambient Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-16 blur-2xl pointer-events-none opacity-30 bg-gradient-brand-r" />
 
       {/* Bottom Notch Anchor directly over Up-Arrow (desktop only) */}
-      <div className="hidden sm:block absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-[#0c0c10] border-r border-b border-white/[0.14] rotate-45 pointer-events-none" />
+      {isDesktop && (
+        <div
+          style={{ left: `${coords.arrowLeft}px` }}
+          className="absolute -bottom-1.5 -translate-x-1/2 w-3 h-3 bg-[#0c0c10] border-r border-b border-white/[0.14] rotate-45 pointer-events-none"
+        />
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between pb-3 mb-3.5 border-b border-white/[0.08] relative z-10">
@@ -493,4 +553,6 @@ export function MediaDeviceMenu({
       )}
     </div>
   );
+
+  return createPortal(menuNode, document.body);
 }
