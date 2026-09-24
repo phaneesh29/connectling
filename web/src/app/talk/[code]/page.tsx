@@ -335,11 +335,16 @@ export default function TalkPage({ params }: TalkPageProps) {
   useEffect(() => {
     if (!roomId || !roomCode) return;
 
+    let failedHeartbeats = 0;
     const interval = setInterval(async () => {
       try {
         await roomsApi.sendHeartbeat(roomCode);
+        failedHeartbeats = 0;
       } catch {
-        setError('This audio room has ended or expired.');
+        failedHeartbeats += 1;
+        if (failedHeartbeats >= 3) {
+          setError('This audio room has ended or expired.');
+        }
       }
     }, 15000);
 
@@ -401,7 +406,14 @@ export default function TalkPage({ params }: TalkPageProps) {
       sendRoomJoin();
     };
 
+    const handleDisconnect = (reason: string) => {
+      if (reason === 'io server disconnect' || reason === 'transport close' || reason === 'transport error') {
+        socket.connect();
+      }
+    };
+
     socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
 
     const handleNewMessage = (msg: ChatMessage) => {
       setMessages((prev) => {
@@ -722,6 +734,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
     return () => {
       socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
       socket.off('chat:new-message', handleNewMessage);
       socket.off('room:roster', handleRoster);
       socket.off('room:user-joined', handleUserJoined);

@@ -17,9 +17,10 @@ export const getSocket = (): AppSocket => {
       autoConnect: false,
       reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      transports: ['websocket'],
+      reconnectionDelay: 200,
+      reconnectionDelayMax: 1000,
+      timeout: 10000,
+      transports: ['websocket', 'polling'],
     });
   }
 

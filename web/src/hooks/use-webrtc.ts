@@ -1067,18 +1067,43 @@ export function useWebRTC({
         }
       });
 
-      // Cleanup peers that left the roster
-      for (const [peerId] of peersRef.current.entries()) {
+      // Cleanup peers that left the roster, preserving active P2P media connections during brief socket drops
+      for (const [peerId, entry] of peersRef.current.entries()) {
         if (!activeIds.has(peerId)) {
+          if (entry.pc.connectionState === 'connected') {
+            continue;
+          }
           closePeer(peerId);
         }
       }
     };
 
-    // When a participant leaves, close their connection
+    // When a participant leaves, check if their P2P WebRTC is still alive before closing
     const handleUserLeft = ({ userId }: { userId: string }) => {
       if (!isMounted) return;
+      const entry = peersRef.current.get(userId);
+      // If WebRTC is actively connected P2P, give a brief window to allow socket reconnection
+      if (entry && entry.pc.connectionState === 'connected') {
+        if (!disconnectTimersRef.current.has(userId)) {
+          const timer = setTimeout(() => {
+            disconnectTimersRef.current.delete(userId);
+            const current = peersRef.current.get(userId);
+            if (current && current.pc.connectionState !== 'connected') {
+              closePeer(userId);
+            }
+          }, 6000);
+          disconnectTimersRef.current.set(userId, timer);
+        }
+        return;
+      }
       closePeer(userId);
+    };
+
+    // Keep WebRTC peer connections alive during socket drops
+    const handleSocketDisconnect = () => {
+      // Do NOT close WebRTC connections on socket disconnect.
+      // WebRTC is peer-to-peer and runs directly between client browsers.
+      // Socket.io will attempt instant reconnection in the background.
     };
 
     // Recover all peer connections on socket reconnect
@@ -1086,7 +1111,14 @@ export function useWebRTC({
       if (!isMounted) return;
       for (const [peerId, entry] of peersRef.current.entries()) {
         const state = entry.pc.connectionState;
-        if (state === 'failed' || state === 'disconnected') {
+        if (state === 'connected') {
+          // Clear any pending disconnect timers since socket is restored
+          const t = disconnectTimersRef.current.get(peerId);
+          if (t) {
+            clearTimeout(t);
+            disconnectTimersRef.current.delete(peerId);
+          }
+        } else if (state === 'failed' || state === 'disconnected') {
           try {
             entry.pc.restartIce();
             void triggerRenegotiation(entry);
@@ -1128,6 +1160,7 @@ export function useWebRTC({
     socket.on('room:roster', handleRoster);
     socket.on('room:user-left', handleUserLeft);
     socket.on('connect', handleSocketReconnect);
+    socket.on('disconnect', handleSocketDisconnect);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
@@ -1137,6 +1170,7 @@ export function useWebRTC({
       socket.off('room:roster', handleRoster);
       socket.off('room:user-left', handleUserLeft);
       socket.off('connect', handleSocketReconnect);
+      socket.off('disconnect', handleSocketDisconnect);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
 
       for (const timer of disconnectTimersRef.current.values()) {
