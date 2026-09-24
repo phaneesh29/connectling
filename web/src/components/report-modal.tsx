@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  MessageSquareIcon,
   XIcon,
   CheckIcon,
   MailIcon,
@@ -147,7 +146,7 @@ export function ReportModal({
         <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-white/[0.08] bg-[#06060a]/60 relative z-10 shrink-0">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="h-8 w-8 rounded-lg bg-orange-500/10 border border-orange-500/20 text-[#ff7a1a] flex items-center justify-center shrink-0">
-              <MessageSquareIcon size={16} />
+              <TriangleAlertIcon size={16} />
             </div>
             <div className="min-w-0">
               <h3 className="font-serif-headline text-base font-normal text-[#fcfdff] tracking-tight truncate">

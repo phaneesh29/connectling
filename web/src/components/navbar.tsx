@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { signOut, useSession } from '@/lib/auth-client';
-import { LogOutIcon, SparklesIcon, MessageSquareIcon } from '@animateicons/react/lucide';
+import { LogOutIcon, SparklesIcon, TriangleAlertIcon } from '@animateicons/react/lucide';
 import { ReportModal } from './report-modal';
 
 export function Navbar() {
@@ -99,8 +99,8 @@ export function Navbar() {
               title="Report an issue or give feedback"
               className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.10] hover:border-white/[0.20] text-[#888e90] hover:text-[#fcfdff] text-xs transition-all cursor-pointer pointer-events-auto"
             >
-              <MessageSquareIcon size={13} className="text-[#ff7a1a]" />
-              <span className="hidden xs:inline text-[11px] sm:text-xs">Feedback</span>
+              <TriangleAlertIcon size={13} className="text-[#ff7a1a]" />
+              <span className="hidden xs:inline text-[11px] sm:text-xs">Report</span>
             </button>
 
             {isPending ? (

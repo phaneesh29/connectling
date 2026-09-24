@@ -29,6 +29,7 @@ import {
   XIcon,
   ShieldCheckIcon,
   ChevronUpIcon,
+  TriangleAlertIcon,
 } from '@animateicons/react/lucide';
 import { getSocket } from '@/lib/socket';
 import { playJoinChime, playLeaveChime } from '@/lib/chime';
@@ -1271,7 +1272,7 @@ export default function TalkPage({ params }: TalkPageProps) {
             className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#888e90] hover:text-[#fcfdff] transition-colors border border-white/[0.08] cursor-pointer"
             title="Report issue or feedback"
           >
-            <MessageSquareIcon size={13} className="text-[#ff7a1a]" />
+            <TriangleAlertIcon size={13} className="text-[#ff7a1a]" />
             <span className="hidden md:inline font-mono text-[11px]">Report</span>
           </button>
 
