@@ -20,7 +20,7 @@ export const getSocket = (): AppSocket => {
       reconnectionDelay: 200,
       reconnectionDelayMax: 1000,
       timeout: 10000,
-      transports: ['websocket', 'polling'],
+      transports: ['websocket'],
     });
   }
 

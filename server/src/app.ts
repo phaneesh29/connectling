@@ -56,12 +56,21 @@ const server = createServer(app);
 
 export const io = initRealtimeGateway(server);
 
-if (!process.env.VERCEL) {
-  const port = process.env.PORT || 3000;
-  server.listen(port, () => {
-    logger.info(`listening on http://localhost:${port}`);
+const port = env.PORT || 3000;
+server.listen(port, () => {
+  logger.info(`Server running on http://localhost:${port} in ${env.NODE_ENV} mode`);
+});
+
+const handleShutdown = (signal: string) => {
+  logger.info(`Received ${signal}. Shutting down gracefully...`);
+  server.close(() => {
+    logger.info('HTTP and Realtime server closed.');
+    process.exit(0);
   });
-}
+};
+
+process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+process.on('SIGINT', () => handleShutdown('SIGINT'));
 
 export { app, server };
 export default server;

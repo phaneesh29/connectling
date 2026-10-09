@@ -1,8 +1,6 @@
 import crypto from 'node:crypto';
 import { Server } from 'socket.io';
 import type { Server as HttpServer } from 'node:http';
-import { createAdapter } from '@socket.io/redis-adapter';
-import { createRedisClient, redis } from '../../config/redis.js';
 import { env } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
 import { socketAuthMiddleware, type AuthenticatedSocket } from './realtime.auth.js';
@@ -36,62 +34,56 @@ export const getRealtimeServer = (): RealtimeServer => {
   return ioInstance;
 };
 
-const getParticipantsRedisKey = (roomCode: string) =>
-  `room:${normalizeRoomCode(roomCode)}:participants`;
+const roomParticipants = new Map<string, Map<string, RoomParticipant>>();
 
-export const saveParticipantToRedis = async (roomCode: string, participant: RoomParticipant) => {
-  try {
-    const key = getParticipantsRedisKey(roomCode);
-    await redis.hset(key, participant.userId, JSON.stringify(participant));
-    await redis.expire(key, 86400); // 24 hours TTL
-  } catch (err) {
-    logger.warn({ err, roomCode, userId: participant.userId }, 'Failed to save participant to Redis');
+export const saveParticipant = (roomCode: string, participant: RoomParticipant): void => {
+  const normalized = normalizeRoomCode(roomCode);
+  let participantsMap = roomParticipants.get(normalized);
+  if (!participantsMap) {
+    participantsMap = new Map();
+    roomParticipants.set(normalized, participantsMap);
   }
+  participantsMap.set(participant.userId, { ...participant });
 };
 
-export const updateParticipantInRedis = async (
+export const updateParticipant = (
   roomCode: string,
   userId: string,
   updates: Partial<RoomParticipant>
-) => {
-  try {
-    const key = getParticipantsRedisKey(roomCode);
-    const raw = await redis.hget(key, userId);
-    if (raw) {
-      const p = JSON.parse(raw) as RoomParticipant;
-      Object.assign(p, updates);
-      await redis.hset(key, userId, JSON.stringify(p));
+): void => {
+  const normalized = normalizeRoomCode(roomCode);
+  const participantsMap = roomParticipants.get(normalized);
+  if (participantsMap) {
+    const existing = participantsMap.get(userId);
+    if (existing) {
+      Object.assign(existing, updates);
     }
-  } catch (err) {
-    logger.warn({ err, roomCode, userId }, 'Failed to update participant in Redis');
   }
 };
 
-export const removeParticipantFromRedis = async (roomCode: string, userId: string) => {
-  try {
-    const key = getParticipantsRedisKey(roomCode);
-    await redis.hdel(key, userId);
-  } catch (err) {
-    logger.warn({ err, roomCode, userId }, 'Failed to remove participant from Redis');
+export const removeParticipant = (roomCode: string, userId: string): void => {
+  const normalized = normalizeRoomCode(roomCode);
+  const participantsMap = roomParticipants.get(normalized);
+  if (participantsMap) {
+    participantsMap.delete(userId);
+    if (participantsMap.size === 0) {
+      roomParticipants.delete(normalized);
+    }
   }
 };
 
 export const getActiveRoomParticipantsCount = async (roomCode: string): Promise<number> => {
   const normalized = normalizeRoomCode(roomCode);
-  try {
-    const count = await redis.hlen(getParticipantsRedisKey(normalized));
-    if (typeof count === 'number' && count > 0) {
-      return count;
-    }
-  } catch (err) {
-    logger.warn({ err, roomCode: normalized }, 'Redis hlen failed in getActiveRoomParticipantsCount');
+  const participantsMap = roomParticipants.get(normalized);
+  if (participantsMap) {
+    return participantsMap.size;
   }
 
   if (!ioInstance) return 0;
   try {
-    const localSockets = await ioInstance.local.in(`room:${normalized}`).fetchSockets();
+    const sockets = await ioInstance.in(`room:${normalized}`).fetchSockets();
     const userIds = new Set<string>();
-    for (const s of localSockets) {
+    for (const s of sockets) {
       if (s.data?.user?.id) {
         userIds.add(s.data.user.id);
       }
@@ -104,20 +96,16 @@ export const getActiveRoomParticipantsCount = async (roomCode: string): Promise<
 
 export const getActiveRoomUserIds = async (roomCode: string): Promise<Set<string>> => {
   const normalized = normalizeRoomCode(roomCode);
-  try {
-    const userIds = await redis.hkeys(getParticipantsRedisKey(normalized));
-    if (userIds && userIds.length > 0) {
-      return new Set(userIds);
-    }
-  } catch (err) {
-    logger.warn({ err, roomCode: normalized }, 'Redis hkeys failed in getActiveRoomUserIds');
+  const participantsMap = roomParticipants.get(normalized);
+  if (participantsMap && participantsMap.size > 0) {
+    return new Set(participantsMap.keys());
   }
 
   if (!ioInstance) return new Set<string>();
   try {
-    const localSockets = await ioInstance.local.in(`room:${normalized}`).fetchSockets();
+    const sockets = await ioInstance.in(`room:${normalized}`).fetchSockets();
     const userIds = new Set<string>();
-    for (const s of localSockets) {
+    for (const s of sockets) {
       if (s.data?.user?.id) {
         userIds.add(s.data.user.id);
       }
@@ -134,37 +122,18 @@ const fetchRoomParticipants = async (
   excludeUserId?: string
 ): Promise<RoomParticipant[]> => {
   const normalized = normalizeRoomCode(roomCode);
-  const roomChannel = `room:${normalized}`;
-
-  // 1. Primary: Fast O(1) Redis hash lookup (works across cluster without pub/sub timeouts)
-  try {
-    const rawMap = await redis.hgetall(getParticipantsRedisKey(normalized));
-    if (rawMap && Object.keys(rawMap).length > 0) {
-      const result: RoomParticipant[] = [];
-      for (const [uid, rawData] of Object.entries(rawMap)) {
-        if (excludeUserId && uid === excludeUserId) continue;
-        try {
-          const parsed = JSON.parse(rawData) as RoomParticipant;
-          result.push(parsed);
-        } catch {}
-      }
-      if (result.length > 0) {
-        return result;
-      }
+  const participantsMap = roomParticipants.get(normalized);
+  if (participantsMap && participantsMap.size > 0) {
+    const result: RoomParticipant[] = [];
+    for (const [uid, p] of participantsMap.entries()) {
+      if (excludeUserId && uid === excludeUserId) continue;
+      result.push({ ...p });
     }
-  } catch (err) {
-    logger.warn({ err, roomCode: normalized }, 'Redis hgetall failed in fetchRoomParticipants');
+    return result;
   }
 
-  // 2. Fallback: Query sockets across cluster with a tight timeout, fallback to local sockets
   try {
-    const sockets = await Promise.race([
-      io.in(roomChannel).fetchSockets(),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('fetchSockets timeout fallback')), 1000)
-      ),
-    ]);
-
+    const sockets = await io.in(`room:${normalized}`).fetchSockets();
     const map = new Map<string, RoomParticipant>();
     for (const s of sockets) {
       const data = s.data;
@@ -184,34 +153,11 @@ const fetchRoomParticipants = async (
     }
     return Array.from(map.values());
   } catch {
-    // 3. Fallback to local sockets on this instance (instant, never hangs)
-    try {
-      const localSockets = await io.local.in(roomChannel).fetchSockets();
-      const map = new Map<string, RoomParticipant>();
-      for (const s of localSockets) {
-        const data = s.data;
-        const u = data?.user;
-        if (u?.id && u.id !== excludeUserId && !map.has(u.id)) {
-          map.set(u.id, {
-            userId: u.id,
-            name: u.name,
-            image: u.image,
-            isMuted: data.isMuted ?? false,
-            isVideoOn: data.isVideoOn ?? true,
-            isScreenSharing: data.isScreenSharing ?? false,
-            handRaised: data.handRaised ?? false,
-            canSpeak: data.canSpeak ?? false,
-          });
-        }
-      }
-      return Array.from(map.values());
-    } catch {
-      return [];
-    }
+    return [];
   }
 };
 
-const updateParticipantStateAcrossCluster = (
+const updateParticipantSocketState = (
   io: RealtimeServer,
   userId: string,
   updates: Partial<SocketData>
@@ -221,26 +167,25 @@ const updateParticipantStateAcrossCluster = (
       Object.assign(socket.data, updates);
     }
   }
-  io.serverSideEmit('participant:update', userId, updates);
 };
 
-const kickParticipantAcrossCluster = async (
+const kickParticipant = async (
   io: RealtimeServer,
   userId: string,
   roomCode: string,
   message: string
 ) => {
   const normalized = normalizeRoomCode(roomCode);
-  await removeParticipantFromRedis(normalized, userId);
+  removeParticipant(normalized, userId);
   const roomChannel = `room:${normalized}`;
   for (const socket of io.sockets.sockets.values()) {
     if (socket.data?.user?.id === userId) {
       socket.emit('room:kicked', { message });
       socket.data.currentRoomCode = undefined;
       await socket.leave(roomChannel);
+      await socket.leave(`room:${normalized}:user:${userId}`);
     }
   }
-  io.serverSideEmit('participant:kick', userId, normalized, message);
 };
 
 export const notifyUserLeftRoom = async (
@@ -249,7 +194,7 @@ export const notifyUserLeftRoom = async (
   userName?: string
 ): Promise<void> => {
   const normalized = normalizeRoomCode(roomCode);
-  await removeParticipantFromRedis(normalized, userId);
+  removeParticipant(normalized, userId);
 
   if (!ioInstance) return;
   const roomChannel = `room:${normalized}`;
@@ -266,8 +211,6 @@ export const notifyUserLeftRoom = async (
       socket.disconnect(true);
     }
   }
-
-  ioInstance.serverSideEmit('participant:leave', userId, normalized);
 
   ioInstance.to(roomChannel).emit('room:user-left', {
     userId,
@@ -288,19 +231,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
     ? env.CORS_ORIGIN.split(',').map((origin) => origin.trim())
     : env.CORS_ORIGIN;
 
-  const pubClient = createRedisClient('socketio:pub');
-  const subClient = pubClient.duplicate();
-  subClient.on('error', (err) => {
-    logger.warn({ err: err.message, client: 'socketio:sub' }, 'Redis broker connection error');
-  });
-  subClient.on('connect', () => {
-    logger.info({ client: 'socketio:sub' }, 'Redis broker client connected');
-  });
-
   const io: RealtimeServer = new Server(httpServer, {
-    adapter: createAdapter(pubClient, subClient, {
-      requestsTimeout: 1500,
-    }),
     cors: {
       origin: corsOrigin,
       credentials: true,
@@ -308,38 +239,6 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
     transports: ['websocket'],
     pingTimeout: 30000,
     pingInterval: 25000,
-  });
-
-  io.on('participant:update', (userId, updates) => {
-    for (const socket of io.sockets.sockets.values()) {
-      if (socket.data?.user?.id === userId) {
-        Object.assign(socket.data, updates);
-      }
-    }
-  });
-
-  io.on('participant:kick', async (userId, roomCode, message) => {
-    const roomChannel = `room:${roomCode}`;
-    for (const socket of io.sockets.sockets.values()) {
-      if (socket.data?.user?.id === userId) {
-        socket.emit('room:kicked', { message });
-        socket.data.currentRoomCode = undefined;
-        await socket.leave(roomChannel);
-        await socket.leave(`room:${roomCode}:user:${userId}`);
-      }
-    }
-  });
-
-  io.on('participant:leave', async (userId, roomCode) => {
-    const roomChannel = `room:${roomCode}`;
-    for (const socket of io.sockets.sockets.values()) {
-      if (socket.data?.user?.id === userId) {
-        socket.data.currentRoomCode = undefined;
-        await socket.leave(roomChannel);
-        await socket.leave(`room:${roomCode}:user:${userId}`);
-        socket.disconnect(true);
-      }
-    }
   });
 
   io.use(socketAuthMiddleware);
@@ -404,7 +303,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
           handRaised: typeof handRaised === 'boolean' ? handRaised : false,
           canSpeak: false,
         };
-        await saveParticipantToRedis(normalized, participantData);
+        saveParticipant(normalized, participantData);
 
         socket.to(roomChannel).emit('room:user-joined', {
           userId: user.id,
@@ -432,7 +331,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       if (typeof isScreenSharing === 'boolean') socket.data.isScreenSharing = isScreenSharing;
       if (typeof handRaised === 'boolean') socket.data.handRaised = handRaised;
 
-      await updateParticipantInRedis(normalized, user.id, {
+      updateParticipant(normalized, user.id, {
         ...(typeof isMuted === 'boolean' ? { isMuted } : {}),
         ...(typeof isVideoOn === 'boolean' ? { isVideoOn } : {}),
         ...(typeof isScreenSharing === 'boolean' ? { isScreenSharing } : {}),
@@ -448,7 +347,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       socket.data.handRaised = handRaised;
       const roomChannel = `room:${normalized}`;
 
-      await updateParticipantInRedis(normalized, user.id, { handRaised });
+      updateParticipant(normalized, user.id, { handRaised });
 
       io.in(roomChannel).emit('room:hand-raised', {
         userId: user.id,
@@ -476,12 +375,12 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         }
 
         const roomChannel = `room:${normalized}`;
-        updateParticipantStateAcrossCluster(io, targetUserId, {
+        updateParticipantSocketState(io, targetUserId, {
           canSpeak: true,
           handRaised: false,
           isMuted: false,
         });
-        await updateParticipantInRedis(normalized, targetUserId, {
+        updateParticipant(normalized, targetUserId, {
           canSpeak: true,
           handRaised: false,
           isMuted: false,
@@ -515,11 +414,11 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         }
 
         const roomChannel = `room:${normalized}`;
-        updateParticipantStateAcrossCluster(io, targetUserId, {
+        updateParticipantSocketState(io, targetUserId, {
           canSpeak: false,
           isMuted: true,
         });
-        await updateParticipantInRedis(normalized, targetUserId, {
+        updateParticipant(normalized, targetUserId, {
           canSpeak: false,
           isMuted: true,
         });
@@ -551,10 +450,10 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         }
 
         const roomChannel = `room:${normalized}`;
-        updateParticipantStateAcrossCluster(io, targetUserId, {
+        updateParticipantSocketState(io, targetUserId, {
           isMuted: true,
         });
-        await updateParticipantInRedis(normalized, targetUserId, {
+        updateParticipant(normalized, targetUserId, {
           isMuted: true,
         });
 
@@ -586,12 +485,11 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         }
 
         const roomChannel = `room:${normalized}`;
-        // Ensure user has speaking permission across the cluster if on a stage
-        updateParticipantStateAcrossCluster(io, targetUserId, {
+        updateParticipantSocketState(io, targetUserId, {
           canSpeak: true,
           handRaised: false,
         });
-        await updateParticipantInRedis(normalized, targetUserId, {
+        updateParticipant(normalized, targetUserId, {
           canSpeak: true,
           handRaised: false,
         });
@@ -624,16 +522,10 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         }
 
         const roomChannel = `room:${normalized}`;
-        let targetName = 'Participant';
+        const targetParticipant = roomParticipants.get(normalized)?.get(targetUserId);
+        const targetName = targetParticipant?.name || 'Participant';
 
-        try {
-          const raw = await redis.hget(getParticipantsRedisKey(normalized), targetUserId);
-          if (raw) {
-            targetName = (JSON.parse(raw) as RoomParticipant).name || 'Participant';
-          }
-        } catch {}
-
-        await kickParticipantAcrossCluster(
+        await kickParticipant(
           io,
           targetUserId,
           normalized,
@@ -672,19 +564,13 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         }
 
         const roomChannel = `room:${normalized}`;
-        let newHostName = 'Participant';
+        const newHostParticipant = roomParticipants.get(normalized)?.get(newHostUserId);
+        const newHostName = newHostParticipant?.name || 'Participant';
 
-        try {
-          const raw = await redis.hget(getParticipantsRedisKey(normalized), newHostUserId);
-          if (raw) {
-            newHostName = (JSON.parse(raw) as RoomParticipant).name || 'Participant';
-          }
-        } catch {}
-
-        updateParticipantStateAcrossCluster(io, newHostUserId, {
+        updateParticipantSocketState(io, newHostUserId, {
           canSpeak: true,
         });
-        await updateParticipantInRedis(normalized, newHostUserId, { canSpeak: true });
+        updateParticipant(normalized, newHostUserId, { canSpeak: true });
 
         io.in(roomChannel).emit('room:host-transferred', {
           previousHostId: user.id,
@@ -742,7 +628,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
 
       try {
         const normalized = normalizeRoomCode(roomCode);
-        await removeParticipantFromRedis(normalized, user.id);
+        removeParticipant(normalized, user.id);
         const roomChannel = `room:${normalized}`;
         socket.to(roomChannel).emit('room:user-left', {
           userId: user.id,
