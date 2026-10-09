@@ -40,6 +40,7 @@ import { TransferHostModal } from '@/components/transfer-host-modal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ReportModal } from '@/components/report-modal';
 import { MediaDeviceMenu } from '@/components/media-device-menu';
+import { MeetPrejoinLobby } from '@/components/meet-prejoin-lobby';
 import { AudioWaveform, AudioRipple } from '@/components/audio-waveform';
 import { useMediaDevices } from '@/hooks/use-media-devices';
 import { useLocalAudioLevel } from '@/hooks/use-local-audio-level';
@@ -70,6 +71,7 @@ export default function MeetPage({ params }: MeetPageProps) {
   const [room, setRoom] = useState<RoomData | null>(null);
   const [settings, setSettings] = useState<RoomSettingsData | null>(null);
   const [, setParticipant] = useState<ParticipantData | null>(null);
+  const [hasJoined, setHasJoined] = useState(false);
 
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
@@ -211,21 +213,26 @@ export default function MeetPage({ params }: MeetPageProps) {
   }, [session, sessionPending, router, code]);
 
   const joinMeeting = useCallback(
-    async (codeToJoin: string, enteredPasscode?: string) => {
+    async (enteredPasscode?: string) => {
       setJoining(true);
       setError(null);
       try {
-        const res = await roomsApi.joinRoom(codeToJoin, { passcode: enteredPasscode });
+        const res = await roomsApi.joinRoom(code, {
+          passcode: enteredPasscode || (passcodeRequired ? passcode : undefined),
+          isVideoOn,
+          isMuted: !isMicOn,
+        });
         if (res.data) {
           if (res.data.room.type === 'audio') {
-            router.replace(`/talk/${codeToJoin}`);
+            router.replace(`/talk/${code}`);
             return;
           }
           setRoom(res.data.room);
           setSettings(res.data.settings);
           setParticipant(res.data.participant);
           setPasscodeRequired(false);
-          joinedCodeRef.current = `${codeToJoin}:${currentUserIdRef.current}`;
+          setHasJoined(true);
+          joinedCodeRef.current = `${code}:${currentUserIdRef.current}`;
         }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to join meeting';
@@ -236,42 +243,35 @@ export default function MeetPage({ params }: MeetPageProps) {
         }
       } finally {
         setJoining(false);
-        setLoading(false);
       }
     },
-    [router]
+    [code, isMicOn, isVideoOn, passcode, passcodeRequired, router]
   );
 
   useEffect(() => {
     let ignore = false;
-    if (currentUserId && code) {
-      const joinKey = `${code}:${currentUserId}`;
-      if (joinedCodeRef.current === joinKey) return;
-      joinedCodeRef.current = joinKey;
+    if (sessionPending || !session) return;
 
+    if (code) {
       roomsApi
-        .joinRoom(code)
+        .getRoom(code)
         .then((res) => {
           if (!ignore && res.data) {
-            if (res.data.room.type === 'audio') {
+            if (res.data.type === 'audio') {
               router.replace(`/talk/${code}`);
               return;
             }
-            setRoom(res.data.room);
+            setRoom(res.data);
             setSettings(res.data.settings);
-            setParticipant(res.data.participant);
-            setPasscodeRequired(false);
+            if (res.data.settings?.hasPasscode && res.data.hostId !== currentUserId) {
+              setPasscodeRequired(true);
+            }
           }
         })
         .catch((err: unknown) => {
           if (ignore) return;
-          joinedCodeRef.current = null;
-          const msg = err instanceof Error ? err.message : 'Failed to join meeting';
-          if (msg.toLowerCase().includes('passcode')) {
-            setPasscodeRequired(true);
-          } else {
-            setError(msg);
-          }
+          const msg = err instanceof Error ? err.message : 'Failed to load meeting details';
+          setError(msg);
         })
         .finally(() => {
           if (!ignore) {
@@ -281,15 +281,14 @@ export default function MeetPage({ params }: MeetPageProps) {
     }
     return () => {
       ignore = true;
-      joinedCodeRef.current = null;
     };
-  }, [currentUserId, code, router]);
+  }, [code, currentUserId, router, session, sessionPending]);
 
   const roomId = room?.id;
   const roomCode = room?.code;
 
   useEffect(() => {
-    if (!roomId || !roomCode) return;
+    if (!roomId || !roomCode || !hasJoined) return;
 
     let failedHeartbeats = 0;
     const interval = setInterval(async () => {
@@ -334,11 +333,11 @@ export default function MeetPage({ params }: MeetPageProps) {
       window.removeEventListener('pagehide', handleExit);
       window.removeEventListener('beforeunload', handleExit);
     };
-  }, [roomId, roomCode, code]);
+  }, [roomId, roomCode, code, hasJoined]);
 
   // Connect WebSocket and listen for in-room ephemeral messages
   useEffect(() => {
-    if (!roomId) return;
+    if (!roomId || !hasJoined) return;
     const socket = getSocket();
     const sendRoomJoin = () => {
       socket.emit('room:join', {
@@ -641,7 +640,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       if (roomEndedTimer) clearTimeout(roomEndedTimer);
       socket.emit('room:leave', { roomCode: code });
     };
-  }, [roomId, code, router]);
+  }, [roomId, code, router, hasJoined]);
 
   const isHost = Boolean(room && session?.user && room.hostId === session.user.id);
   const isMicAllowed = isHost || settings?.micForAll !== false;
@@ -650,7 +649,7 @@ export default function MeetPage({ params }: MeetPageProps) {
   const isChatAllowed = settings?.allowChat !== false;
   const isRaiseHandAllowed = isHost || settings?.allowRaiseHand !== false;
 
-  const isInRoom = Boolean(room) && !passcodeRequired && !isRoomEnded;
+  const isInRoom = hasJoined && Boolean(room) && !passcodeRequired && !isRoomEnded;
 
   const webrtc = useWebRTC({
     roomCode: code,
@@ -978,76 +977,58 @@ export default function MeetPage({ params }: MeetPageProps) {
     }
   };
 
-  if (sessionPending || loading) {
+  if (sessionPending || (loading && !room)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-black">
         <div className="text-center space-y-3">
           <div className="animate-spin h-6 w-6 border border-white/20 border-t-[#fcfdff] rounded-full mx-auto" />
-          <p className="text-xs font-mono text-[#888e90]">Establishing encrypted WebRTC connection...</p>
+          <p className="text-xs font-mono text-[#888e90]">Loading meeting space...</p>
         </div>
       </div>
     );
   }
 
-  if (passcodeRequired) {
+  if (error && !room) {
     return (
       <main className="flex min-h-screen items-center justify-center p-4 bg-black">
-        <div className="w-full max-w-md p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl space-y-6 text-center shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-48 h-48 bg-gradient-brand-br opacity-20 blur-3xl pointer-events-none" />
-          <div className="h-12 w-12 rounded-xl bg-[#101012] border border-white/[0.10] text-[#FF9933] flex items-center justify-center mx-auto shadow-inner">
-            <LockIcon size={22} />
+        <div className="w-full max-w-md p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl space-y-4 text-center">
+          <div className="h-12 w-12 rounded-xl bg-[#ff2047]/10 border border-[#ff2047]/20 text-[#ff2047] flex items-center justify-center mx-auto">
+            <TriangleAlertIcon size={22} />
           </div>
-          <div className="space-y-1">
-            <h2 className="font-serif-headline text-xl font-normal text-[#fcfdff]">Private Meeting</h2>
-            <p className="text-xs text-[#888e90]">
-              This space requires a passcode from the host to enter.
-            </p>
-          </div>
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void joinMeeting(code, passcode);
-            }}
-            className="space-y-4"
+          <h2 className="text-xl font-normal text-[#fcfdff]">Meeting Unavailable</h2>
+          <p className="text-xs text-[#888e90]">{error}</p>
+          <Link
+            href="/"
+            className="inline-block mt-4 py-2 px-5 text-xs font-medium bg-[#101012] border border-white/[0.08] hover:bg-[#18181c] rounded-lg transition-colors text-[#888e90] hover:text-[#fcfdff]"
           >
-            <input
-              type="text"
-              required
-              placeholder="Enter passcode"
-              value={passcode}
-              onChange={(e) => setPasscode(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg border border-white/[0.12] bg-[#06060a] text-center font-mono tracking-widest text-sm text-[#fcfdff] focus:outline-none focus:border-white/40"
-            />
-            <div className="flex gap-2">
-              <Link
-                href="/"
-                className="flex-1 py-2.5 px-4 text-xs font-medium bg-[#101012] border border-white/[0.08] hover:bg-[#18181c] rounded-lg transition-colors text-[#888e90] hover:text-[#fcfdff]"
-              >
-                Back
-              </Link>
-              <button
-                type="submit"
-                disabled={joining || !passcode.trim()}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-4 text-xs font-semibold bg-gradient-brand-r hover:brightness-105 text-black rounded-lg transition-all shadow-brand-glow disabled:opacity-50 cursor-pointer"
-              >
-                {joining ? (
-                  <>
-                    <div className="animate-spin h-3.5 w-3.5 border border-black/30 border-t-black rounded-full" />
-                    <span>Authenticating...</span>
-                  </>
-                ) : (
-                  <span>Enter Space</span>
-                )}
-              </button>
-            </div>
-          </form>
+            Back to Dashboard
+          </Link>
         </div>
       </main>
     );
   }
 
-  if (error || !room) {
+  if (!hasJoined && room && !isRoomEnded) {
+    return (
+      <MeetPrejoinLobby
+        room={room}
+        sessionUser={session?.user}
+        isMicOn={isMicOn}
+        isVideoOn={isVideoOn}
+        onToggleMic={() => setIsMicOn((prev) => !prev)}
+        onToggleVideo={() => setIsVideoOn((prev) => !prev)}
+        mediaDevices={mediaDevices}
+        passcodeRequired={passcodeRequired}
+        passcode={passcode}
+        onPasscodeChange={setPasscode}
+        onJoin={() => void joinMeeting()}
+        joining={joining}
+        error={error}
+      />
+    );
+  }
+
+  if (!room) {
     return (
       <main className="flex min-h-screen items-center justify-center p-4 bg-black">
         <div className="w-full max-w-md p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl space-y-4 text-center">

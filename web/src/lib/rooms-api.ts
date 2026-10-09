@@ -23,6 +23,17 @@ export interface HostData {
   image?: string | null;
 }
 
+export interface ActiveParticipantItem {
+  userId: string;
+  name: string;
+  image?: string | null;
+  isMuted?: boolean;
+  isVideoOn?: boolean;
+  isScreenSharing?: boolean;
+  handRaised?: boolean;
+  canSpeak?: boolean;
+}
+
 export interface RoomData {
   id: string;
   code: string;
@@ -37,12 +48,15 @@ export interface RoomData {
   settings: RoomSettingsData | null;
   host?: HostData;
   activeParticipantsCount?: number;
+  activeParticipants?: ActiveParticipantItem[];
 }
 
 export interface ParticipantData {
   roomId: string;
   userId: string;
   role: 'host' | 'co_host' | 'speaker' | 'listener' | 'participant';
+  isVideoOn?: boolean;
+  isMuted?: boolean;
 }
 
 export interface CreateRoomPayload {
@@ -62,6 +76,8 @@ export interface CreateRoomPayload {
 
 export interface JoinRoomPayload {
   passcode?: string;
+  isVideoOn?: boolean;
+  isMuted?: boolean;
 }
 
 export interface UpdateRoomSettingsPayload {
