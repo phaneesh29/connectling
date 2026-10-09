@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
+
+const emptySubscribe = () => () => {};
 import {
   XIcon,
   CheckIcon,
@@ -49,13 +51,11 @@ const CATEGORY_CONFIG: Record<
   },
 };
 
-export function ReportModal({
-  isOpen,
+function ReportModalContent({
   onClose,
   roomCode,
   defaultCategory = 'bug',
-}: ReportModalProps) {
-  const [mounted, setMounted] = useState(false);
+}: Omit<ReportModalProps, 'isOpen'>) {
   const [category, setCategory] = useState<ReportCategory>(defaultCategory);
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
@@ -63,30 +63,14 @@ export function ReportModal({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (isOpen) {
-      setSubmitted(false);
-      setError(null);
-      setContent('');
-      setCategory(defaultCategory);
-    }
-  }, [isOpen, defaultCategory]);
-
-  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isOpen) return;
       if (e.key === 'Escape' && !loading) {
         onClose();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, loading, onClose]);
-
-  if (!isOpen || !mounted) return null;
+  }, [loading, onClose]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -316,4 +300,23 @@ export function ReportModal({
   );
 
   return createPortal(modalNode, document.body);
+}
+
+export function ReportModal({
+  isOpen,
+  onClose,
+  roomCode,
+  defaultCategory = 'bug',
+}: ReportModalProps) {
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
+
+  if (!isOpen || !mounted) return null;
+
+  return (
+    <ReportModalContent
+      onClose={onClose}
+      roomCode={roomCode}
+      defaultCategory={defaultCategory}
+    />
+  );
 }

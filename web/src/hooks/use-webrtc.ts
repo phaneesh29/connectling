@@ -1163,6 +1163,8 @@ export function useWebRTC({
     socket.on('disconnect', handleSocketDisconnect);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    const disconnectTimers = disconnectTimersRef.current;
+
     return () => {
       isMounted = false;
       socket.off('webrtc:signal', handleSignal);
@@ -1173,10 +1175,10 @@ export function useWebRTC({
       socket.off('disconnect', handleSocketDisconnect);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
 
-      for (const timer of disconnectTimersRef.current.values()) {
+      for (const timer of disconnectTimers.values()) {
         clearTimeout(timer);
       }
-      disconnectTimersRef.current.clear();
+      disconnectTimers.clear();
 
       stopAllMediaTracks();
     };

@@ -32,6 +32,7 @@ import {
 } from '@animateicons/react/lucide';
 import { Maximize2, Minimize2 } from 'lucide-react';
 import { getSocket } from '@/lib/socket';
+import { SERVER_URL } from '@/lib/config';
 import { playJoinChime, playLeaveChime } from '@/lib/chime';
 import { InRoomChat } from '@/components/in-room-chat';
 import { InRoomParticipants } from '@/components/in-room-participants';
@@ -315,10 +316,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         }
       } catch {}
 
-      const apiUrl =
-        process.env.NEXT_PUBLIC_SERVER_URL ||
-        process.env.NEXT_PUBLIC_API_URL ||
-        'http://localhost:3000';
+      const apiUrl = SERVER_URL;
       try {
         fetch(`${apiUrl}/api/v1/rooms/${roomCode}/leave`, {
           method: 'POST',

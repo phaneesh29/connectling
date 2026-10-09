@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
+
+const emptySubscribe = () => () => {};
 import { roomsApi, type CreateRoomPayload } from '@/lib/rooms-api';
 import { generateRandomRoomTitle } from '@/lib/room-names';
 import { Dices } from 'lucide-react';
@@ -67,7 +69,7 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
   const isMeet = defaultType === 'meet';
   const themeColor = isMeet ? 'bg-[#ff7a1a]' : 'bg-[#f59e0b]';
 
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [micForAll, setMicForAll] = useState(true);
@@ -79,10 +81,6 @@ export function CreateRoomModal({ isOpen, onClose, defaultType = 'meet' }: Creat
   const [passcode, setPasscode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const handleGenerateTitle = () => {
     const nextTitle = generateRandomRoomTitle(defaultType, title);

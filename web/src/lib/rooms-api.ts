@@ -1,4 +1,6 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+import { SERVER_URL } from './config';
+
+const API_BASE_URL = SERVER_URL;
 
 export interface RoomSettingsData {
   id: string;

@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
+
+const emptySubscribe = () => () => {};
 import {
   MicIcon,
   CameraIcon,
@@ -53,12 +55,8 @@ export function MediaDeviceMenu({
   micVolume = 0,
 }: MediaDeviceMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
   const [coords, setCoords] = useState<{ left: number; bottom: number; arrowLeft: number } | null>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     if (!isOpen) return;

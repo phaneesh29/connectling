@@ -1,6 +1,7 @@
 import { z } from 'zod';
+import { SERVER_URL } from './config';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+const API_BASE_URL = SERVER_URL;
 
 export const reportCategoryValues = ['bug', 'audio_video', 'feature', 'other'] as const;
 export type ReportCategory = (typeof reportCategoryValues)[number];

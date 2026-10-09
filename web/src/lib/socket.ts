@@ -1,5 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import type { ClientToServerEvents, ServerToClientEvents } from '@/types/realtime';
+import { SERVER_URL } from './config';
 
 export type AppSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
@@ -7,12 +8,7 @@ let socketInstance: AppSocket | null = null;
 
 export const getSocket = (): AppSocket => {
   if (!socketInstance) {
-    const serverUrl =
-      process.env.NEXT_PUBLIC_SERVER_URL ||
-      process.env.NEXT_PUBLIC_API_URL ||
-      'http://localhost:3000';
-
-    socketInstance = io(serverUrl, {
+    socketInstance = io(SERVER_URL, {
       withCredentials: true,
       autoConnect: false,
       reconnection: true,
