@@ -14,7 +14,7 @@ const limiter = new RateLimiterRedis({
 });
 
 export const rateLimiter = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === 'OPTIONS' || req.path === '/health' || req.path === '/api/v1/health') {
     return next();
   }
 

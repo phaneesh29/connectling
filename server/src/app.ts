@@ -12,6 +12,7 @@ import { apiRouter } from './routes/index.js';
 import { notFoundHandler, errorHandler } from './middleware/error-handler.js';
 import { rateLimiter } from './middleware/rate-limiter.js';
 import { initRealtimeGateway } from './modules/realtime/realtime.gateway.js';
+import { startSelfPing, stopSelfPing } from './modules/health/self-ping.service.js';
 
 export const createApp = () => {
   const app = express();
@@ -59,10 +60,12 @@ export const io = initRealtimeGateway(server);
 const port = env.PORT || 3000;
 server.listen(port, () => {
   logger.info(`Server running on http://localhost:${port} in ${env.NODE_ENV} mode`);
+  startSelfPing(port);
 });
 
 const handleShutdown = (signal: string) => {
   logger.info(`Received ${signal}. Shutting down gracefully...`);
+  stopSelfPing();
   server.close(() => {
     logger.info('HTTP and Realtime server closed.');
     process.exit(0);
