@@ -18,6 +18,8 @@ import {
   notifyUserLeftRoom,
   getActiveRoomParticipantsCount,
   getActiveRoomUserIds,
+  getActiveRoomParticipants,
+  updateParticipant,
 } from '../realtime/realtime.gateway.js';
 import { logger } from '../../utils/logger.js';
 
@@ -133,12 +135,14 @@ export const roomService = {
           }))(foundRoom.settings)
       : null;
 
-    const activeParticipantsCount = await getActiveRoomParticipantsCount(normalized);
+    const activeParticipants = await getActiveRoomParticipants(normalized);
+    const activeParticipantsCount = activeParticipants.length;
 
     return {
       ...foundRoom,
       settings,
       activeParticipantsCount,
+      activeParticipants,
     };
   },
 
@@ -197,6 +201,15 @@ export const roomService = {
           }))(foundRoom.settings)
       : null;
 
+    if (typeof input.isVideoOn === 'boolean' || typeof input.isMuted === 'boolean') {
+      updateParticipant(normalized, userId, {
+        ...(typeof input.isVideoOn === 'boolean' ? { isVideoOn: input.isVideoOn } : {}),
+        ...(typeof input.isMuted === 'boolean' ? { isMuted: input.isMuted } : {}),
+      });
+    }
+
+    const activeParticipants = await getActiveRoomParticipants(normalized);
+
     return {
       room: foundRoom,
       settings: sanitizedSettings,
@@ -204,7 +217,10 @@ export const roomService = {
         roomId: foundRoom.id,
         userId,
         role,
+        isVideoOn: typeof input.isVideoOn === 'boolean' ? input.isVideoOn : true,
+        isMuted: typeof input.isMuted === 'boolean' ? input.isMuted : false,
       },
+      activeParticipants,
     };
   },
 

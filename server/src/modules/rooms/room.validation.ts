@@ -27,6 +27,8 @@ export const createRoomSchema = z.object({
 
 export const joinRoomSchema = z.object({
   passcode: z.string().optional(),
+  isVideoOn: z.boolean().optional(),
+  isMuted: z.boolean().optional(),
 });
 
 export const updateRoomSettingsSchema = z.object({

@@ -72,52 +72,7 @@ export const removeParticipant = (roomCode: string, userId: string): void => {
   }
 };
 
-export const getActiveRoomParticipantsCount = async (roomCode: string): Promise<number> => {
-  const normalized = normalizeRoomCode(roomCode);
-  const participantsMap = roomParticipants.get(normalized);
-  if (participantsMap) {
-    return participantsMap.size;
-  }
-
-  if (!ioInstance) return 0;
-  try {
-    const sockets = await ioInstance.in(`room:${normalized}`).fetchSockets();
-    const userIds = new Set<string>();
-    for (const s of sockets) {
-      if (s.data?.user?.id) {
-        userIds.add(s.data.user.id);
-      }
-    }
-    return userIds.size;
-  } catch {
-    return 0;
-  }
-};
-
-export const getActiveRoomUserIds = async (roomCode: string): Promise<Set<string>> => {
-  const normalized = normalizeRoomCode(roomCode);
-  const participantsMap = roomParticipants.get(normalized);
-  if (participantsMap && participantsMap.size > 0) {
-    return new Set(participantsMap.keys());
-  }
-
-  if (!ioInstance) return new Set<string>();
-  try {
-    const sockets = await ioInstance.in(`room:${normalized}`).fetchSockets();
-    const userIds = new Set<string>();
-    for (const s of sockets) {
-      if (s.data?.user?.id) {
-        userIds.add(s.data.user.id);
-      }
-    }
-    return userIds;
-  } catch {
-    return new Set<string>();
-  }
-};
-
-const fetchRoomParticipants = async (
-  io: RealtimeServer,
+export const getActiveRoomParticipants = async (
   roomCode: string,
   excludeUserId?: string
 ): Promise<RoomParticipant[]> => {
@@ -132,8 +87,10 @@ const fetchRoomParticipants = async (
     return result;
   }
 
+  if (!ioInstance) return [];
+
   try {
-    const sockets = await io.in(`room:${normalized}`).fetchSockets();
+    const sockets = await ioInstance.in(`room:${normalized}`).fetchSockets();
     const map = new Map<string, RoomParticipant>();
     for (const s of sockets) {
       const data = s.data;
@@ -155,6 +112,25 @@ const fetchRoomParticipants = async (
   } catch {
     return [];
   }
+};
+
+export const getActiveRoomParticipantsCount = async (roomCode: string): Promise<number> => {
+  const normalized = normalizeRoomCode(roomCode);
+  const participantsMap = roomParticipants.get(normalized);
+  if (participantsMap) {
+    return participantsMap.size;
+  }
+  return (await getActiveRoomParticipants(normalized)).length;
+};
+
+export const getActiveRoomUserIds = async (roomCode: string): Promise<Set<string>> => {
+  const normalized = normalizeRoomCode(roomCode);
+  const participantsMap = roomParticipants.get(normalized);
+  if (participantsMap && participantsMap.size > 0) {
+    return new Set(participantsMap.keys());
+  }
+  const participants = await getActiveRoomParticipants(normalized);
+  return new Set(participants.map((p) => p.userId));
 };
 
 const updateParticipantSocketState = (
@@ -217,7 +193,7 @@ export const notifyUserLeftRoom = async (
     name: departingName,
   });
 
-  const participants = await fetchRoomParticipants(ioInstance, normalized, userId);
+  const participants = await getActiveRoomParticipants(normalized, userId);
   ioInstance.in(roomChannel).emit('room:roster', { participants });
 
   logger.info(
@@ -311,7 +287,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
           image: user.image,
         });
 
-        const participants = await fetchRoomParticipants(io, normalized);
+        const participants = await getActiveRoomParticipants(normalized);
         io.in(roomChannel).emit('room:roster', { participants });
 
         logger.info(
@@ -338,7 +314,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         ...(typeof handRaised === 'boolean' ? { handRaised } : {}),
       });
 
-      const participants = await fetchRoomParticipants(io, normalized);
+      const participants = await getActiveRoomParticipants(normalized);
       io.in(`room:${normalized}`).emit('room:roster', { participants });
     });
 
@@ -355,7 +331,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         handRaised,
       });
 
-      const participants = await fetchRoomParticipants(io, normalized);
+      const participants = await getActiveRoomParticipants(normalized);
       io.in(roomChannel).emit('room:roster', { participants });
 
       logger.info({ userId: user.id, roomCode: normalized, handRaised }, 'User toggled hand raise');
@@ -391,7 +367,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
           byUserId: user.id,
         });
 
-        const participants = await fetchRoomParticipants(io, normalized);
+        const participants = await getActiveRoomParticipants(normalized);
         io.in(roomChannel).emit('room:roster', { participants });
 
         logger.info({ hostId: user.id, targetUserId, roomCode: normalized }, 'Host granted mic permission');
@@ -427,7 +403,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
           targetUserId,
         });
 
-        const participants = await fetchRoomParticipants(io, normalized);
+        const participants = await getActiveRoomParticipants(normalized);
         io.in(roomChannel).emit('room:roster', { participants });
 
         logger.info({ hostId: user.id, targetUserId, roomCode: normalized }, 'Host revoked mic permission');
@@ -462,7 +438,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
           byHost: true,
         });
 
-        const participants = await fetchRoomParticipants(io, normalized);
+        const participants = await getActiveRoomParticipants(normalized);
         io.in(roomChannel).emit('room:roster', { participants });
 
         logger.info({ hostId: user.id, targetUserId, roomCode: normalized }, 'Host remotely muted user');
@@ -499,7 +475,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
           hostName: user.name || 'Host',
         });
 
-        const participants = await fetchRoomParticipants(io, normalized);
+        const participants = await getActiveRoomParticipants(normalized);
         io.in(roomChannel).emit('room:roster', { participants });
 
         logger.info({ hostId: user.id, targetUserId, roomCode: normalized }, 'Host requested user to unmute');
@@ -537,7 +513,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
           targetName,
         });
 
-        const participants = await fetchRoomParticipants(io, normalized);
+        const participants = await getActiveRoomParticipants(normalized);
         io.in(roomChannel).emit('room:roster', { participants });
 
         logger.info({ hostId: user.id, targetUserId, roomCode: normalized }, 'Host removed participant from space');
@@ -578,7 +554,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
           newHostName,
         });
 
-        const participants = await fetchRoomParticipants(io, normalized);
+        const participants = await getActiveRoomParticipants(normalized);
         io.in(roomChannel).emit('room:roster', { participants });
 
         logger.info({ previousHostId: user.id, newHostId: newHostUserId, roomCode: normalized }, 'Host transferred space ownership');
@@ -638,7 +614,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         await socket.leave(roomChannel);
         await socket.leave(`room:${normalized}:user:${user.id}`);
 
-        const participants = await fetchRoomParticipants(io, normalized, user.id);
+        const participants = await getActiveRoomParticipants(normalized, user.id);
         io.in(roomChannel).emit('room:roster', { participants });
 
         logger.info(
