@@ -49,13 +49,13 @@ export function Navbar() {
           {/* Left: Brand Logo & Navigation */}
           <div className="flex items-center gap-2.5 sm:gap-6 min-w-0">
             <Link href="/" className="flex items-center gap-2 sm:gap-2.5 group shrink-0">
-              <div className="relative h-7 w-7 sm:h-8 sm:w-8 flex items-center justify-center shrink-0">
+              <div className="relative h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center shrink-0">
                 <Image
                   src="/logo.png"
                   alt="Connectling"
-                  width={32}
-                  height={32}
-                  className="w-full h-full object-contain filter drop-shadow-[0_0_12px_rgba(255,153,51,0.4)] group-hover:scale-110 transition-transform duration-200"
+                  width={24}
+                  height={24}
+                  className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(255,153,51,0.35)] group-hover:scale-110 transition-transform duration-200"
                   priority
                 />
               </div>
