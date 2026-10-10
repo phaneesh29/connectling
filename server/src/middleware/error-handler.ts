@@ -7,7 +7,12 @@ export const notFoundHandler = (req: Request, _res: Response, next: NextFunction
   next(new AppError(`Route ${req.method} ${req.originalUrl} not found`, 404));
 };
 
-export const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
+export const errorHandler: ErrorRequestHandler = (
+  err: any,
+  _req: Request,
+  res: Response,
+  _next: NextFunction
+) => {
   if (err instanceof ZodError) {
     return res.status(400).json({
       success: false,
