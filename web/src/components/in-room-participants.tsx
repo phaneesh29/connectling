@@ -83,7 +83,6 @@ export function InRoomParticipants({
                 {participants.length}
               </span>
             </h3>
-            <p className="text-[10px] text-[#888e90] font-mono">Real-time room roster</p>
           </div>
         </div>
 

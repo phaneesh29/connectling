@@ -75,12 +75,6 @@ export function InRoomChat({
         </button>
       </div>
 
-      {/* Ephemeral Notice */}
-      <div className="px-4 py-2 bg-orange-500/[0.08] border-b border-orange-500/20 text-[10px] text-[#ff7a1a] flex items-center gap-2 shrink-0 font-mono">
-        <span className="h-1.5 w-1.5 rounded-full bg-[#ff7a1a] animate-pulse" />
-        <span>Temporary in-memory chat • Cleared on exit</span>
-      </div>
-
       {/* Message Feed */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
         {messages.length === 0 ? (
