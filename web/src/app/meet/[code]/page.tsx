@@ -1604,13 +1604,13 @@ export default function MeetPage({ params }: MeetPageProps) {
           </div>
         ) : (
           <div
-            className={`w-full max-w-5xl grid gap-2 sm:gap-4 h-full max-h-[76vh] sm:max-h-[72vh] overflow-y-auto sm:overflow-hidden ${
+            className={`w-full max-w-6xl grid gap-2.5 sm:gap-4 h-full max-h-[78vh] sm:max-h-[74vh] overflow-y-auto no-scrollbar ${
               otherParticipants.length === 0
-                ? 'grid-cols-1'
+                ? 'grid-cols-1 sm:grid-cols-2'
                 : otherParticipants.length === 1
-                ? 'grid-cols-1 grid-rows-2 sm:grid-cols-2 sm:grid-rows-1'
+                ? 'grid-cols-1 sm:grid-cols-2'
                 : otherParticipants.length <= 3
-                ? 'grid-cols-2 grid-rows-2'
+                ? 'grid-cols-1 sm:grid-cols-2'
                 : 'grid-cols-2 sm:grid-cols-2 lg:grid-cols-3'
             }`}
           >
@@ -1619,22 +1619,28 @@ export default function MeetPage({ params }: MeetPageProps) {
 
             {/* If No Other Participants Yet: Show Waiting Tile */}
             {otherParticipants.length === 0 && (
-              <div className="relative bg-[#0a0a0c] border border-white/[0.08] rounded-2xl overflow-hidden flex flex-col items-center justify-center p-6 text-center space-y-4 shadow-2xl min-h-[220px]">
-                <div className="h-16 w-16 rounded-full bg-[#101012] border border-white/[0.10] flex items-center justify-center text-[#888e90]">
+              <div className="relative bg-[#0a0a0c] border border-white/[0.12] rounded-2xl overflow-hidden flex flex-col items-center justify-center p-5 sm:p-7 text-center space-y-3.5 sm:space-y-4 shadow-2xl min-h-[200px] sm:min-h-[240px] group">
+                {/* Radial Glow */}
+                <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-20 bg-gradient-brand-br pointer-events-none" />
+
+                <div className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl bg-[#FF9933]/10 border border-[#FF9933]/25 flex items-center justify-center text-[#FF9933] shadow-[0_0_20px_rgba(255,153,51,0.15)] relative z-10">
                   <UsersIcon size={24} />
                 </div>
-                <div className="space-y-1">
-                  <h3 className="font-serif-headline text-base font-normal text-[#fcfdff]">Awaiting Collaborators</h3>
+                <div className="space-y-1 relative z-10">
+                  <h3 className="font-serif-headline text-base sm:text-lg font-normal text-[#fcfdff]">
+                    Awaiting Collaborators
+                  </h3>
                   <p className="text-xs text-[#888e90] max-w-xs font-mono">
-                    Share space link or ID <span className="text-[#fcfdff] font-semibold">{room.code}</span>
+                    Share space ID <span className="text-[#FF9933] font-semibold">{room.code}</span> to join
                   </p>
                 </div>
                 <button
+                  type="button"
                   onClick={handleCopyLink}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#101012] hover:bg-[#18181c] text-xs font-medium rounded-lg transition-colors text-[#fcfdff] border border-white/[0.10]"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer relative z-10"
                 >
-                  {copied ? <CheckIcon size={13} className="text-[#11ff99]" /> : <CopyIcon size={13} />}
-                  <span>{copied ? 'Copied Link' : 'Copy Space Invite'}</span>
+                  {copied ? <CheckIcon size={14} className="text-black" /> : <CopyIcon size={14} />}
+                  <span>{copied ? 'Copied Space Link' : 'Copy Space Invite'}</span>
                 </button>
               </div>
             )}
@@ -1642,8 +1648,8 @@ export default function MeetPage({ params }: MeetPageProps) {
         )}
       </main>
 
-      <footer className="relative z-40 h-auto py-2.5 sm:py-0 sm:h-20 border-t border-white/[0.06] px-2 sm:px-6 flex items-center justify-center bg-black/85 backdrop-blur-xl pb-[calc(0.6rem+env(safe-area-inset-bottom,0px))]">
-        <div className="flex items-center gap-1.5 sm:gap-2.5 p-1 sm:p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl shadow-2xl max-w-full overflow-x-auto sm:overflow-visible no-scrollbar">
+      <footer className="relative z-40 h-auto py-2 sm:py-0 sm:h-20 border-t border-white/[0.06] px-1.5 sm:px-6 flex items-center justify-center bg-black/85 backdrop-blur-xl pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+        <div className="flex items-center gap-1 sm:gap-2 p-1 sm:p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl shadow-2xl max-w-full overflow-x-auto sm:overflow-visible no-scrollbar">
           {/* Microphone Split Button */}
           <div
             className={`inline-flex items-center rounded-xl transition-all ${
@@ -1909,16 +1915,17 @@ export default function MeetPage({ params }: MeetPageProps) {
             <button
               onClick={handleEndRoom}
               disabled={leaving || ending}
-              className="flex items-center gap-1.5 h-9 px-2 sm:h-10 sm:px-3.5 rounded-xl bg-[#ff2047] hover:bg-[#ff2047]/90 text-white font-medium text-xs transition-all shadow-[0_0_16px_rgba(255,32,71,0.3)] disabled:opacity-50 cursor-pointer shrink-0"
+              className="flex items-center gap-1.5 h-9 px-2.5 sm:h-10 sm:px-3.5 rounded-xl bg-gradient-to-r from-[#240a0f] to-[#1a070b] hover:from-[#2e0e15] hover:to-[#220a0f] text-[#f87171] hover:text-[#fca5a5] border border-red-500/35 hover:border-red-500/50 font-medium text-xs transition-all shadow-[0_0_14px_rgba(220,38,38,0.18)] disabled:opacity-50 cursor-pointer shrink-0"
+              title="End space for all participants"
             >
               {ending ? (
                 <>
-                  <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
+                  <div className="animate-spin h-3.5 w-3.5 border border-red-400/30 border-t-red-400 rounded-full" />
                   <span className="hidden sm:inline">Ending...</span>
                 </>
               ) : (
                 <>
-                  <PhoneCallIcon size={13} />
+                  <PhoneCallIcon size={13} className="text-[#f87171]" />
                   <span className="hidden sm:inline">End Space</span>
                   <span className="text-[11px] sm:hidden">End</span>
                 </>
@@ -1929,72 +1936,255 @@ export default function MeetPage({ params }: MeetPageProps) {
       </footer>
 
       {settingsOpen && settings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className="w-full max-w-md bg-[#0a0a0c] border border-white/[0.12] rounded-2xl p-6 space-y-5 shadow-2xl text-[#fcfdff]">
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
-              <h3 className="font-serif-headline text-base font-normal">Space Settings</h3>
-              <button onClick={() => setSettingsOpen(false)} className="text-[#888e90] hover:text-[#fcfdff]">
-                <XIcon size={15} />
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3.5 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={() => setSettingsOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-[#0a0a0c] border border-white/[0.14] rounded-2xl p-5 sm:p-6 shadow-2xl text-[#fcfdff] space-y-4 sm:space-y-5 relative overflow-hidden animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Amber Ambient Glow */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-20 rounded-full blur-2xl opacity-25 bg-gradient-brand-r pointer-events-none" />
+
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3.5 border-b border-white/[0.08] relative z-10">
+              <div className="flex items-center gap-2.5">
+                <div className="h-7 w-7 rounded-lg bg-[#FF9933]/15 border border-[#FF9933]/30 flex items-center justify-center text-[#FF9933] shadow-[0_0_12px_rgba(255,153,51,0.15)]">
+                  <SettingsIcon size={14} />
+                </div>
+                <div>
+                  <h3 className="font-serif-headline text-base font-normal text-[#fcfdff] leading-tight">
+                    Space Settings
+                  </h3>
+                  <p className="text-[11px] text-[#888e90]">
+                    Configure permissions & controls for this space
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(false)}
+                className="text-[#888e90] hover:text-[#fcfdff] p-1.5 rounded-lg hover:bg-white/[0.08] transition-colors cursor-pointer"
+                title="Close"
+              >
+                <XIcon size={14} />
               </button>
             </div>
 
-            <form onSubmit={handleUpdateSettings} className="space-y-3 text-xs">
-              <label className="flex items-center justify-between cursor-pointer p-2.5 rounded-lg hover:bg-[#101012]">
-                <span className="text-[#fcfdff]/90">Microphone for all participants</span>
-                <input
-                  type="checkbox"
-                  checked={settings.micForAll}
-                  onChange={(e) => setSettings({ ...settings, micForAll: e.target.checked })}
-                  className="h-4 w-4 rounded border-white/20 bg-[#06060a] text-white"
-                />
-              </label>
+            {/* Form with Luxury Animated Switches */}
+            <form onSubmit={handleUpdateSettings} className="space-y-2.5 relative z-10">
+              {/* Mic for all */}
+              <button
+                type="button"
+                onClick={() => setSettings({ ...settings, micForAll: !settings.micForAll })}
+                className="flex items-center justify-between w-full p-3 rounded-xl bg-[#0f0f14]/60 hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/[0.12] transition-all text-left group cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0 pr-3">
+                  <div
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                      settings.micForAll
+                        ? 'bg-[#FF9933]/15 text-[#FF9933]'
+                        : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
+                    }`}
+                  >
+                    <MicIcon size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-medium text-[#fcfdff] block leading-tight">
+                      Microphone Access
+                    </span>
+                    <span className="text-[11px] text-[#888e90] block leading-normal mt-0.5">
+                      Allow participants to unmute and speak
+                    </span>
+                  </div>
+                </div>
+                <div
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out ${
+                    settings.micForAll ? 'bg-[#FF9933]' : 'bg-[#1e1e24]'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out mt-[1px] ml-[1px] ${
+                      settings.micForAll ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </div>
+              </button>
 
-              <label className="flex items-center justify-between cursor-pointer p-2.5 rounded-lg hover:bg-[#101012]">
-                <span className="text-[#fcfdff]/90">Video camera for all participants</span>
-                <input
-                  type="checkbox"
-                  checked={settings.videoForAll}
-                  onChange={(e) => setSettings({ ...settings, videoForAll: e.target.checked })}
-                  className="h-4 w-4 rounded border-white/20 bg-[#06060a] text-white"
-                />
-              </label>
+              {/* Video for all */}
+              <button
+                type="button"
+                onClick={() => setSettings({ ...settings, videoForAll: !settings.videoForAll })}
+                className="flex items-center justify-between w-full p-3 rounded-xl bg-[#0f0f14]/60 hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/[0.12] transition-all text-left group cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0 pr-3">
+                  <div
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                      settings.videoForAll
+                        ? 'bg-[#FF9933]/15 text-[#FF9933]'
+                        : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
+                    }`}
+                  >
+                    <VideoIcon size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-medium text-[#fcfdff] block leading-tight">
+                      Camera Broadcast
+                    </span>
+                    <span className="text-[11px] text-[#888e90] block leading-normal mt-0.5">
+                      Allow participants to share video
+                    </span>
+                  </div>
+                </div>
+                <div
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out ${
+                    settings.videoForAll ? 'bg-[#FF9933]' : 'bg-[#1e1e24]'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out mt-[1px] ml-[1px] ${
+                      settings.videoForAll ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </div>
+              </button>
 
-              <label className="flex items-center justify-between cursor-pointer p-2.5 rounded-lg hover:bg-[#101012]">
-                <span className="text-[#fcfdff]/90">Screen sharing for all participants</span>
-                <input
-                  type="checkbox"
-                  checked={settings.screenShareForAll}
-                  onChange={(e) => setSettings({ ...settings, screenShareForAll: e.target.checked })}
-                  className="h-4 w-4 rounded border-white/20 bg-[#06060a] text-white"
-                />
-              </label>
+              {/* Screen share for all */}
+              <button
+                type="button"
+                onClick={() =>
+                  setSettings({ ...settings, screenShareForAll: !settings.screenShareForAll })
+                }
+                className="flex items-center justify-between w-full p-3 rounded-xl bg-[#0f0f14]/60 hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/[0.12] transition-all text-left group cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0 pr-3">
+                  <div
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                      settings.screenShareForAll
+                        ? 'bg-[#FF9933]/15 text-[#FF9933]'
+                        : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
+                    }`}
+                  >
+                    <MonitorIcon size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-medium text-[#fcfdff] block leading-tight">
+                      Screen Sharing
+                    </span>
+                    <span className="text-[11px] text-[#888e90] block leading-normal mt-0.5">
+                      Allow participants to present screen
+                    </span>
+                  </div>
+                </div>
+                <div
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out ${
+                    settings.screenShareForAll ? 'bg-[#FF9933]' : 'bg-[#1e1e24]'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out mt-[1px] ml-[1px] ${
+                      settings.screenShareForAll ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </div>
+              </button>
 
-              <label className="flex items-center justify-between cursor-pointer p-2.5 rounded-lg hover:bg-[#101012]">
-                <span className="text-[#fcfdff]/90">In-room text chat</span>
-                <input
-                  type="checkbox"
-                  checked={settings.allowChat}
-                  onChange={(e) => setSettings({ ...settings, allowChat: e.target.checked })}
-                  className="h-4 w-4 rounded border-white/20 bg-[#06060a] text-white"
-                />
-              </label>
+              {/* In-room chat */}
+              <button
+                type="button"
+                onClick={() => setSettings({ ...settings, allowChat: !settings.allowChat })}
+                className="flex items-center justify-between w-full p-3 rounded-xl bg-[#0f0f14]/60 hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/[0.12] transition-all text-left group cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0 pr-3">
+                  <div
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                      settings.allowChat
+                        ? 'bg-[#FF9933]/15 text-[#FF9933]'
+                        : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
+                    }`}
+                  >
+                    <MessageSquareIcon size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-medium text-[#fcfdff] block leading-tight">
+                      In-Space Chat
+                    </span>
+                    <span className="text-[11px] text-[#888e90] block leading-normal mt-0.5">
+                      Allow in-call messages & reactions
+                    </span>
+                  </div>
+                </div>
+                <div
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out ${
+                    settings.allowChat ? 'bg-[#FF9933]' : 'bg-[#1e1e24]'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out mt-[1px] ml-[1px] ${
+                      settings.allowChat ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </div>
+              </button>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-white/[0.06]">
+              {/* Raise hand */}
+              <button
+                type="button"
+                onClick={() =>
+                  setSettings({ ...settings, allowRaiseHand: !settings.allowRaiseHand })
+                }
+                className="flex items-center justify-between w-full p-3 rounded-xl bg-[#0f0f14]/60 hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/[0.12] transition-all text-left group cursor-pointer"
+              >
+                <div className="flex items-center gap-3 min-w-0 pr-3">
+                  <div
+                    className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                      settings.allowRaiseHand
+                        ? 'bg-[#FF9933]/15 text-[#FF9933]'
+                        : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
+                    }`}
+                  >
+                    <span className="text-sm">✋</span>
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-medium text-[#fcfdff] block leading-tight">
+                      Raise Hand
+                    </span>
+                    <span className="text-[11px] text-[#888e90] block leading-normal mt-0.5">
+                      Allow participants to ask questions
+                    </span>
+                  </div>
+                </div>
+                <div
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out ${
+                    settings.allowRaiseHand ? 'bg-[#FF9933]' : 'bg-[#1e1e24]'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out mt-[1px] ml-[1px] ${
+                      settings.allowRaiseHand ? 'translate-x-4' : 'translate-x-0'
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2.5 pt-3.5 border-t border-white/[0.08]">
                 <button
                   type="button"
                   onClick={() => setSettingsOpen(false)}
-                  className="px-3.5 py-1.5 rounded-lg text-xs font-medium text-[#888e90] hover:text-[#fcfdff]"
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06] transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={updatingSettings}
-                  className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-medium text-xs transition-colors shadow-[0_0_16px_rgba(252,253,255,0.12)] disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer disabled:opacity-50"
                 >
                   {updatingSettings ? (
                     <>
-                      <div className="animate-spin h-3 w-3 border border-black/30 border-t-black rounded-full" />
+                      <div className="animate-spin h-3.5 w-3.5 border border-black/30 border-t-black rounded-full" />
                       <span>Saving...</span>
                     </>
                   ) : (
