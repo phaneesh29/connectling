@@ -1750,7 +1750,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                   testingSpeaker={mediaDevices.testingSpeaker}
                   onTestMic={mediaDevices.testMic}
                   testingMicStatus={mediaDevices.testingMicStatus}
-                  micVolume={mediaDevices.micVolume}
+                  micVolume={localAudio.volume || mediaDevices.micVolume}
                 />
               </div>
             </div>
@@ -1771,7 +1771,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 testingSpeaker={mediaDevices.testingSpeaker}
                 onTestMic={mediaDevices.testMic}
                 testingMicStatus={mediaDevices.testingMicStatus}
-                micVolume={mediaDevices.micVolume}
+                micVolume={localAudio.volume || mediaDevices.micVolume}
               />
               <button
                 type="button"

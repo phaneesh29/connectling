@@ -1725,7 +1725,7 @@ export default function MeetPage({ params }: MeetPageProps) {
                 testingSpeaker={mediaDevices.testingSpeaker}
                 onTestMic={mediaDevices.testMic}
                 testingMicStatus={mediaDevices.testingMicStatus}
-                micVolume={mediaDevices.micVolume}
+                micVolume={localAudio.volume || mediaDevices.micVolume}
               />
             </div>
           </div>

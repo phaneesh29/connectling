@@ -151,14 +151,141 @@ export function MediaDeviceMenu({
     };
   }, [isOpen, onClose, type]);
 
+  // Live mic monitoring for real-time LED equalizer testing when menu is open
+  const [liveVolume, setLiveVolume] = useState<number>(0);
+
+  useEffect(() => {
+    // Only monitor audio input when audio menu is actively open and not doing recording/playback test
+    if (!isOpen || type !== 'audio' || testingMicStatus === 'recording' || testingMicStatus === 'playing') {
+      setLiveVolume(0);
+      return;
+    }
+
+    if (typeof window === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      return;
+    }
+
+    let isCancelled = false;
+    let stream: MediaStream | null = null;
+    let audioCtx: AudioContext | null = null;
+    let animFrame: number | null = null;
+
+    const handleResume = () => {
+      if (audioCtx && audioCtx.state === 'suspended') {
+        void audioCtx.resume();
+      }
+    };
+    window.addEventListener('click', handleResume);
+    window.addEventListener('keydown', handleResume);
+
+    const startMonitor = async () => {
+      try {
+        const constraints: MediaStreamConstraints = {
+          audio:
+            selectedAudioInputId && selectedAudioInputId !== 'default'
+              ? { deviceId: { exact: selectedAudioInputId } }
+              : true,
+        };
+
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+        } catch {
+          // Fallback to default microphone if deviceId exact match fails
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
+
+        if (isCancelled) {
+          stream.getTracks().forEach((t) => {
+            try {
+              t.stop();
+            } catch {}
+          });
+          return;
+        }
+
+        const AudioCtx =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+        audioCtx = new AudioCtx();
+
+        if (audioCtx.state === 'suspended') {
+          void audioCtx.resume();
+        }
+
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 128;
+        analyser.smoothingTimeConstant = 0.35;
+
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+        const checkLiveVolume = () => {
+          if (isCancelled) return;
+          analyser.getByteFrequencyData(dataArray);
+
+          // Focus on voice speech frequency bins (1 to 24)
+          let sum = 0;
+          const count = Math.min(24, dataArray.length);
+          for (let i = 1; i < count; i++) {
+            sum += dataArray[i];
+          }
+          const avg = sum / (count - 1);
+          // Scale so normal speech (avg ~10-60) displays nicely between 15% and 85%
+          const normalized = Math.min(100, Math.round((avg / 75) * 100));
+
+          setLiveVolume(normalized);
+          animFrame = requestAnimationFrame(checkLiveVolume);
+        };
+
+        animFrame = requestAnimationFrame(checkLiveVolume);
+      } catch (err) {
+        console.warn('Live mic monitor could not start:', err);
+        if (!isCancelled) {
+          setLiveVolume(0);
+        }
+      }
+    };
+
+    void startMonitor();
+
+    return () => {
+      isCancelled = true;
+      window.removeEventListener('click', handleResume);
+      window.removeEventListener('keydown', handleResume);
+      if (animFrame) {
+        cancelAnimationFrame(animFrame);
+        animFrame = null;
+      }
+      if (audioCtx && audioCtx.state !== 'closed') {
+        void audioCtx.close().catch(() => {});
+        audioCtx = null;
+      }
+      if (stream) {
+        stream.getTracks().forEach((t) => {
+          try {
+            t.stop();
+          } catch {}
+        });
+        stream = null;
+      }
+      setLiveVolume(0);
+    };
+  }, [isOpen, type, selectedAudioInputId, testingMicStatus]);
+
   if (!isOpen || !mounted) return null;
 
   const hasAudioPermissions = audioInputs.some((d) => Boolean(d.label));
   const hasVideoPermissions = videoInputs.some((d) => Boolean(d.label));
 
   // LED equalizer calculations for microphone activity (22 segments)
+  const currentMicVolume =
+    testingMicStatus === 'recording' ? micVolume : Math.max(micVolume, liveVolume);
   const totalBars = 22;
-  const activeBarsCount = Math.round((Math.max(0, Math.min(100, micVolume)) / 100) * totalBars);
+  const activeBarsCount = Math.round(
+    (Math.max(0, Math.min(100, currentMicVolume)) / 100) * totalBars
+  );
 
   const menuContent = (
     <>
@@ -285,8 +412,8 @@ export function MediaDeviceMenu({
                   <div className="flex items-center gap-2">
                     <span className="text-[11px] font-medium text-[#888e90]">Mic Test</span>
                     {testingMicStatus === 'recording' ? (
-                      <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-[#ff2047]">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#ff2047] animate-ping" />
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-[#f87171]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#f87171] animate-ping" />
                         Recording 3s...
                       </span>
                     ) : testingMicStatus === 'playing' ? (
@@ -298,6 +425,11 @@ export function MediaDeviceMenu({
                       <span className="text-[10px] font-mono text-[#11ff99] flex items-center gap-1">
                         <CheckIcon size={11} /> Verified clear
                       </span>
+                    ) : currentMicVolume > 5 ? (
+                      <span className="text-[10px] font-mono text-[#11ff99] flex items-center gap-1 font-medium">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#11ff99] animate-pulse" />
+                        Voice Detected
+                      </span>
                     ) : (
                       <span className="text-[10px] font-mono text-[#62666a]">Speak to test</span>
                     )}
@@ -308,7 +440,7 @@ export function MediaDeviceMenu({
                     onClick={onTestMic}
                     className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                       testingMicStatus === 'recording'
-                        ? 'bg-red-500/20 text-[#ff2047] border border-red-500/40 animate-pulse shadow-[0_0_12px_rgba(255,32,71,0.25)]'
+                        ? 'bg-red-500/20 text-[#f87171] border border-red-500/40 animate-pulse shadow-[0_0_12px_rgba(248,113,113,0.25)]'
                         : testingMicStatus === 'playing'
                         ? 'bg-amber-500/20 text-[#ffc53d] border border-amber-500/40 shadow-[0_0_12px_rgba(255,197,61,0.25)]'
                         : testingMicStatus === 'done'
@@ -339,7 +471,7 @@ export function MediaDeviceMenu({
 
                       let barColor = 'bg-white/[0.08]';
                       if (isActive) {
-                        if (isPeak) barColor = 'bg-[#ff2047] shadow-[0_0_6px_rgba(255,32,71,0.7)]';
+                        if (isPeak) barColor = 'bg-[#f87171] shadow-[0_0_6px_rgba(248,113,113,0.7)]';
                         else if (isMid) barColor = 'bg-[#FF9933] shadow-[0_0_6px_rgba(255,153,51,0.6)]';
                         else barColor = 'bg-[#11ff99] shadow-[0_0_6px_rgba(17,255,153,0.6)]';
                       }
@@ -354,7 +486,7 @@ export function MediaDeviceMenu({
                   </div>
                   <div className="flex items-center justify-between text-[9px] font-mono text-[#585c60] px-1">
                     <span>Input Level</span>
-                    <span>{micVolume}%</span>
+                    <span>{currentMicVolume}%</span>
                   </div>
                 </div>
               </div>
