@@ -11,6 +11,7 @@ import { ReportModal } from '@/components/report-modal';
 import {
   VideoIcon,
   AudioWaveformIcon,
+  RadioIcon,
   SparklesIcon,
   ArrowRightIcon,
   LockIcon,
@@ -29,7 +30,7 @@ export default function DashboardPage() {
     }
   }, [session, sessionPending, router]);
 
-  const [activeMode, setActiveMode] = useState<'meet' | 'audio'>('meet');
+  const [activeMode, setActiveMode] = useState<'meet' | 'audio' | 'webinar'>('meet');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'meet' | 'audio'>('meet');
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -40,6 +41,7 @@ export default function DashboardPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [deletingCode, setDeletingCode] = useState<string | null>(null);
   const [deleteConfirmRoom, setDeleteConfirmRoom] = useState<string | null>(null);
+  const [webinarNotified, setWebinarNotified] = useState(false);
 
   const fetchMyRooms = useCallback(async () => {
     if (!session) return;
@@ -174,7 +176,11 @@ export default function DashboardPage() {
   return (
     <div
       className={`min-h-screen pt-20 sm:pt-24 bg-black text-[#fcfdff] transition-all duration-700 ${
-        activeMode === 'meet' ? 'ambient-glow-meet' : 'ambient-glow-audio'
+        activeMode === 'meet'
+          ? 'ambient-glow-meet'
+          : activeMode === 'audio'
+          ? 'ambient-glow-audio'
+          : 'ambient-glow-webinar'
       }`}
     >
       <main className="max-w-5xl mx-auto px-4 sm:px-6 pb-16 space-y-8">
@@ -183,14 +189,14 @@ export default function DashboardPage() {
         <section className="space-y-5 sm:space-y-6 pt-1">
           <div className="flex items-center justify-start">
             {/* Segmented Mode Selector */}
-            <div className="inline-flex p-1 bg-[#101012] border border-white/[0.08] rounded-full shadow-inner max-w-full">
+            <div className="inline-flex p-1 bg-[#101012] border border-white/[0.08] rounded-full shadow-inner max-w-full overflow-x-auto">
               <button
                 type="button"
                 onClick={() => {
                   setActiveMode('meet');
                   setCodeInput('');
                 }}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 cursor-pointer ${
                   activeMode === 'meet'
                     ? 'bg-[#1e1e24] text-[#fcfdff] border border-white/[0.14] shadow-sm'
                     : 'text-[#888e90] hover:text-[#fcfdff]'
@@ -206,7 +212,7 @@ export default function DashboardPage() {
                   setActiveMode('audio');
                   setCodeInput('');
                 }}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all cursor-pointer ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 cursor-pointer ${
                   activeMode === 'audio'
                     ? 'bg-[#1e1e24] text-[#fcfdff] border border-white/[0.14] shadow-sm'
                     : 'text-[#888e90] hover:text-[#fcfdff]'
@@ -214,6 +220,22 @@ export default function DashboardPage() {
               >
                 <AudioWaveformIcon size={14} className={activeMode === 'audio' ? 'text-[#F4C430]' : ''} />
                 <span>Audio Rooms</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveMode('webinar');
+                  setCodeInput('');
+                }}
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 cursor-pointer ${
+                  activeMode === 'webinar'
+                    ? 'bg-[#1e1e24] text-[#fcfdff] border border-white/[0.14] shadow-sm'
+                    : 'text-[#888e90] hover:text-[#fcfdff]'
+                }`}
+              >
+                <RadioIcon size={14} className={activeMode === 'webinar' ? 'text-[#FF9933]' : ''} />
+                <span>Webinars</span>
               </button>
             </div>
           </div>
@@ -225,17 +247,24 @@ export default function DashboardPage() {
                   Video conferences <br />
                   <span className="text-gradient-brand italic font-serif">built for precision.</span>
                 </>
-              ) : (
+              ) : activeMode === 'audio' ? (
                 <>
                   Drop-in voice stages <br />
                   <span className="text-gradient-brand italic font-serif">reimagined for teams.</span>
+                </>
+              ) : (
+                <>
+                  Interactive webinars <br />
+                  <span className="text-gradient-brand italic font-serif">crafted for audiences.</span>
                 </>
               )}
             </h1>
             <p className="text-[#888e90] text-xs sm:text-base leading-relaxed max-w-xl font-normal">
               {activeMode === 'meet'
                 ? 'High-density encrypted video conferences with crystal-clear screen sharing, grid autofocus, and single-click invites up to 4 participants.'
-                : 'Moderated Clubhouse-style audio lounges and casual team voice stages with open mic modes up to 10 participants.'}
+                : activeMode === 'audio'
+                ? 'Moderated Clubhouse-style audio lounges and casual team voice stages with open mic modes up to 10 participants.'
+                : 'Host keynote presentations, interactive product demos, and community stages designed for live participation.'}
             </p>
           </div>
         </section>
@@ -250,16 +279,16 @@ export default function DashboardPage() {
               <span className="h-2.5 w-2.5 rounded-full bg-[#ffc53d]/80 shrink-0" />
               <span className="h-2.5 w-2.5 rounded-full bg-[#11ff99]/80 shrink-0" />
               <span className="font-mono text-[11px] text-[#888e90] ml-1 sm:ml-2 truncate max-w-[130px] xs:max-w-[200px] sm:max-w-none">
-                connectling.com/{activeMode === 'meet' ? 'meet' : 'talk'}/[code]
+                connectling.com/{activeMode === 'meet' ? 'meet' : activeMode === 'audio' ? 'talk' : 'webinars'}/[code]
               </span>
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <span className="font-mono text-[10px] text-[#888e90] px-2 sm:px-2.5 py-0.5 rounded bg-[#101012] border border-white/[0.06]">
-                {activeMode === 'meet' ? '4 Seats' : '10 Seats'}
+                {activeMode === 'meet' ? '4 Seats' : activeMode === 'audio' ? '10 Seats' : '100+ Seats'}
               </span>
               <span className="font-mono text-[10px] text-[#888e90] px-2 sm:px-2.5 py-0.5 rounded bg-[#101012] border border-white/[0.06]">
-                24h Ephemeral
+                {activeMode === 'webinar' ? 'Coming Soon' : '24h Ephemeral'}
               </span>
             </div>
           </div>
@@ -267,57 +296,132 @@ export default function DashboardPage() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 pt-1 relative z-10">
             <div className="space-y-1">
               <h2 className="text-base sm:text-lg font-medium text-[#fcfdff]">
-                {activeMode === 'meet' ? 'Instant Video Meeting' : 'Instant Voice Stage'}
+                {activeMode === 'meet'
+                  ? 'Instant Video Meeting'
+                  : activeMode === 'audio'
+                  ? 'Instant Voice Stage'
+                  : 'Live Webinar Stage'}
               </h2>
               <p className="text-xs text-[#888e90] leading-relaxed">
                 {activeMode === 'meet'
                   ? 'Launch an encrypted session with screen sharing and custom permissions.'
-                  : 'Start a drop-in voice stage with open mic or audience hand-raising moderation.'}
+                  : activeMode === 'audio'
+                  ? 'Start a drop-in voice stage with open mic or audience hand-raising moderation.'
+                  : 'Broadcast to large audiences with interactive stages and live participation.'}
               </p>
             </div>
 
-            <button
-              onClick={() => openCreateModal(activeMode)}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl sm:rounded-lg transition-all active:scale-[0.98] shadow-brand-glow shrink-0 cursor-pointer"
-            >
-              <SparklesIcon size={13} />
-              <span>Launch {activeMode === 'meet' ? 'Video Meeting' : 'Audio Stage'}</span>
-            </button>
+            {activeMode !== 'webinar' && (
+              <button
+                onClick={() => openCreateModal(activeMode)}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl sm:rounded-lg transition-all active:scale-[0.98] shadow-brand-glow shrink-0 cursor-pointer"
+              >
+                <SparklesIcon size={13} />
+                <span>Launch {activeMode === 'meet' ? 'Video Meeting' : 'Audio Stage'}</span>
+              </button>
+            )}
           </div>
 
           <div className="pt-3 sm:pt-4 border-t border-white/[0.06] relative z-10">
-            <form onSubmit={handleJoin} className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3">
-              <div className="relative flex-1 w-full">
-                <input
-                  type="text"
-                  placeholder={
-                    activeMode === 'meet'
-                      ? 'Enter meeting code (e.g. 7au-qn5t-p8e) or URL'
-                      : 'Enter audio room code (e.g. tlk-92fa-10b) or URL'
-                  }
-                  value={codeInput}
-                  onChange={(e) => setCodeInput(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl sm:rounded-lg border border-white/[0.10] bg-[#06060a] text-[#fcfdff] placeholder-[#464a4d] text-base sm:text-xs font-mono focus:outline-none focus:border-white/40 transition-all"
-                />
+            {activeMode === 'webinar' ? (
+              <div className="py-4 sm:py-5 flex items-center justify-center relative">
+                <div className="relative group inline-flex items-center justify-center">
+                  {/* Ambient Outer Saffron/Amber Aura Glow */}
+                  <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-[#FF9933]/30 via-[#F4C430]/20 to-[#FF8C00]/30 blur-lg sm:blur-xl opacity-50 group-hover:opacity-90 transition-opacity duration-500 pointer-events-none" />
+
+                  {/* Fluid Liquid Saffron/Gold Border */}
+                  <div className="relative p-[1.5px] rounded-full bg-gradient-to-r from-[#FF9933] via-[#F4C430] to-[#FF8C00] animate-border-flow shadow-[0_0_16px_rgba(255,153,51,0.2)] group-hover:shadow-[0_0_30px_rgba(255,153,51,0.4)] transition-shadow duration-500">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setWebinarNotified(true);
+                        setTimeout(() => setWebinarNotified(false), 3200);
+                      }}
+                      className="relative inline-flex items-center gap-3 sm:gap-4.5 px-5 sm:px-7 py-2.5 sm:py-3.5 rounded-full bg-gradient-to-b from-[#131318]/95 via-[#0c0c10]/95 to-[#07070a]/98 backdrop-blur-2xl cursor-pointer active:scale-[0.98] transition-all duration-300 overflow-hidden select-none"
+                    >
+                      {/* Subtle Top-Rim Highlight Reflection */}
+                      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
+
+                      {/* Diagonal Glass Sheen Sweep on Hover */}
+                      <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/[0.12] to-transparent pointer-events-none" />
+
+                      {webinarNotified ? (
+                        <div className="flex items-center gap-2 py-0.5">
+                          <SparklesIcon size={15} className="text-[#11ff99]" />
+                          <span className="font-serif italic text-base sm:text-lg text-transparent bg-clip-text bg-gradient-to-r from-[#11ff99] to-[#80ffc2]">
+                            Stage in craft • You&apos;re on early radar
+                          </span>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Studio Live Equalizer Capsule (No Dot) */}
+                          <div className="flex items-center px-2 py-1 rounded-full bg-black/40 border border-white/[0.08] shadow-[inset_0_1px_1px_rgba(0,0,0,0.6)] shrink-0">
+                            <div className="flex items-end gap-[2.5px] h-4 sm:h-4.5 px-0.5">
+                              <span className="w-[2px] sm:w-[2.5px] rounded-full bg-[#FF9933] animate-eq-1" />
+                              <span className="w-[2px] sm:w-[2.5px] rounded-full bg-[#F4C430] animate-eq-2" />
+                              <span className="w-[2px] sm:w-[2.5px] rounded-full bg-[#FF8C00] animate-eq-3" />
+                              <span className="w-[2px] sm:w-[2.5px] rounded-full bg-[#FF9933] animate-eq-4" />
+                              <span className="w-[2px] sm:w-[2.5px] rounded-full bg-[#F4C430] animate-eq-5" />
+                            </div>
+                          </div>
+
+                          {/* Signature Typography ("Coming Soon") */}
+                          <div className="flex items-baseline gap-1.5 sm:gap-2">
+                            <span className="font-serif-headline text-lg sm:text-2xl text-[#fcfdff] font-light tracking-tight group-hover:text-white transition-colors">
+                              Coming
+                            </span>
+                            <span className="font-serif italic text-lg sm:text-2xl font-normal text-gradient-brand drop-shadow-[0_0_16px_rgba(255,153,51,0.5)]">
+                              Soon
+                            </span>
+                          </div>
+
+                          {/* Broadcast Stage Chip */}
+                          <div className="hidden xs:flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full bg-white/[0.04] border border-white/[0.08] group-hover:border-[#FF9933]/40 group-hover:bg-[#FF9933]/15 transition-all shrink-0">
+                            <RadioIcon size={11} className="text-[#FF9933] animate-pulse" />
+                            <span className="font-mono text-[9px] sm:text-[10px] tracking-widest uppercase text-[#888e90] group-hover:text-white transition-colors">
+                              Stage
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
-              <button
-                type="submit"
-                disabled={!codeInput.trim() || joining}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#101012] hover:bg-[#18181c] border border-white/[0.12] hover:border-white/25 text-[#fcfdff] font-medium text-xs rounded-xl sm:rounded-lg transition-all disabled:opacity-40 shrink-0 cursor-pointer"
-              >
-                {joining ? (
-                  <>
-                    <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
-                    <span>Connecting...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Join Space</span>
-                    <ArrowRightIcon size={13} />
-                  </>
-                )}
-              </button>
-            </form>
+            ) : (
+              <form onSubmit={handleJoin} className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3">
+                <div className="relative flex-1 w-full">
+                  <input
+                    type="text"
+                    placeholder={
+                      activeMode === 'meet'
+                        ? 'Enter meeting code (e.g. 7au-qn5t-p8e) or URL'
+                        : 'Enter audio room code (e.g. tlk-92fa-10b) or URL'
+                    }
+                    value={codeInput}
+                    onChange={(e) => setCodeInput(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl sm:rounded-lg border border-white/[0.10] bg-[#06060a] text-[#fcfdff] placeholder-[#464a4d] text-base sm:text-xs font-mono focus:outline-none focus:border-white/40 transition-all"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={!codeInput.trim() || joining}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#101012] hover:bg-[#18181c] border border-white/[0.12] hover:border-white/25 text-[#fcfdff] font-medium text-xs rounded-xl sm:rounded-lg transition-all disabled:opacity-40 shrink-0 cursor-pointer"
+                >
+                  {joining ? (
+                    <>
+                      <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
+                      <span>Connecting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Join Space</span>
+                      <ArrowRightIcon size={13} />
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
           </div>
         </section>
 
