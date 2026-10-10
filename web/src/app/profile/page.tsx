@@ -14,9 +14,13 @@ import {
   LaptopIcon,
   SmartphoneIcon,
   LogOutIcon,
+  TriangleAlertIcon,
+  ArrowRightIcon,
 } from '@animateicons/react/lucide';
 import { GoogleIcon } from '@/components/google-icon';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { ReportModal } from '@/components/report-modal';
+import { Tooltip } from '@/components/tooltip';
 
 interface SessionItem {
   id: string;
@@ -67,6 +71,7 @@ export default function ProfilePage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [imageError, setImageError] = useState(false);
   const [confirmSignOutAllOpen, setConfirmSignOutAllOpen] = useState(false);
+  const [reportModalOpen, setReportModalOpen] = useState(false);
 
   useEffect(() => {
     if (!isPending && !session) {
@@ -267,20 +272,14 @@ export default function ProfilePage() {
             </div>
 
             {/* Opposite side: Google Icon with tooltip "Verified via Google" */}
-            <div className="relative group shrink-0">
+            <Tooltip content="Verified via Google" dotColor="bg-[#11ff99]" position="top">
               <div
                 className="h-9 w-9 rounded-xl bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.12] hover:border-white/[0.25] flex items-center justify-center transition-all cursor-pointer shadow-sm"
-                title="Verified via Google"
+                aria-label="Verified via Google"
               >
-                <GoogleIcon className="w-4 h-4" />
+                <GoogleIcon className="w-4.5 h-4.5 shrink-0" />
               </div>
-
-              {/* Floating Tooltip */}
-              <div className="absolute right-0 bottom-full mb-2 hidden group-hover:flex items-center gap-1.5 px-2.5 py-1 bg-[#141418] border border-white/[0.15] text-[#fcfdff] text-[11px] font-sans rounded-lg shadow-2xl whitespace-nowrap pointer-events-none z-20 animate-in fade-in zoom-in-95 duration-150">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#11ff99]" />
-                <span>Verified via Google</span>
-              </div>
-            </div>
+            </Tooltip>
           </div>
         </section>
 
@@ -361,6 +360,40 @@ export default function ProfilePage() {
           </div>
         </section>
 
+        {/* Found an Issue Banner */}
+        <section className="relative overflow-hidden p-5 sm:p-6 bg-[#0a0a0c] border border-white/[0.08] hover:border-white/[0.14] rounded-2xl transition-all duration-300 group">
+          {/* Subtle Deep Corner Glow */}
+          <div className="absolute top-0 right-0 w-64 h-64 rounded-full blur-3xl pointer-events-none opacity-[0.08] -mr-20 -mt-20 bg-gradient-to-br from-[#ff2047] via-[#FF8C00] to-[#FF9933]" />
+
+          {/* Subtle Top Red-to-Orange Hairline */}
+          <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-[#ff2047]/35 to-[#FF9933]/35 pointer-events-none" />
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+            <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+              <div className="h-10 w-10 rounded-xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-center text-[#ff3b5c] group-hover:text-[#FF9933] shrink-0 transition-colors">
+                <TriangleAlertIcon size={18} />
+              </div>
+              <div className="space-y-0.5 min-w-0">
+                <h3 className="text-sm font-medium text-[#fcfdff]">
+                  Found an issue?
+                </h3>
+                <p className="text-xs text-[#888e90] leading-relaxed">
+                  Report glitches, audio or video hiccups, or share feedback to help us improve Connectling.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setReportModalOpen(true)}
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-[#ff2047]/15 to-[#FF9933]/15 hover:from-[#ff2047]/25 hover:to-[#FF9933]/25 border border-[#ff2047]/35 hover:border-[#FF9933]/60 text-xs font-medium text-[#fcfdff] hover:text-white rounded-xl transition-all shrink-0 cursor-pointer active:scale-[0.98]"
+            >
+              <span>Report Here</span>
+              <ArrowRightIcon size={13} />
+            </button>
+          </div>
+        </section>
+
         {/* Sign Out Card */}
         <section className="p-5 bg-[#0a0a0c] border border-white/[0.08] rounded-2xl flex items-center justify-between">
           <div className="space-y-0.5">
@@ -392,6 +425,11 @@ export default function ProfilePage() {
         isLoading={actionLoading === 'all'}
         onConfirm={handleExecuteRevokeAll}
         onCancel={() => setConfirmSignOutAllOpen(false)}
+      />
+
+      <ReportModal
+        isOpen={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
       />
     </div>
   );
