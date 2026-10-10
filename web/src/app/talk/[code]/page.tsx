@@ -1380,7 +1380,7 @@ export default function TalkPage({ params }: TalkPageProps) {
             const remoteAudio = webrtc.remoteAudioLevels[p.userId];
             const isSpeaking = isMe
               ? isLocalMicActive && localAudio.isSpeaking
-              : remoteAudio ? remoteAudio.isSpeaking : !p.isMuted;
+              : !p.isMuted && Boolean(remoteAudio?.isSpeaking);
             const liveVolume = isMe ? localAudio.volume : remoteAudio?.volume;
 
             return (
@@ -1504,7 +1504,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                   <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-[#101014] border border-white/[0.14] flex items-center justify-center z-10">
                     {isMe ? (
                       isMuted ? (
-                        <MicOffIcon size={10} className="text-[#888e90]" />
+                        <MicOffIcon size={10} className="text-[#f87171]" />
                       ) : (
                         <MicIcon
                           size={10}
@@ -1512,9 +1512,12 @@ export default function TalkPage({ params }: TalkPageProps) {
                         />
                       )
                     ) : p.isMuted ? (
-                      <MicOffIcon size={10} className="text-[#888e90]" />
+                      <MicOffIcon size={10} className="text-[#f87171]" />
                     ) : (
-                      <MicIcon size={10} className="text-[#11ff99]" />
+                      <MicIcon
+                        size={10}
+                        className={isSpeaking ? 'text-[#11ff99]' : 'text-emerald-400/70'}
+                      />
                     )}
                   </span>
                 </div>
@@ -1532,7 +1535,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                       {isMicActive ? (
                         <div className="flex items-center justify-center gap-1.5 text-[#11ff99]">
                           <AudioWaveform
-                            isActive={true}
+                            isActive={isSpeaking}
                             size="xs"
                             barCount={3}
                             volume={liveVolume}
@@ -1551,7 +1554,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                   ) : isMicActive ? (
                     <div className="flex items-center justify-center gap-1.5 text-[#11ff99]">
                       <AudioWaveform
-                        isActive={true}
+                        isActive={isSpeaking}
                         size="xs"
                         barCount={3}
                         volume={liveVolume}

@@ -194,6 +194,12 @@ export function useWebRTC({
       analyser.smoothingTimeConstant = 0.35;
       source.connect(analyser);
 
+      // Initialize remote peer audio level immediately with clean silence
+      setRemoteAudioLevels((prev) => ({
+        ...prev,
+        [userId]: { volume: 0, isSpeaking: false },
+      }));
+
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       let animId: number | null = null;
       let isCancelled = false;
@@ -211,7 +217,7 @@ export function useWebRTC({
         const avg = sum / 16;
         const normalized = Math.min(100, Math.round((avg / 90) * 100));
         const now = Date.now();
-        const speakingNow = normalized > 5;
+        const speakingNow = normalized > 7;
 
         if (speakingNow) {
           lastSpeaking = now;

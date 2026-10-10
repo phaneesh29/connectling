@@ -1223,7 +1223,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         : Boolean(p.isVideoOn) && (!isCompact || !isThisPresenter)
     );
     const remoteAudio = webrtc.remoteAudioLevels[p.userId];
-    const isSpeaking = remoteAudio ? remoteAudio.isSpeaking : !p.isMuted;
+    const isSpeaking = !p.isMuted && Boolean(remoteAudio?.isSpeaking);
 
     return (
       <div
@@ -1320,8 +1320,13 @@ export default function MeetPage({ params }: MeetPageProps) {
               </p>
             ) : isSpeaking ? (
               <p className="text-[10px] font-mono text-[#11ff99] relative z-10 font-medium flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#11ff99] opacity-80" />
+                <span className="h-1.5 w-1.5 rounded-full bg-[#11ff99] opacity-80 animate-pulse" />
                 <span>Speaking</span>
+              </p>
+            ) : !p.isMuted ? (
+              <p className="text-[10px] font-mono text-emerald-400/80 relative z-10 font-medium flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#11ff99] opacity-80" />
+                <span>Mic active</span>
               </p>
             ) : (
               <p className="text-[10px] font-mono text-[#888e90] relative z-10">Camera muted</p>
@@ -1404,7 +1409,9 @@ export default function MeetPage({ params }: MeetPageProps) {
               : 'border-white/[0.10]'
           }`}
         >
-          {isSpeaking ? (
+          {p.isMuted ? (
+            <MicOffIcon size={11} className="text-[#f87171]" />
+          ) : isSpeaking ? (
             <div className="flex items-center gap-1">
               <MicIcon size={11} className="text-[#11ff99]" />
               {!isCompact && (
@@ -1416,7 +1423,7 @@ export default function MeetPage({ params }: MeetPageProps) {
               )}
             </div>
           ) : (
-            <MicOffIcon size={11} className="text-[#ff2047]" />
+            <MicIcon size={11} className="text-emerald-400/80" />
           )}
           <span className="text-[10px] sm:text-[11px] truncate max-w-[70px] xs:max-w-[90px] sm:max-w-[120px]">{p.name}</span>
           {isOtherHost && (
