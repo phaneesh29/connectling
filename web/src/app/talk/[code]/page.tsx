@@ -1850,16 +1850,17 @@ export default function TalkPage({ params }: TalkPageProps) {
             <button
               onClick={handleEndRoom}
               disabled={leaving || ending}
-              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 h-9 sm:h-10 rounded-xl bg-[#ff2047] hover:bg-[#ff2047]/90 text-white font-medium text-xs transition-all shadow-[0_0_16px_rgba(252,32,71,0.3)] disabled:opacity-50 shrink-0"
+              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 h-9 sm:h-10 rounded-xl bg-gradient-to-r from-[#240a0f] to-[#1a070b] hover:from-[#2e0e15] hover:to-[#220a0f] text-[#f87171] hover:text-[#fca5a5] border border-red-500/35 hover:border-red-500/50 font-medium text-xs transition-all shadow-[0_0_14px_rgba(220,38,38,0.18)] disabled:opacity-50 shrink-0"
+              title="End audio stage for all participants"
             >
               {ending ? (
                 <>
-                  <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
+                  <div className="animate-spin h-3.5 w-3.5 border border-red-400/30 border-t-red-400 rounded-full" />
                   <span className="hidden xs:inline">Ending Stage...</span>
                 </>
               ) : (
                 <>
-                  <PhoneCallIcon size={13} />
+                  <PhoneCallIcon size={13} className="text-[#f87171]" />
                   <span className="hidden xs:inline">End Stage</span>
                   <span className="xs:hidden">End</span>
                 </>

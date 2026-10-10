@@ -46,11 +46,11 @@ export function ConfirmDialog({
     switch (variant) {
       case 'danger':
         return {
-          glow: 'bg-[#ff2047]',
-          icon: <TriangleAlertIcon size={16} />,
-          iconBox: 'bg-[#ff2047]/10 text-[#ff2047] border-[#ff2047]/20',
+          glow: 'bg-red-950/40',
+          icon: <TriangleAlertIcon size={16} className="text-[#f87171]" />,
+          iconBox: 'bg-red-500/10 text-[#f87171] border-red-500/25',
           confirmBtn:
-            'bg-[#ff2047] hover:bg-[#e0163b] text-white shadow-lg shadow-[#ff2047]/20 active:scale-[0.98]',
+            'bg-gradient-to-r from-[#240a0f] to-[#1a070b] hover:from-[#2e0e15] hover:to-[#220a0f] text-[#f87171] hover:text-[#fca5a5] border border-red-500/35 hover:border-red-500/50 shadow-[0_0_14px_rgba(220,38,38,0.18)] active:scale-[0.98]',
         };
       case 'warning':
         return {
