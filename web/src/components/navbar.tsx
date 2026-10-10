@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { signOut, useSession } from '@/lib/auth-client';
 import { LogOutIcon, SparklesIcon, TriangleAlertIcon } from '@animateicons/react/lucide';
 import { ReportModal } from './report-modal';
+import { Tooltip } from './tooltip';
 
 export function Navbar() {
   const pathname = usePathname();
@@ -92,16 +93,17 @@ export function Navbar() {
 
           {/* Right: Auth User Capsule / Feedback / Sign In Button */}
           <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-            {/* Feedback & Report Button */}
-            <button
-              type="button"
-              onClick={() => setReportModalOpen(true)}
-              title="Report an issue or give feedback"
-              className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.10] hover:border-white/[0.20] text-[#888e90] hover:text-[#fcfdff] text-xs transition-all cursor-pointer pointer-events-auto"
-            >
-              <TriangleAlertIcon size={13} className="text-[#ff7a1a]" />
-              <span className="hidden xs:inline text-[11px] sm:text-xs">Report</span>
-            </button>
+            {/* Feedback & Report Button with Tooltip */}
+            <Tooltip content="Report / Feedback" dotColor="bg-red-400">
+              <button
+                type="button"
+                onClick={() => setReportModalOpen(true)}
+                aria-label="Report issue or feedback"
+                className="h-7.5 w-7.5 sm:h-8 sm:w-8 rounded-xl bg-white/[0.05] hover:bg-red-500/15 border border-white/[0.12] hover:border-red-500/30 text-[#888e90] hover:text-red-400 flex items-center justify-center transition-all duration-200 cursor-pointer pointer-events-auto"
+              >
+                <TriangleAlertIcon size={13} className="text-[#888e90] group-hover:text-red-400 transition-colors duration-200" />
+              </button>
+            </Tooltip>
 
             {isPending ? (
               <div className="h-7 w-16 sm:w-20 bg-white/[0.06] animate-pulse rounded-full" />
@@ -134,19 +136,21 @@ export function Navbar() {
                   </span>
                 </Link>
 
-                {/* Sign Out Button */}
-                <button
-                  onClick={handleSignOut}
-                  disabled={signingOut}
-                  title="Sign out"
-                  className="h-7.5 w-7.5 sm:h-8 sm:w-8 rounded-xl bg-white/[0.05] hover:bg-red-500/10 border border-white/[0.12] hover:border-red-500/30 text-[#888e90] hover:text-red-400 flex items-center justify-center transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  {signingOut ? (
-                    <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
-                  ) : (
-                    <LogOutIcon size={13} />
-                  )}
-                </button>
+                {/* Sign Out Button with Tooltip */}
+                <Tooltip content="Sign Out" dotColor="bg-red-400">
+                  <button
+                    onClick={handleSignOut}
+                    disabled={signingOut}
+                    aria-label="Sign out"
+                    className="h-7.5 w-7.5 sm:h-8 sm:w-8 rounded-xl bg-white/[0.05] hover:bg-red-500/15 border border-white/[0.12] hover:border-red-500/30 text-[#888e90] hover:text-red-400 flex items-center justify-center transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    {signingOut ? (
+                      <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
+                    ) : (
+                      <LogOutIcon size={13} className="text-[#888e90] group-hover:text-red-400 transition-colors duration-200" />
+                    )}
+                  </button>
+                </Tooltip>
               </div>
             ) : (
               <Link
