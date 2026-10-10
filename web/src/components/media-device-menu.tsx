@@ -11,6 +11,7 @@ import {
   CheckIcon,
   Volume2Icon,
   XIcon,
+  PlayIcon,
 } from '@animateicons/react/lucide';
 
 export interface MediaDeviceMenuProps {
@@ -56,29 +57,43 @@ export function MediaDeviceMenu({
 }: MediaDeviceMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
-  const [coords, setCoords] = useState<{ left: number; bottom: number; arrowLeft: number } | null>(null);
+  const [coords, setCoords] = useState<{ left: number; bottom: number; maxHeight: number } | null>(null);
 
+  // Position calculation: use floating popover on desktop if room permits, otherwise centered modal
   useEffect(() => {
     if (!isOpen) return;
 
     const updatePosition = () => {
       if (typeof window === 'undefined') return;
-      if (window.innerWidth < 640) {
+
+      // On mobile / tablet screens (< 768px), always use the centered modal
+      if (window.innerWidth < 768) {
         setCoords(null);
         return;
       }
 
       const toggle = document.querySelector(`[data-media-menu-toggle="${type}"]`);
-      if (toggle) {
-        const rect = toggle.getBoundingClientRect();
-        const menuWidth = 336; // 21rem (w-84)
-        const targetCenterX = rect.left + rect.width / 2;
-        const left = Math.max(12, Math.min(window.innerWidth - menuWidth - 12, targetCenterX - menuWidth / 2));
-        const bottom = Math.max(12, window.innerHeight - rect.top + 10);
-        const arrowLeft = Math.max(16, Math.min(menuWidth - 16, targetCenterX - left));
-
-        setCoords({ left, bottom, arrowLeft });
+      if (!toggle) {
+        setCoords(null);
+        return;
       }
+
+      const rect = toggle.getBoundingClientRect();
+      const menuWidth = 390;
+      const targetCenterX = rect.left + rect.width / 2;
+      const left = Math.max(16, Math.min(window.innerWidth - menuWidth - 16, targetCenterX - menuWidth / 2));
+      const bottom = Math.max(16, window.innerHeight - rect.top + 10);
+
+      // Verify there is enough room above the button
+      const availableHeightAbove = rect.top - 16;
+      if (availableHeightAbove < 260) {
+        // Fall back to centered modal if button is too close to top
+        setCoords(null);
+        return;
+      }
+
+      const maxHeight = Math.min(540, availableHeightAbove);
+      setCoords({ left, bottom, maxHeight });
     };
 
     updatePosition();
@@ -90,14 +105,26 @@ export function MediaDeviceMenu({
     };
   }, [isOpen, type]);
 
-  // Close on outside click
+  // Lock body scroll on mobile while modal is open
+  useEffect(() => {
+    if (!isOpen || typeof document === 'undefined') return;
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      const originalOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+      };
+    }
+  }, [isOpen]);
+
+  // Close on Escape or click outside
   useEffect(() => {
     if (!isOpen) return;
 
     const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       const target = e.target as Element | null;
       if (menuRef.current && target && !menuRef.current.contains(target)) {
-        // Ignore clicks/taps on the toggle button for this menu type
         if (
           typeof target.closest === 'function' &&
           target.closest(`[data-media-menu-toggle="${type}"]`)
@@ -126,99 +153,81 @@ export function MediaDeviceMenu({
 
   if (!isOpen || !mounted) return null;
 
-  const isScreenDesktop = typeof window !== 'undefined' ? window.innerWidth >= 640 : false;
-  if (isScreenDesktop && coords === null) {
-    // Wait for coords to be measured before rendering desktop popup to prevent jump/flicker
-    return null;
-  }
-
   const hasAudioPermissions = audioInputs.some((d) => Boolean(d.label));
   const hasVideoPermissions = videoInputs.some((d) => Boolean(d.label));
 
-  const isDesktop = coords !== null;
-  const desktopStyle: React.CSSProperties = isDesktop
-    ? {
-        position: 'fixed',
-        left: `${coords.left}px`,
-        bottom: `${coords.bottom}px`,
-        width: '336px',
-        maxHeight: typeof window !== 'undefined'
-          ? `${Math.min(520, Math.max(260, window.innerHeight - coords.bottom - 16))}px`
-          : undefined,
-        zIndex: 9999,
-      }
-    : {};
+  // LED equalizer calculations for microphone activity (22 segments)
+  const totalBars = 22;
+  const activeBarsCount = Math.round((Math.max(0, Math.min(100, micVolume)) / 100) * totalBars);
 
-  const menuNode = (
-    <div
-      ref={menuRef}
-      style={desktopStyle}
-      className={
-        isDesktop
-          ? 'max-w-[calc(100vw-24px)] max-h-[min(520px,calc(100vh-110px))] overflow-y-auto no-scrollbar bg-[#0c0c10]/95 border border-white/[0.14] rounded-2xl p-3.5 sm:p-4 shadow-[0_25px_70px_-10px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] text-[#fcfdff] backdrop-blur-2xl animate-device-menu-in ring-1 ring-white/10'
-          : 'fixed inset-x-3 bottom-3 sm:bottom-4 z-[9999] w-auto max-w-[calc(100vw-24px)] max-h-[min(520px,calc(100vh-110px))] overflow-y-auto no-scrollbar bg-[#0c0c10]/95 border border-white/[0.14] rounded-2xl p-3.5 sm:p-4 shadow-[0_25px_70px_-10px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] text-[#fcfdff] backdrop-blur-2xl animate-device-sheet-in ring-1 ring-white/10'
-      }
-      onClick={(e) => e.stopPropagation()}
-    >
+  const menuContent = (
+    <>
       {/* Top Ambient Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-16 blur-2xl pointer-events-none opacity-30 bg-gradient-brand-r" />
-
-      {/* Bottom Notch Anchor directly over Up-Arrow (desktop only) */}
-      {isDesktop && (
-        <div
-          style={{ left: `${coords.arrowLeft}px` }}
-          className="absolute -bottom-1.5 -translate-x-1/2 w-3 h-3 bg-[#0c0c10] border-r border-b border-white/[0.14] rotate-45 pointer-events-none"
-        />
-      )}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-16 blur-2xl pointer-events-none opacity-25 bg-gradient-brand-r" />
 
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 mb-3.5 border-b border-white/[0.08] relative z-10">
-        <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-lg bg-[#FF9933]/10 border border-[#FF9933]/20 flex items-center justify-center text-[#FF9933]">
-            {type === 'audio' ? <MicIcon size={13} /> : <CameraIcon size={13} />}
+      <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-white/[0.08] relative z-10">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="h-7 w-7 rounded-lg bg-[#FF9933]/15 border border-[#FF9933]/30 flex items-center justify-center text-[#FF9933] shrink-0 shadow-[0_0_12px_rgba(255,153,51,0.15)]">
+            {type === 'audio' ? <MicIcon size={14} /> : <CameraIcon size={14} />}
           </div>
-          <span className="text-xs font-semibold tracking-tight text-[#fcfdff]">
-            {type === 'audio' ? 'Audio Devices' : 'Video Devices'}
-          </span>
+          <div className="min-w-0">
+            <h3 className="text-xs sm:text-[13px] font-semibold text-[#fcfdff] tracking-tight leading-tight">
+              {type === 'audio' ? 'Audio Devices & Test' : 'Camera Settings'}
+            </h3>
+            <p className="text-[10px] text-[#888e90] truncate leading-normal">
+              {type === 'audio'
+                ? 'Select inputs, test mic & speaker output'
+                : 'Select camera input device'}
+            </p>
+          </div>
         </div>
+
         <button
           type="button"
           onClick={onClose}
-          className="text-[#888e90] hover:text-[#fcfdff] p-1.5 rounded-lg hover:bg-white/[0.06] transition-colors cursor-pointer"
+          className="text-[#888e90] hover:text-[#fcfdff] p-1.5 rounded-lg hover:bg-white/[0.08] transition-colors cursor-pointer shrink-0"
           title="Close"
         >
-          <XIcon size={13} />
+          <XIcon size={14} />
         </button>
       </div>
 
       {type === 'audio' && (
         <div className="space-y-4 relative z-10">
-          {/* Microphones Section */}
-          <div>
-            <div className="flex items-center justify-between mb-2 px-1">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-[#fcfdff]">
-                <MicIcon size={13} className="text-[#ff7a1a]" />
+          {/* 1. Microphone Section */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-0.5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#fcfdff]">
+                <MicIcon size={12} className="text-[#FF9933]" />
                 <span>Microphone</span>
               </div>
-              <span className="text-[10px] font-mono text-[#888e90] bg-white/[0.05] border border-white/[0.06] px-1.5 py-0.5 rounded-full">
-                {audioInputs.length} detected
+              <span className="text-[10px] font-mono text-[#888e90] bg-white/[0.04] border border-white/[0.06] px-2 py-0.5 rounded-full">
+                {audioInputs.length > 0 ? `${audioInputs.length} detected` : 'System Default'}
               </span>
             </div>
 
+            {/* Permission Prompt Banner */}
             {!hasAudioPermissions && onRequestPermissions && (
               <button
                 type="button"
                 onClick={() => void onRequestPermissions()}
-                className="w-full text-left px-3 py-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/15 border border-orange-500/25 text-orange-400 text-xs font-medium transition-colors mb-2 cursor-pointer flex items-center gap-2"
+                className="w-full text-left p-2.5 rounded-xl bg-orange-500/10 hover:bg-orange-500/15 border border-orange-500/25 text-orange-400 text-xs font-medium transition-colors cursor-pointer flex items-center justify-between gap-2"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-ping" />
-                <span>Grant microphone permission to see labels</span>
+                <div className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-ping shrink-0" />
+                  <span className="text-[11px]">Grant permission to see microphone labels</span>
+                </div>
+                <span className="text-[10px] font-mono bg-orange-500/20 px-2 py-0.5 rounded text-orange-300 shrink-0">
+                  Allow
+                </span>
               </button>
             )}
 
-            <div className="space-y-1 max-h-36 overflow-y-auto no-scrollbar">
+            {/* Device List */}
+            <div className="space-y-1.5 max-h-36 overflow-y-auto no-scrollbar pr-0.5">
               {audioInputs.length === 0 ? (
-                <div className="p-3 text-center bg-white/[0.02] border border-white/[0.04] rounded-xl">
+                <div className="p-3 text-center bg-white/[0.02] border border-white/[0.05] rounded-xl">
                   <p className="text-xs text-[#888e90]">No microphones detected</p>
                 </div>
               ) : (
@@ -234,32 +243,34 @@ export function MediaDeviceMenu({
                       key={device.deviceId || idx}
                       type="button"
                       onClick={() => onSelectAudioInput?.(device.deviceId)}
-                      className={`w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer group ${
+                      className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer group ${
                         isSelected
-                          ? 'bg-white/[0.08] text-[#fcfdff] border border-white/[0.12] shadow-sm'
-                          : 'text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.04] border border-transparent'
+                          ? 'bg-gradient-to-r from-[#FF9933]/15 to-white/[0.03] text-[#fcfdff] border border-[#FF9933]/40 shadow-[0_0_15px_rgba(255,153,51,0.10)]'
+                          : 'bg-white/[0.02] hover:bg-white/[0.06] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.04] hover:border-white/[0.10]'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 pr-2">
                         <div
                           className={`h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
                             isSelected
-                              ? 'bg-orange-500/15 text-[#ff7a1a]'
+                              ? 'bg-[#FF9933]/20 text-[#FF9933]'
                               : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
                           }`}
                         >
                           <MicIcon size={12} />
                         </div>
-                        <span className="truncate font-medium">{label}</span>
+                        <span className={`truncate ${isSelected ? 'font-medium text-[#fcfdff]' : ''}`}>
+                          {label}
+                        </span>
                       </div>
+
                       {isSelected ? (
-                        <div className="h-4 w-4 rounded-full bg-[#11ff99]/15 border border-[#11ff99]/30 flex items-center justify-center text-[#11ff99] shrink-0 shadow-[0_0_8px_rgba(17,255,153,0.25)]">
-                          <CheckIcon size={11} />
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#11ff99]/15 border border-[#11ff99]/30 text-[#11ff99] text-[10px] font-mono shrink-0 shadow-[0_0_8px_rgba(17,255,153,0.25)]">
+                          <CheckIcon size={10} />
+                          <span>Active</span>
                         </div>
                       ) : (
-                        <span className="text-[10px] font-mono text-[#55595d] group-hover:text-[#888e90] shrink-0">
-                          Select
-                        </span>
+                        <div className="h-3.5 w-3.5 rounded-full border border-white/[0.18] group-hover:border-[#FF9933]/50 shrink-0 transition-colors" />
                       )}
                     </button>
                   );
@@ -267,124 +278,114 @@ export function MediaDeviceMenu({
               )}
             </div>
 
-            {/* Test Microphone Button & Visualizer */}
+            {/* Interactive Mic Test & Live Equalizer Visualizer */}
             {onTestMic && (
-              <div className="mt-2.5 space-y-1.5">
-                <button
-                  type="button"
-                  onClick={onTestMic}
-                  className={`w-full py-2 px-3 rounded-xl border text-xs font-mono flex items-center justify-between transition-all cursor-pointer ${
-                    testingMicStatus === 'recording'
-                      ? 'bg-red-500/10 border-red-500/30 text-[#ff2047] shadow-[0_0_15px_rgba(255,32,71,0.2)]'
-                      : testingMicStatus === 'playing'
-                      ? 'bg-amber-500/10 border-amber-500/30 text-[#ffc53d] shadow-[0_0_15px_rgba(255,197,61,0.2)]'
-                      : testingMicStatus === 'done'
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-[#11ff99] shadow-[0_0_15px_rgba(17,255,153,0.2)]'
-                      : 'bg-white/[0.03] hover:bg-orange-500/10 text-[#888e90] hover:text-[#ff7a1a] border-white/[0.08] hover:border-orange-500/30 group'
-                  }`}
-                >
+              <div className="p-3 rounded-xl bg-[#08080c] border border-white/[0.08] space-y-2.5 mt-2">
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-medium text-[#888e90]">Mic Test</span>
                     {testingMicStatus === 'recording' ? (
-                      <span className="h-2 w-2 rounded-full bg-[#ff2047] animate-ping shrink-0" />
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-[#ff2047]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#ff2047] animate-ping" />
+                        Recording 3s...
+                      </span>
                     ) : testingMicStatus === 'playing' ? (
-                      <div className="flex items-end gap-0.5 h-3.5 w-4 pb-0.5 shrink-0">
-                        <span className="w-1 bg-[#ffc53d] rounded-full animate-bounce [animation-delay:-0.3s] h-3" />
-                        <span className="w-1 bg-[#ffc53d] rounded-full animate-bounce [animation-delay:-0.15s] h-2" />
-                        <span className="w-1 bg-[#ffc53d] rounded-full animate-bounce h-3.5" />
-                      </div>
+                      <span className="inline-flex items-center gap-1.5 text-[10px] font-mono text-[#ffc53d]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#ffc53d] animate-pulse" />
+                        Playing voice
+                      </span>
                     ) : testingMicStatus === 'done' ? (
-                      <CheckIcon size={13} className="text-[#11ff99] shrink-0" />
+                      <span className="text-[10px] font-mono text-[#11ff99] flex items-center gap-1">
+                        <CheckIcon size={11} /> Verified clear
+                      </span>
                     ) : (
-                      <MicIcon
-                        size={13}
-                        className="text-[#888e90] group-hover:text-[#ff7a1a] transition-colors shrink-0"
-                      />
+                      <span className="text-[10px] font-mono text-[#62666a]">Speak to test</span>
                     )}
-
-                    <span
-                      className={
-                        testingMicStatus === 'recording'
-                          ? 'text-[#ff2047] font-medium'
-                          : testingMicStatus === 'playing'
-                          ? 'text-[#ffc53d] font-medium'
-                          : testingMicStatus === 'done'
-                          ? 'text-[#11ff99] font-medium'
-                          : 'text-[#fcfdff]'
-                      }
-                    >
-                      {testingMicStatus === 'recording'
-                        ? 'Speak for 3 seconds...'
-                        : testingMicStatus === 'playing'
-                        ? 'Playing your voice back...'
-                        : testingMicStatus === 'done'
-                        ? 'Mic works clearly!'
-                        : 'Test Microphone'}
-                    </span>
                   </div>
 
-                  <span
-                    className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
+                  <button
+                    type="button"
+                    onClick={onTestMic}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                       testingMicStatus === 'recording'
-                        ? 'bg-red-500/20 border-red-500/40 text-[#ff2047]'
+                        ? 'bg-red-500/20 text-[#ff2047] border border-red-500/40 animate-pulse shadow-[0_0_12px_rgba(255,32,71,0.25)]'
                         : testingMicStatus === 'playing'
-                        ? 'bg-amber-500/20 border-amber-500/40 text-[#ffc53d]'
+                        ? 'bg-amber-500/20 text-[#ffc53d] border border-amber-500/40 shadow-[0_0_12px_rgba(255,197,61,0.25)]'
                         : testingMicStatus === 'done'
-                        ? 'bg-emerald-500/20 border-emerald-500/40 text-[#11ff99]'
-                        : 'bg-white/[0.06] border-white/[0.08] text-[#888e90] group-hover:text-[#ff7a1a] group-hover:border-orange-500/30'
+                        ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-[#11ff99] border border-emerald-500/30'
+                        : 'bg-white/[0.05] hover:bg-[#FF9933]/20 text-[#888e90] hover:text-[#FF9933] border border-white/[0.08] hover:border-[#FF9933]/30'
                     }`}
                   >
-                    {testingMicStatus === 'recording'
-                      ? 'Recording'
-                      : testingMicStatus === 'playing'
-                      ? 'Playback'
-                      : testingMicStatus === 'done'
-                      ? 'Verified'
-                      : 'Record & Listen'}
-                  </span>
-                </button>
+                    <MicIcon size={11} />
+                    <span>
+                      {testingMicStatus === 'recording'
+                        ? 'Stop'
+                        : testingMicStatus === 'playing'
+                        ? 'Listening...'
+                        : testingMicStatus === 'done'
+                        ? 'Re-test'
+                        : 'Test Mic'}
+                    </span>
+                  </button>
+                </div>
 
-                {/* Live Voice Volume Level Bar when recording */}
-                {testingMicStatus === 'recording' && (
-                  <div className="px-1 space-y-1 animate-in fade-in duration-150">
-                    <div className="flex items-center justify-between text-[10px] font-mono text-[#888e90]">
-                      <span>Voice input level</span>
-                      <span className="text-[#ff7a1a]">{micVolume}%</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-white/[0.06] rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#ff7a1a] to-[#11ff99] rounded-full transition-all duration-75"
-                        style={{ width: `${Math.max(4, micVolume)}%` }}
-                      />
-                    </div>
+                {/* 22-Segment LED Equalizer Bar */}
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1 h-3.5 px-2 bg-black/40 rounded-lg border border-white/[0.06] justify-between">
+                    {Array.from({ length: totalBars }).map((_, i) => {
+                      const isActive = i < activeBarsCount;
+                      const isPeak = i >= totalBars - 3;
+                      const isMid = i >= totalBars - 8 && !isPeak;
+
+                      let barColor = 'bg-white/[0.08]';
+                      if (isActive) {
+                        if (isPeak) barColor = 'bg-[#ff2047] shadow-[0_0_6px_rgba(255,32,71,0.7)]';
+                        else if (isMid) barColor = 'bg-[#FF9933] shadow-[0_0_6px_rgba(255,153,51,0.6)]';
+                        else barColor = 'bg-[#11ff99] shadow-[0_0_6px_rgba(17,255,153,0.6)]';
+                      }
+
+                      return (
+                        <div
+                          key={i}
+                          className={`flex-1 h-2 rounded-[1.5px] transition-all duration-75 ${barColor}`}
+                        />
+                      );
+                    })}
                   </div>
-                )}
+                  <div className="flex items-center justify-between text-[9px] font-mono text-[#585c60] px-1">
+                    <span>Input Level</span>
+                    <span>{micVolume}%</span>
+                  </div>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Speakers Section */}
-          <div className="pt-3 border-t border-white/[0.08]">
-            <div className="flex items-center justify-between mb-2 px-1">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-[#fcfdff]">
-                <HeadphonesIcon size={13} className="text-[#ff7a1a]" />
+          {/* 2. Speaker Output Section */}
+          <div className="pt-3 border-t border-white/[0.08] space-y-2">
+            <div className="flex items-center justify-between px-0.5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#fcfdff]">
+                <HeadphonesIcon size={12} className="text-[#FF9933]" />
                 <span>Speakers & Headphones</span>
               </div>
-              <span className="text-[10px] font-mono text-[#888e90] bg-white/[0.05] border border-white/[0.06] px-1.5 py-0.5 rounded-full">
+              <span className="text-[10px] font-mono text-[#888e90] bg-white/[0.04] border border-white/[0.06] px-2 py-0.5 rounded-full">
                 {audioOutputs.length > 0 ? `${audioOutputs.length} detected` : 'System Default'}
               </span>
             </div>
 
-            <div className="space-y-1 max-h-32 overflow-y-auto no-scrollbar">
+            {/* Output Device List */}
+            <div className="space-y-1.5 max-h-32 overflow-y-auto no-scrollbar pr-0.5">
               {audioOutputs.length === 0 ? (
-                <div className="px-3 py-2 rounded-xl bg-white/[0.03] border border-white/[0.06] text-xs text-[#888e90] flex items-center justify-between">
+                <div className="px-3 py-2 rounded-xl bg-white/[0.02] border border-white/[0.05] text-xs text-[#888e90] flex items-center justify-between">
                   <div className="flex items-center gap-2.5">
                     <div className="h-6 w-6 rounded-lg bg-white/[0.04] text-[#888e90] flex items-center justify-center">
                       <HeadphonesIcon size={12} />
                     </div>
                     <span>Default System Output</span>
                   </div>
-                  <div className="h-4 w-4 rounded-full bg-[#11ff99]/15 border border-[#11ff99]/30 flex items-center justify-center text-[#11ff99] shrink-0">
-                    <CheckIcon size={11} />
+                  <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#11ff99]/15 border border-[#11ff99]/30 text-[#11ff99] text-[10px] font-mono">
+                    <CheckIcon size={10} />
+                    <span>Active</span>
                   </div>
                 </div>
               ) : (
@@ -400,32 +401,34 @@ export function MediaDeviceMenu({
                       key={device.deviceId || idx}
                       type="button"
                       onClick={() => onSelectAudioOutput?.(device.deviceId)}
-                      className={`w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer group ${
+                      className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer group ${
                         isSelected
-                          ? 'bg-white/[0.08] text-[#fcfdff] border border-white/[0.12] shadow-sm'
-                          : 'text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.04] border border-transparent'
+                          ? 'bg-gradient-to-r from-[#FF9933]/15 to-white/[0.03] text-[#fcfdff] border border-[#FF9933]/40 shadow-[0_0_15px_rgba(255,153,51,0.10)]'
+                          : 'bg-white/[0.02] hover:bg-white/[0.06] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.04] hover:border-white/[0.10]'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 pr-2">
                         <div
                           className={`h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
                             isSelected
-                              ? 'bg-orange-500/15 text-[#ff7a1a]'
+                              ? 'bg-[#FF9933]/20 text-[#FF9933]'
                               : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
                           }`}
                         >
                           <HeadphonesIcon size={12} />
                         </div>
-                        <span className="truncate font-medium">{label}</span>
+                        <span className={`truncate ${isSelected ? 'font-medium text-[#fcfdff]' : ''}`}>
+                          {label}
+                        </span>
                       </div>
+
                       {isSelected ? (
-                        <div className="h-4 w-4 rounded-full bg-[#11ff99]/15 border border-[#11ff99]/30 flex items-center justify-center text-[#11ff99] shrink-0 shadow-[0_0_8px_rgba(17,255,153,0.25)]">
-                          <CheckIcon size={11} />
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#11ff99]/15 border border-[#11ff99]/30 text-[#11ff99] text-[10px] font-mono shrink-0 shadow-[0_0_8px_rgba(17,255,153,0.25)]">
+                          <CheckIcon size={10} />
+                          <span>Active</span>
                         </div>
                       ) : (
-                        <span className="text-[10px] font-mono text-[#55595d] group-hover:text-[#888e90] shrink-0">
-                          Select
-                        </span>
+                        <div className="h-3.5 w-3.5 rounded-full border border-white/[0.18] group-hover:border-[#FF9933]/50 shrink-0 transition-colors" />
                       )}
                     </button>
                   );
@@ -433,49 +436,51 @@ export function MediaDeviceMenu({
               )}
             </div>
 
-            {/* Test speaker button */}
+            {/* Test Speakers Card */}
             {onTestSpeaker && (
-              <button
-                type="button"
-                onClick={onTestSpeaker}
-                disabled={testingSpeaker}
-                className={`mt-2.5 w-full py-2 px-3 rounded-xl border text-xs font-mono flex items-center justify-between transition-all cursor-pointer ${
-                  testingSpeaker
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-[#11ff99] shadow-[0_0_15px_rgba(17,255,153,0.15)]'
-                    : 'bg-white/[0.03] hover:bg-orange-500/10 text-[#888e90] hover:text-[#ff7a1a] border-white/[0.08] hover:border-orange-500/30 group'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  {testingSpeaker ? (
-                    <div className="flex items-end gap-0.5 h-3.5 w-4 pb-0.5">
-                      <span className="w-1 bg-[#11ff99] rounded-full animate-bounce [animation-delay:-0.3s] h-3" />
-                      <span className="w-1 bg-[#11ff99] rounded-full animate-bounce [animation-delay:-0.15s] h-2" />
-                      <span className="w-1 bg-[#11ff99] rounded-full animate-bounce h-3.5" />
-                    </div>
-                  ) : (
-                    <Volume2Icon
-                      size={13}
-                      className="text-[#888e90] group-hover:text-[#ff7a1a] transition-colors"
-                    />
-                  )}
-                  <span
-                    className={
-                      testingSpeaker ? 'text-[#11ff99] font-medium' : 'text-[#fcfdff]'
-                    }
+              <div className="p-2.5 rounded-xl bg-[#08080c] border border-white/[0.08] flex items-center justify-between gap-3 mt-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                      testingSpeaker
+                        ? 'bg-emerald-500/20 text-[#11ff99] border border-emerald-500/40 shadow-[0_0_12px_rgba(17,255,153,0.3)]'
+                        : 'bg-white/[0.04] text-[#888e90]'
+                    }`}
                   >
-                    {testingSpeaker ? 'Playing 3-tone chime...' : 'Test Speakers'}
-                  </span>
+                    <Volume2Icon size={14} />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="text-xs font-medium text-[#fcfdff] block leading-tight">
+                      Speaker Sound Test
+                    </span>
+                    <span className="text-[10px] text-[#888e90] truncate block leading-normal">
+                      {testingSpeaker ? 'Playing 3-tone chime...' : 'Play pleasant test chime'}
+                    </span>
+                  </div>
                 </div>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors ${
+
+                <button
+                  type="button"
+                  onClick={onTestSpeaker}
+                  disabled={testingSpeaker}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
                     testingSpeaker
-                      ? 'bg-[#11ff99]/20 border-[#11ff99]/40 text-[#11ff99]'
-                      : 'bg-white/[0.06] border-white/[0.08] text-[#888e90] group-hover:text-[#ff7a1a] group-hover:border-orange-500/30'
+                      ? 'bg-emerald-500/20 border border-emerald-500/40 text-[#11ff99] shadow-[0_0_12px_rgba(17,255,153,0.25)]'
+                      : 'bg-white/[0.05] hover:bg-[#FF9933]/20 text-[#888e90] hover:text-[#FF9933] border border-white/[0.08] hover:border-[#FF9933]/30'
                   }`}
                 >
-                  {testingSpeaker ? 'Active' : 'Play Chime'}
-                </span>
-              </button>
+                  {testingSpeaker ? (
+                    <div className="flex items-end gap-0.5 h-3 w-3.5 pb-0.5">
+                      <span className="w-1 bg-[#11ff99] rounded-full animate-bounce [animation-delay:-0.3s] h-2.5" />
+                      <span className="w-1 bg-[#11ff99] rounded-full animate-bounce [animation-delay:-0.15s] h-1.5" />
+                      <span className="w-1 bg-[#11ff99] rounded-full animate-bounce h-3" />
+                    </div>
+                  ) : (
+                    <PlayIcon size={11} />
+                  )}
+                  <span>{testingSpeaker ? 'Playing' : 'Play Chime'}</span>
+                </button>
+              </div>
             )}
           </div>
         </div>
@@ -483,13 +488,13 @@ export function MediaDeviceMenu({
 
       {type === 'video' && (
         <div className="space-y-3 relative z-10">
-          <div>
-            <div className="flex items-center justify-between mb-2 px-1">
-              <div className="flex items-center gap-1.5 text-xs font-medium text-[#fcfdff]">
-                <CameraIcon size={13} className="text-[#ff7a1a]" />
-                <span>Camera</span>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-0.5">
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-[#fcfdff]">
+                <CameraIcon size={12} className="text-[#FF9933]" />
+                <span>Camera Device</span>
               </div>
-              <span className="text-[10px] font-mono text-[#888e90] bg-white/[0.05] border border-white/[0.06] px-1.5 py-0.5 rounded-full">
+              <span className="text-[10px] font-mono text-[#888e90] bg-white/[0.04] border border-white/[0.06] px-2 py-0.5 rounded-full">
                 {videoInputs.length} detected
               </span>
             </div>
@@ -498,16 +503,21 @@ export function MediaDeviceMenu({
               <button
                 type="button"
                 onClick={() => void onRequestPermissions()}
-                className="w-full text-left px-3 py-2 rounded-xl bg-orange-500/10 hover:bg-orange-500/15 border border-orange-500/25 text-orange-400 text-xs font-medium transition-colors mb-2 cursor-pointer flex items-center gap-2"
+                className="w-full text-left p-2.5 rounded-xl bg-orange-500/10 hover:bg-orange-500/15 border border-orange-500/25 text-orange-400 text-xs font-medium transition-colors cursor-pointer flex items-center justify-between gap-2"
               >
-                <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-ping" />
-                <span>Grant camera permission to see labels</span>
+                <div className="flex items-center gap-2">
+                  <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-ping shrink-0" />
+                  <span className="text-[11px]">Grant permission to see camera labels</span>
+                </div>
+                <span className="text-[10px] font-mono bg-orange-500/20 px-2 py-0.5 rounded text-orange-300 shrink-0">
+                  Allow
+                </span>
               </button>
             )}
 
-            <div className="space-y-1 max-h-48 overflow-y-auto no-scrollbar">
+            <div className="space-y-1.5 max-h-48 overflow-y-auto no-scrollbar pr-0.5">
               {videoInputs.length === 0 ? (
-                <div className="p-3 text-center bg-white/[0.02] border border-white/[0.04] rounded-xl">
+                <div className="p-3 text-center bg-white/[0.02] border border-white/[0.05] rounded-xl">
                   <p className="text-xs text-[#888e90]">No cameras detected</p>
                 </div>
               ) : (
@@ -523,32 +533,34 @@ export function MediaDeviceMenu({
                       key={device.deviceId || idx}
                       type="button"
                       onClick={() => onSelectVideoInput?.(device.deviceId)}
-                      className={`w-full text-left px-2.5 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer group ${
+                      className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-all cursor-pointer group ${
                         isSelected
-                          ? 'bg-white/[0.08] text-[#fcfdff] border border-white/[0.12] shadow-sm'
-                          : 'text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.04] border border-transparent'
+                          ? 'bg-gradient-to-r from-[#FF9933]/15 to-white/[0.03] text-[#fcfdff] border border-[#FF9933]/40 shadow-[0_0_15px_rgba(255,153,51,0.10)]'
+                          : 'bg-white/[0.02] hover:bg-white/[0.06] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.04] hover:border-white/[0.10]'
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 pr-2">
                         <div
                           className={`h-6 w-6 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
                             isSelected
-                              ? 'bg-orange-500/15 text-[#ff7a1a]'
+                              ? 'bg-[#FF9933]/20 text-[#FF9933]'
                               : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
                           }`}
                         >
                           <CameraIcon size={12} />
                         </div>
-                        <span className="truncate font-medium">{label}</span>
+                        <span className={`truncate ${isSelected ? 'font-medium text-[#fcfdff]' : ''}`}>
+                          {label}
+                        </span>
                       </div>
+
                       {isSelected ? (
-                        <div className="h-4 w-4 rounded-full bg-[#11ff99]/15 border border-[#11ff99]/30 flex items-center justify-center text-[#11ff99] shrink-0 shadow-[0_0_8px_rgba(17,255,153,0.25)]">
-                          <CheckIcon size={11} />
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[#11ff99]/15 border border-[#11ff99]/30 text-[#11ff99] text-[10px] font-mono shrink-0 shadow-[0_0_8px_rgba(17,255,153,0.25)]">
+                          <CheckIcon size={10} />
+                          <span>Active</span>
                         </div>
                       ) : (
-                        <span className="text-[10px] font-mono text-[#55595d] group-hover:text-[#888e90] shrink-0">
-                          Select
-                        </span>
+                        <div className="h-3.5 w-3.5 rounded-full border border-white/[0.18] group-hover:border-[#FF9933]/50 shrink-0 transition-colors" />
                       )}
                     </button>
                   );
@@ -558,17 +570,51 @@ export function MediaDeviceMenu({
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 
+  // Desktop anchored popover: when space permits on desktop
+  if (coords !== null) {
+    return createPortal(
+      <>
+        <div
+          className="fixed inset-0 z-[9998] bg-black/40 backdrop-blur-[2px] transition-opacity"
+          onClick={onClose}
+        />
+        <div
+          ref={menuRef}
+          style={{
+            position: 'fixed',
+            left: `${coords.left}px`,
+            bottom: `${coords.bottom}px`,
+            width: '390px',
+            maxHeight: `${coords.maxHeight}px`,
+            zIndex: 9999,
+          }}
+          className="max-w-[calc(100vw-32px)] overflow-y-auto no-scrollbar bg-[#0b0b10]/98 border border-white/[0.14] rounded-2xl p-4 sm:p-4.5 shadow-[0_28px_80px_-10px_rgba(0,0,0,0.95),0_0_50px_rgba(255,153,51,0.07)] text-[#fcfdff] backdrop-blur-2xl animate-device-menu-in ring-1 ring-white/10 relative"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {menuContent}
+        </div>
+      </>,
+      document.body
+    );
+  }
+
+  // Mobile / Fallback: Centered Modal Dialog with backdrop
   return createPortal(
-    <>
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-3.5 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150"
+      onClick={onClose}
+    >
       <div
-        className="fixed inset-0 z-[9998] bg-black/25 backdrop-blur-[2px] transition-opacity"
-        onClick={onClose}
-      />
-      {menuNode}
-    </>,
+        ref={menuRef}
+        className="w-full max-w-[400px] max-h-[88vh] overflow-y-auto no-scrollbar bg-[#0b0b10] border border-white/[0.14] rounded-2xl p-4 sm:p-5 shadow-[0_25px_80px_rgba(0,0,0,0.98),0_0_40px_rgba(255,153,51,0.08)] text-[#fcfdff] backdrop-blur-2xl relative animate-in zoom-in-95 duration-150 ring-1 ring-white/10"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {menuContent}
+      </div>
+    </div>,
     document.body
   );
 }

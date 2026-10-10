@@ -463,7 +463,7 @@ body {
 @keyframes device-menu-in {
   0% {
     opacity: 0;
-    transform: translateY(28px) scale(0.95);
+    transform: translateY(12px) scale(0.97);
   }
   100% {
     opacity: 1;
@@ -472,7 +472,7 @@ body {
 }
 
 .animate-device-menu-in {
-  animation: device-menu-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: device-menu-in 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   transform-origin: bottom center;
 }
 
