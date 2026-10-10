@@ -1654,8 +1654,8 @@ export default function MeetPage({ params }: MeetPageProps) {
                   ? 'bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/50 ring-1 ring-[#FF9933]/40 shadow-[0_0_20px_rgba(255,153,51,0.2)]'
                   : 'bg-[#FF9933]/12 hover:bg-[#FF9933]/18 text-[#FF9933] border border-[#FF9933]/35 hover:border-[#FF9933]/50 shadow-[0_0_12px_rgba(255,153,51,0.15)]'
                 : audioMenuOpen
-                ? 'bg-gradient-to-r from-[#ff2047] to-[#e61239] text-white ring-2 ring-[#FF9933]/60 shadow-[0_0_20px_rgba(255,32,71,0.5)] border border-red-400/50'
-                : 'bg-gradient-to-r from-[#ff2047] to-[#e61239] text-white shadow-[0_0_18px_rgba(255,32,71,0.4)] border border-red-500/40'
+                ? 'bg-[#1e0e11] text-[#fca5a5] border border-red-500/40 ring-1 ring-red-500/30 shadow-[0_0_16px_rgba(220,38,38,0.2)]'
+                : 'bg-[#140b0d] hover:bg-[#1a0e10] text-[#f87171] border border-red-500/25 hover:border-red-500/40 shadow-sm'
             }`}
           >
             <button
@@ -1671,11 +1671,11 @@ export default function MeetPage({ params }: MeetPageProps) {
                   : 'Unmute Microphone'
               }
             >
-              {isMicOn ? <MicIcon size={16} /> : <MicOffIcon size={16} />}
+              {isMicOn ? <MicIcon size={16} /> : <MicOffIcon size={16} className="text-[#f87171]" />}
             </button>
             <div
               className={`w-px h-4 sm:h-4.5 ${
-                isMicOn ? (audioMenuOpen ? 'bg-[#FF9933]/40' : 'bg-[#FF9933]/30') : 'bg-white/20'
+                isMicOn ? (audioMenuOpen ? 'bg-[#FF9933]/40' : 'bg-[#FF9933]/30') : 'bg-red-500/25'
               }`}
             />
             {/* Up-Arrow Trigger & Popover Anchor */}
@@ -1689,17 +1689,17 @@ export default function MeetPage({ params }: MeetPageProps) {
                 }}
                 className={`h-9 sm:h-10 px-1.5 sm:px-2 rounded-r-xl flex items-center justify-center hover:bg-white/[0.08] transition-all cursor-pointer ${
                   audioMenuOpen
-                    ? 'bg-white/[0.12] text-[#FF9933]'
+                    ? 'bg-white/[0.12] text-[#fca5a5]'
                     : isMicOn
                     ? 'text-[#FF9933]/80 hover:text-[#FF9933]'
-                    : 'text-white/80 hover:text-white'
+                    : 'text-[#f87171]/80 hover:text-[#f87171]'
                 }`}
                 title="Microphone & Speaker Settings"
               >
                 <ChevronUpIcon
                   size={13}
                   className={`transition-transform duration-200 pointer-events-none ${
-                    audioMenuOpen ? 'rotate-180 text-[#FF9933]' : isMicOn ? 'text-[#FF9933]' : ''
+                    audioMenuOpen ? 'rotate-180 text-[#fca5a5]' : isMicOn ? 'text-[#FF9933]' : 'text-[#f87171]'
                   }`}
                 />
               </button>
@@ -1734,8 +1734,8 @@ export default function MeetPage({ params }: MeetPageProps) {
                   ? 'bg-[#181820] text-[#fcfdff] border border-[#ff7a1a]/50 ring-1 ring-[#ff7a1a]/40 shadow-[0_0_20px_rgba(255,122,26,0.2)]'
                   : 'bg-[#121216] hover:bg-[#18181f] text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16] shadow-sm'
                 : videoMenuOpen
-                ? 'bg-gradient-to-r from-[#ff2047] to-[#e61239] text-white ring-2 ring-[#ff7a1a]/60 shadow-[0_0_20px_rgba(255,32,71,0.5)] border border-red-400/50'
-                : 'bg-gradient-to-r from-[#ff2047] to-[#e61239] text-white shadow-[0_0_18px_rgba(255,32,71,0.4)] border border-red-500/40'
+                ? 'bg-[#1e0e11] text-[#fca5a5] border border-red-500/40 ring-1 ring-red-500/30 shadow-[0_0_16px_rgba(220,38,38,0.2)]'
+                : 'bg-[#140b0d] hover:bg-[#1a0e10] text-[#f87171] border border-red-500/25 hover:border-red-500/40 shadow-sm'
             }`}
           >
             <button
@@ -1751,11 +1751,11 @@ export default function MeetPage({ params }: MeetPageProps) {
                   : 'Turn On Camera'
               }
             >
-              {isVideoOn ? <VideoIcon size={16} /> : <CameraIcon size={16} />}
+              {isVideoOn ? <VideoIcon size={16} /> : <CameraIcon size={16} className="text-[#f87171]" />}
             </button>
             <div
               className={`w-px h-4 sm:h-4.5 ${
-                isVideoOn ? (videoMenuOpen ? 'bg-[#ff7a1a]/40' : 'bg-white/[0.10]') : 'bg-white/20'
+                isVideoOn ? (videoMenuOpen ? 'bg-[#ff7a1a]/40' : 'bg-white/[0.10]') : 'bg-red-500/25'
               }`}
             />
             {/* Up-Arrow Trigger & Popover Anchor */}
@@ -1768,14 +1768,18 @@ export default function MeetPage({ params }: MeetPageProps) {
                   setAudioMenuOpen(false);
                 }}
                 className={`h-9 sm:h-10 px-1.5 sm:px-2 rounded-r-xl flex items-center justify-center hover:bg-white/[0.08] transition-all cursor-pointer ${
-                  videoMenuOpen ? 'bg-white/[0.12] text-[#ff7a1a]' : 'text-[#888e90] hover:text-[#fcfdff]'
+                  videoMenuOpen
+                    ? 'bg-white/[0.12] text-[#fca5a5]'
+                    : isVideoOn
+                    ? 'text-[#888e90] hover:text-[#fcfdff]'
+                    : 'text-[#f87171]/80 hover:text-[#f87171]'
                 }`}
                 title="Camera Settings"
               >
                 <ChevronUpIcon
                   size={13}
                   className={`transition-transform duration-200 pointer-events-none ${
-                    videoMenuOpen ? 'rotate-180 text-[#ff7a1a]' : ''
+                    videoMenuOpen ? 'rotate-180 text-[#fca5a5]' : isVideoOn ? '' : 'text-[#f87171]'
                   }`}
                 />
               </button>

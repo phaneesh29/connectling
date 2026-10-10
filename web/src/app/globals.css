@@ -459,5 +459,37 @@ body {
   animation: border-flow 4.5s ease-in-out infinite;
 }
 
+/* Media Device Menu Popover & Bottom Sheet Animations */
+@keyframes device-menu-in {
+  0% {
+    opacity: 0;
+    transform: translateY(28px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.animate-device-menu-in {
+  animation: device-menu-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: bottom center;
+}
+
+@keyframes device-sheet-in {
+  0% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-device-sheet-in {
+  animation: device-sheet-in 0.26s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 
 

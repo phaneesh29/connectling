@@ -126,6 +126,12 @@ export function MediaDeviceMenu({
 
   if (!isOpen || !mounted) return null;
 
+  const isScreenDesktop = typeof window !== 'undefined' ? window.innerWidth >= 640 : false;
+  if (isScreenDesktop && coords === null) {
+    // Wait for coords to be measured before rendering desktop popup to prevent jump/flicker
+    return null;
+  }
+
   const hasAudioPermissions = audioInputs.some((d) => Boolean(d.label));
   const hasVideoPermissions = videoInputs.some((d) => Boolean(d.label));
 
@@ -136,6 +142,9 @@ export function MediaDeviceMenu({
         left: `${coords.left}px`,
         bottom: `${coords.bottom}px`,
         width: '336px',
+        maxHeight: typeof window !== 'undefined'
+          ? `${Math.min(520, Math.max(260, window.innerHeight - coords.bottom - 16))}px`
+          : undefined,
         zIndex: 9999,
       }
     : {};
@@ -146,8 +155,8 @@ export function MediaDeviceMenu({
       style={desktopStyle}
       className={
         isDesktop
-          ? 'max-w-[calc(100vw-24px)] max-h-[min(520px,calc(100vh-110px))] overflow-y-auto no-scrollbar bg-[#0c0c10]/95 border border-white/[0.14] rounded-2xl p-3.5 sm:p-4 shadow-[0_25px_70px_-10px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] text-[#fcfdff] backdrop-blur-2xl animate-in zoom-in-95 fade-in slide-in-from-bottom-2 duration-150 ring-1 ring-white/10'
-          : 'fixed inset-x-3 bottom-20 z-[9999] w-auto max-w-[calc(100vw-24px)] max-h-[min(520px,calc(100vh-110px))] overflow-y-auto no-scrollbar bg-[#0c0c10]/95 border border-white/[0.14] rounded-2xl p-3.5 sm:p-4 shadow-[0_25px_70px_-10px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] text-[#fcfdff] backdrop-blur-2xl animate-in zoom-in-95 fade-in slide-in-from-bottom-2 duration-150 ring-1 ring-white/10'
+          ? 'max-w-[calc(100vw-24px)] max-h-[min(520px,calc(100vh-110px))] overflow-y-auto no-scrollbar bg-[#0c0c10]/95 border border-white/[0.14] rounded-2xl p-3.5 sm:p-4 shadow-[0_25px_70px_-10px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] text-[#fcfdff] backdrop-blur-2xl animate-device-menu-in ring-1 ring-white/10'
+          : 'fixed inset-x-3 bottom-3 sm:bottom-4 z-[9999] w-auto max-w-[calc(100vw-24px)] max-h-[min(520px,calc(100vh-110px))] overflow-y-auto no-scrollbar bg-[#0c0c10]/95 border border-white/[0.14] rounded-2xl p-3.5 sm:p-4 shadow-[0_25px_70px_-10px_rgba(0,0,0,0.95),0_0_0_1px_rgba(255,255,255,0.06)] text-[#fcfdff] backdrop-blur-2xl animate-device-sheet-in ring-1 ring-white/10'
       }
       onClick={(e) => e.stopPropagation()}
     >
@@ -552,5 +561,14 @@ export function MediaDeviceMenu({
     </div>
   );
 
-  return createPortal(menuNode, document.body);
+  return createPortal(
+    <>
+      <div
+        className="fixed inset-0 z-[9998] bg-black/25 backdrop-blur-[2px] transition-opacity"
+        onClick={onClose}
+      />
+      {menuNode}
+    </>,
+    document.body
+  );
 }
