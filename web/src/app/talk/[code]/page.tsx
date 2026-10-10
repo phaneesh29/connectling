@@ -1238,6 +1238,26 @@ export default function TalkPage({ params }: TalkPageProps) {
     (p) => p.handRaised && !p.canSpeak && p.userId !== room.hostId
   ).length;
 
+  const totalTiles = displayParticipants.length <= 1 ? 2 : displayParticipants.length;
+
+  const stageContainerMaxWidth =
+    totalTiles <= 2
+      ? 'max-w-2xl'
+      : totalTiles === 3
+      ? 'max-w-3xl'
+      : totalTiles === 4
+      ? 'max-w-4xl'
+      : 'max-w-5xl';
+
+  const stageGridCols =
+    totalTiles <= 2
+      ? 'grid-cols-1 sm:grid-cols-2'
+      : totalTiles === 3
+      ? 'grid-cols-1 sm:grid-cols-3'
+      : totalTiles === 4
+      ? 'grid-cols-2 sm:grid-cols-2 md:grid-cols-4'
+      : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5';
+
   return (
     <div className="flex flex-col h-screen bg-black text-[#fcfdff] select-none ambient-glow-audio">
       {roomToast && (
@@ -1246,7 +1266,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           <span className="text-[#fcfdff] font-medium">{roomToast.text}</span>
         </div>
       )}
-      <header className="h-14 border-b border-white/[0.06] px-3 sm:px-6 flex items-center justify-between bg-black/60 backdrop-blur-xl">
+      <header className="h-14 border-b border-white/[0.06] px-3 sm:px-6 flex items-center justify-between bg-black/60 backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <span className="h-2 w-2 rounded-full bg-[#11ff99] shadow-[0_0_8px_#11ff99] shrink-0" />
           <div className="min-w-0">
@@ -1338,7 +1358,7 @@ export default function TalkPage({ params }: TalkPageProps) {
         </div>
       </header>
 
-      <main className="flex-1 p-3.5 sm:p-6 overflow-y-auto max-w-5xl mx-auto w-full space-y-4 sm:space-y-6">
+      <main className={`flex-1 p-3.5 sm:p-6 overflow-y-auto ${stageContainerMaxWidth} mx-auto w-full flex flex-col ${totalTiles <= 4 ? 'justify-center my-auto' : ''} space-y-4 sm:space-y-6 transition-all duration-300`}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="text-[11px] sm:text-xs font-mono text-[#888e90] uppercase tracking-wider">
@@ -1350,7 +1370,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 sm:gap-4">
+        <div className={`grid ${stageGridCols} gap-3 sm:gap-4 items-stretch`}>
           {displayParticipants.map((p) => {
             const isPHost = p.userId === room.hostId;
             const isMe = p.userId === session?.user?.id;
@@ -1367,7 +1387,7 @@ export default function TalkPage({ params }: TalkPageProps) {
               <div
                 key={p.userId}
                 style={gradient.containerStyle}
-                className={`relative p-3.5 sm:p-5 border rounded-2xl flex flex-col items-center justify-center text-center space-y-2.5 sm:space-y-3 transition-all duration-200 group overflow-hidden min-h-[140px] sm:min-h-[160px] ${
+                className={`relative p-4 sm:p-6 border rounded-2xl flex flex-col items-center justify-center text-center space-y-3 sm:space-y-3.5 transition-all duration-200 group overflow-hidden min-h-[200px] sm:min-h-[230px] ${
                   gradient.borderClass
                 } ${
                   isSpeaking ? 'ring-1 ring-emerald-500/50' : ''
@@ -1629,7 +1649,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           })}
 
           {displayParticipants.length <= 1 && (
-            <div className="relative bg-[#0a0a0c] border border-white/[0.12] rounded-2xl overflow-hidden flex flex-col items-center justify-center p-5 sm:p-7 text-center space-y-3.5 sm:space-y-4 shadow-2xl min-h-[180px] sm:min-h-[220px] transition-all group col-span-2 sm:col-span-1">
+            <div className="relative bg-[#0a0a0c] border border-white/[0.12] rounded-2xl overflow-hidden flex flex-col items-center justify-center p-4 sm:p-6 text-center space-y-3 sm:space-y-3.5 shadow-2xl min-h-[200px] sm:min-h-[230px] transition-all group">
               {/* Radial Glow */}
               <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-20 bg-gradient-brand-br pointer-events-none" />
 
@@ -1647,10 +1667,10 @@ export default function TalkPage({ params }: TalkPageProps) {
               <button
                 type="button"
                 onClick={handleCopyLink}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer relative z-10"
+                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer relative z-10 whitespace-nowrap"
               >
-                {copied ? <CheckIcon size={14} className="text-black" /> : <CopyIcon size={14} />}
-                <span>{copied ? 'Copied Stage Link' : 'Copy Stage Invite'}</span>
+                {copied ? <CheckIcon size={14} className="text-black shrink-0" /> : <CopyIcon size={14} className="shrink-0" />}
+                <span className="whitespace-nowrap">{copied ? 'Copied Stage Link' : 'Copy Stage Invite'}</span>
               </button>
             </div>
           )}
