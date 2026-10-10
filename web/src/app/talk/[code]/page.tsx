@@ -1181,7 +1181,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     return (
       <main className="flex min-h-screen items-center justify-center p-4 bg-black">
         <div className="w-full max-w-md p-8 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl space-y-4 text-center">
-          <div className="h-12 w-12 rounded-xl bg-[#ff2047]/10 border border-[#ff2047]/20 text-[#ff2047] flex items-center justify-center mx-auto">
+          <div className="h-12 w-12 rounded-xl bg-red-500/10 border border-red-500/20 text-[#f87171] flex items-center justify-center mx-auto">
             <MicOffIcon size={22} />
           </div>
           <h2 className="font-serif-headline text-xl font-normal text-[#fcfdff]">Lounge Unavailable</h2>
@@ -1248,18 +1248,17 @@ export default function TalkPage({ params }: TalkPageProps) {
       )}
       <header className="h-14 border-b border-white/[0.06] px-3 sm:px-6 flex items-center justify-between bg-black/60 backdrop-blur-xl">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <div className="h-7 w-7 rounded-lg bg-[#101012] border border-white/[0.08] text-[#f59e0b] flex items-center justify-center shrink-0">
-            <AudioWaveformIcon size={14} />
-          </div>
+          <span className="h-2 w-2 rounded-full bg-[#11ff99] shadow-[0_0_8px_#11ff99] shrink-0" />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2">
-              <h1 className="font-serif-headline text-xs sm:text-sm font-normal text-[#fcfdff] truncate max-w-[110px] xs:max-w-[180px] sm:max-w-md tracking-tight">
+              <h1 className="font-serif-headline text-xs sm:text-sm font-normal text-[#fcfdff] truncate max-w-[120px] xs:max-w-[190px] sm:max-w-md tracking-tight">
                 {room.title}
               </h1>
-              <span className="hidden xs:inline-block text-[9px] font-mono px-2 py-0.5 bg-[#101012] text-[#f59e0b] border border-white/[0.08] rounded-full uppercase tracking-wider font-semibold shrink-0">
+              <span className="hidden xs:inline-block text-[9px] font-mono px-2 py-0.5 bg-[#FF9933]/10 text-[#FF9933] border border-[#FF9933]/25 rounded-full uppercase tracking-wider font-semibold shrink-0">
                 STAGE LIVE
               </span>
             </div>
+            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate">ID: {room.code}</p>
           </div>
         </div>
 
@@ -1270,29 +1269,30 @@ export default function TalkPage({ params }: TalkPageProps) {
             className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#888e90] hover:text-[#fcfdff] transition-colors border border-white/[0.08] cursor-pointer"
             title="Report issue or feedback"
           >
-            <TriangleAlertIcon size={13} className="text-[#ff7a1a]" />
+            <TriangleAlertIcon size={13} className="text-[#FF9933]" />
             <span className="hidden md:inline font-mono text-[11px]">Report</span>
           </button>
 
           {/* Stage Settings (Host) or Permissions (Audience) */}
           {settings && (
             <button
+              type="button"
               onClick={() => {
                 setSettingsOpen(!settingsOpen);
                 setParticipantsOpen(false);
                 setChatOpen(false);
               }}
-              className={`relative flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+              className={`relative flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all border cursor-pointer ${
                 isHost && pendingHandRaisesCount > 0
-                  ? 'bg-[#ffc53d]/15 text-[#ffc53d] border-[#ffc53d]/40 shadow-[0_0_12px_rgba(255,197,61,0.2)]'
+                  ? 'bg-[#FF9933]/15 text-[#FF9933] border-[#FF9933]/40 shadow-[0_0_12px_rgba(255,153,51,0.2)]'
                   : settingsOpen
-                  ? 'bg-amber-500/20 text-[#f59e0b] border-amber-500/40'
+                  ? 'bg-[#FF9933]/20 text-[#FF9933] border-[#FF9933]/40'
                   : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
               }`}
               title={isHost ? 'Stage Settings & Speaking Requests' : 'View Stage Permissions'}
             >
               {isHost ? (
-                <SettingsIcon size={13} className={pendingHandRaisesCount > 0 ? 'text-[#f59e0b]' : 'text-zinc-400'} />
+                <SettingsIcon size={13} className={pendingHandRaisesCount > 0 ? 'text-[#FF9933]' : 'text-zinc-400'} />
               ) : (
                 <ShieldCheckIcon size={13} className="text-zinc-400" />
               )}
@@ -1300,7 +1300,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 {isHost ? 'Settings' : 'Permissions'}
               </span>
               {isHost && pendingHandRaisesCount > 0 && (
-                <span className="h-4 min-w-4 px-1 rounded-full bg-[#ffc53d] text-black font-mono text-[9px] font-bold flex items-center justify-center animate-pulse">
+                <span className="h-4 min-w-4 px-1 rounded-full bg-[#FF9933] text-black font-mono text-[9px] font-bold flex items-center justify-center animate-pulse">
                   {pendingHandRaisesCount}
                 </span>
               )}
@@ -1308,6 +1308,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           )}
 
           <button
+            type="button"
             onClick={() => {
               setParticipantsOpen(!participantsOpen);
               if (!participantsOpen) {
@@ -1315,9 +1316,9 @@ export default function TalkPage({ params }: TalkPageProps) {
                 setSettingsOpen(false);
               }
             }}
-            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
               participantsOpen
-                ? 'bg-amber-500/20 text-[#f59e0b] border-amber-500/40'
+                ? 'bg-[#FF9933]/20 text-[#FF9933] border-[#FF9933]/40'
                 : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
             }`}
             title="People in lounge"
@@ -1327,8 +1328,9 @@ export default function TalkPage({ params }: TalkPageProps) {
           </button>
 
           <button
+            type="button"
             onClick={handleCopyLink}
-            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08]"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08] cursor-pointer"
           >
             {copied ? <CheckIcon size={13} className="text-[#11ff99]" /> : <CopyIcon size={13} />}
             <span className="hidden sm:inline font-mono text-[11px]">{copied ? 'Copied' : 'Share Stage'}</span>
@@ -1342,7 +1344,7 @@ export default function TalkPage({ params }: TalkPageProps) {
             <span className="text-[11px] sm:text-xs font-mono text-[#888e90] uppercase tracking-wider">
               Stage Participants & Listeners
             </span>
-            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#101012] border border-white/[0.06] text-[#f59e0b] font-medium">
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#101012] border border-white/[0.06] text-[#FF9933] font-medium">
               {displayParticipants.length} in space
             </span>
           </div>
@@ -1421,7 +1423,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                         e.stopPropagation();
                         handleKickUser(p.userId, p.name);
                       }}
-                      className="h-6 w-6 rounded-md bg-black/80 hover:bg-red-500/20 text-[#888e90] hover:text-red-400 border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer"
+                      className="h-6 w-6 rounded-md bg-black/80 hover:bg-red-500/20 text-[#888e90] hover:text-[#f87171] border border-white/[0.10] flex items-center justify-center transition-all cursor-pointer"
                       title={`Remove ${p.name} from stage`}
                     >
                       <LogOutIcon size={10} />
@@ -1504,7 +1506,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                   </p>
                   {isPHost ? (
                     <div className="space-y-0.5">
-                      <span className="text-[10px] font-mono text-[#f59e0b] uppercase tracking-wider block font-semibold">
+                      <span className="text-[10px] font-mono text-[#FF9933] uppercase tracking-wider block font-semibold">
                         Stage Host
                       </span>
                       {isMicActive ? (
@@ -1521,7 +1523,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                           </span>
                         </div>
                       ) : (
-                        <span className="text-[9px] font-mono text-[#ff2047] uppercase tracking-wider block">
+                        <span className="text-[9px] font-mono text-[#f87171] uppercase tracking-wider block font-medium">
                           Muted
                         </span>
                       )}
@@ -1559,7 +1561,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                             e.stopPropagation();
                             handleGrantMic(p.userId, p.name);
                           }}
-                          className="w-full py-1 px-1.5 sm:px-2 rounded-lg bg-[#FF9933]/20 hover:bg-[#FF9933]/30 text-[#FF9933] border border-[#FF9933]/40 text-[10px] sm:text-[11px] font-semibold flex items-center justify-center gap-1 shadow-[0_0_12px_rgba(255,153,51,0.2)] transition-all animate-pulse active:scale-95 cursor-pointer truncate"
+                          className="w-full py-1 px-1.5 sm:px-2 rounded-lg bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-[10px] sm:text-[11px] shadow-brand-glow flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer truncate"
                           title="Allow participant to speak"
                         >
                           <MicIcon size={12} className="shrink-0" />
@@ -1598,7 +1600,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                               e.stopPropagation();
                               handleRevokeMic(p.userId, p.name);
                             }}
-                            className="py-0.5 px-1.5 sm:px-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 text-[9px] sm:text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer shrink-0"
+                            className="py-0.5 px-1.5 sm:px-2 rounded-lg bg-gradient-to-r from-[#240a0f] to-[#1a070b] hover:from-[#2e0e15] hover:to-[#220a0f] text-[#f87171] hover:text-[#fca5a5] border border-red-500/35 text-[9px] sm:text-[10px] font-mono flex items-center justify-center gap-1 transition-all active:scale-95 cursor-pointer shrink-0"
                             title="Revoke speaking access"
                           >
                             <MicOffIcon size={11} className="shrink-0" />
@@ -1627,50 +1629,63 @@ export default function TalkPage({ params }: TalkPageProps) {
           })}
 
           {displayParticipants.length <= 1 && (
-            <div className="p-4 sm:p-5 bg-[#09090b]/60 border border-dashed border-white/[0.08] hover:border-white/[0.14] rounded-2xl flex flex-col items-center justify-center text-center space-y-2 sm:space-y-2.5 min-h-[140px] sm:min-h-[160px] transition-all">
-              <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#888e90]">
-                <HeadphonesIcon size={17} />
+            <div className="relative bg-[#0a0a0c] border border-white/[0.12] rounded-2xl overflow-hidden flex flex-col items-center justify-center p-5 sm:p-7 text-center space-y-3.5 sm:space-y-4 shadow-2xl min-h-[180px] sm:min-h-[220px] transition-all group col-span-2 sm:col-span-1">
+              {/* Radial Glow */}
+              <div className="absolute top-0 right-0 w-48 h-48 rounded-full blur-3xl opacity-20 bg-gradient-brand-br pointer-events-none" />
+
+              <div className="h-12 w-12 sm:h-14 sm:w-14 rounded-2xl bg-[#FF9933]/10 border border-[#FF9933]/25 flex items-center justify-center text-[#FF9933] shadow-[0_0_20px_rgba(255,153,51,0.15)] relative z-10">
+                <HeadphonesIcon size={22} />
               </div>
-              <div className="space-y-0.5">
-                <p className="text-xs text-[#fcfdff] font-medium">Listening Lounge</p>
-                <p className="text-[10px] font-mono text-[#888e90]">Share link to invite listeners</p>
+              <div className="space-y-1 relative z-10">
+                <h3 className="font-serif-headline text-base sm:text-lg font-normal text-[#fcfdff]">
+                  Awaiting Listeners
+                </h3>
+                <p className="text-xs text-[#888e90] max-w-xs font-mono">
+                  Share stage ID <span className="text-[#FF9933] font-semibold">{room.code}</span> to invite listeners
+                </p>
               </div>
               <button
+                type="button"
                 onClick={handleCopyLink}
-                className="px-2.5 py-1 text-[11px] rounded-lg bg-white/[0.05] hover:bg-white/[0.10] text-[#fcfdff] transition-all border border-white/[0.08]"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer relative z-10"
               >
-                {copied ? 'Copied' : 'Copy Invite'}
+                {copied ? <CheckIcon size={14} className="text-black" /> : <CopyIcon size={14} />}
+                <span>{copied ? 'Copied Stage Link' : 'Copy Stage Invite'}</span>
               </button>
             </div>
           )}
         </div>
       </main>
 
-      <footer className="relative z-40 h-auto py-2.5 sm:py-0 sm:h-20 border-t border-white/[0.06] px-2 sm:px-6 flex items-center justify-center bg-black/80 backdrop-blur-xl pb-[calc(0.6rem+env(safe-area-inset-bottom,0px))]">
-        <div className="flex items-center gap-1.5 sm:gap-4 p-1 sm:p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-xl shadow-2xl max-w-full overflow-x-auto sm:overflow-visible no-scrollbar">
+      <footer className="relative z-40 h-auto py-2 sm:py-0 sm:h-20 border-t border-white/[0.06] px-1.5 sm:px-6 flex items-center justify-center bg-black/85 backdrop-blur-xl pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+        <div className="flex items-center gap-1 sm:gap-2 p-1 sm:p-1.5 bg-[#0a0a0c] border border-white/[0.12] rounded-2xl shadow-2xl max-w-full overflow-x-auto sm:overflow-visible no-scrollbar">
           {isSpeaker ? (
             <div
               className={`inline-flex items-center rounded-xl transition-all shrink-0 ${
                 !isMuted
                   ? audioMenuOpen
-                    ? 'bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/50 ring-1 ring-[#FF9933]/40 shadow-[0_0_18px_rgba(255,153,51,0.25)]'
+                    ? 'bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/50 ring-1 ring-[#FF9933]/40 shadow-[0_0_20px_rgba(255,153,51,0.2)]'
                     : 'bg-[#FF9933]/12 hover:bg-[#FF9933]/18 text-[#FF9933] border border-[#FF9933]/35 hover:border-[#FF9933]/50 shadow-[0_0_12px_rgba(255,153,51,0.15)]'
                   : audioMenuOpen
-                  ? 'bg-[#181820] text-[#fcfdff] border border-white/[0.20] ring-1 ring-white/10 shadow-sm'
-                  : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16] shadow-sm'
+                  ? 'bg-[#2a0e14] text-[#fca5a5] border border-red-500/40 ring-1 ring-red-500/30 shadow-[0_0_18px_rgba(220,38,38,0.25)]'
+                  : 'bg-gradient-to-r from-[#240a0f] to-[#1a070b] hover:from-[#2e0e15] hover:to-[#220a0f] text-[#f87171] border border-red-500/30 hover:border-red-500/45 shadow-[0_0_12px_rgba(220,38,38,0.15)]'
               }`}
             >
               <button
                 type="button"
                 onClick={handleToggleMic}
-                className="h-9 sm:h-10 px-2 sm:px-3 rounded-l-xl flex items-center justify-center hover:bg-white/[0.06] transition-all cursor-pointer"
+                className="h-9 sm:h-10 px-2.5 sm:px-3 rounded-l-xl flex items-center justify-center hover:bg-white/[0.06] transition-all cursor-pointer"
                 title={!isMuted ? 'Mute microphone' : 'Unmute microphone'}
               >
-                {!isMuted ? <MicIcon size={16} /> : <MicOffIcon size={16} />}
+                {!isMuted ? <MicIcon size={16} /> : <MicOffIcon size={16} className="text-[#f87171]" />}
               </button>
               <div
                 className={`w-px h-4 sm:h-4.5 ${
-                  !isMuted ? 'bg-[#FF9933]/30' : audioMenuOpen ? 'bg-white/20' : 'bg-white/[0.10]'
+                  !isMuted
+                    ? audioMenuOpen
+                      ? 'bg-[#FF9933]/40'
+                      : 'bg-[#FF9933]/30'
+                    : 'bg-red-500/25'
                 }`}
               />
               {/* Up-Arrow Trigger & Popover Anchor */}
@@ -1681,17 +1696,21 @@ export default function TalkPage({ params }: TalkPageProps) {
                   onClick={() => setAudioMenuOpen((prev) => !prev)}
                   className={`h-9 sm:h-10 px-1.5 sm:px-2 rounded-r-xl flex items-center justify-center hover:bg-white/[0.08] transition-all cursor-pointer ${
                     audioMenuOpen
-                      ? 'bg-white/[0.10] text-[#FF9933]'
+                      ? 'bg-white/[0.12] text-[#fca5a5]'
                       : !isMuted
                       ? 'text-[#FF9933]/80 hover:text-[#FF9933]'
-                      : 'text-[#888e90] hover:text-[#fcfdff]'
+                      : 'text-[#f87171]/80 hover:text-[#f87171]'
                   }`}
                   title="Audio & Speaker Settings"
                 >
                   <ChevronUpIcon
                     size={13}
                     className={`transition-transform duration-200 pointer-events-none ${
-                      audioMenuOpen ? 'rotate-180 text-[#FF9933]' : ''
+                      audioMenuOpen
+                        ? 'rotate-180 text-[#fca5a5]'
+                        : !isMuted
+                        ? 'text-[#FF9933]'
+                        : 'text-[#f87171]'
                     }`}
                   />
                 </button>
@@ -1738,7 +1757,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 type="button"
                 data-media-menu-toggle="audio"
                 onClick={() => setAudioMenuOpen((prev) => !prev)}
-                className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all ${
+                className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                   audioMenuOpen
                     ? 'bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/40 ring-1 ring-[#FF9933]/30 shadow-[0_0_15px_rgba(255,153,51,0.25)]'
                     : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
@@ -1755,7 +1774,7 @@ export default function TalkPage({ params }: TalkPageProps) {
             type="button"
             onClick={handleToggleHandRaise}
             disabled={!isRaiseHandAllowed && !handRaised}
-            className={`h-9 sm:h-10 px-2 sm:px-3 rounded-xl flex items-center gap-1 sm:gap-1.5 font-medium text-xs transition-all cursor-pointer shrink-0 ${
+            className={`h-9 px-2 sm:h-10 sm:px-3 rounded-xl flex items-center gap-1.5 font-medium text-xs transition-all cursor-pointer shrink-0 ${
               !isRaiseHandAllowed && !handRaised
                 ? 'opacity-40 cursor-not-allowed bg-[#121216] text-[#888e90] border border-white/[0.06]'
                 : handRaised
@@ -1772,7 +1791,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 : 'Raise Hand (Show presence / request mic)'
             }
           >
-            <span className="text-sm sm:text-base leading-none">✋</span>
+            <span className="text-base leading-none">✋</span>
             <span className="hidden sm:inline">{handRaised ? 'Hand Raised' : 'Raise Hand'}</span>
           </button>
 
@@ -1783,11 +1802,12 @@ export default function TalkPage({ params }: TalkPageProps) {
           />
 
           <button
+            type="button"
             onClick={() => {
               setParticipantsOpen(!participantsOpen);
               if (!participantsOpen) setChatOpen(false);
             }}
-            className={`relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all shrink-0 ${
+            className={`relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 ${
               participantsOpen
                 ? 'bg-[#FF9933]/15 text-[#FF9933] border border-[#FF9933]/40 shadow-sm'
                 : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
@@ -1803,6 +1823,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           </button>
 
           <button
+            type="button"
             onClick={() => {
               setChatOpen(!chatOpen);
               if (!chatOpen) {
@@ -1810,7 +1831,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 setUnreadChatCount(0);
               }
             }}
-            className={`relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all shrink-0 ${
+            className={`relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 ${
               chatOpen
                 ? 'bg-[#FF9933]/15 text-[#FF9933] border border-[#FF9933]/40 shadow-sm'
                 : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
@@ -1828,41 +1849,42 @@ export default function TalkPage({ params }: TalkPageProps) {
           <div className="h-5 sm:h-6 w-px bg-white/[0.08] mx-0.5 sm:mx-1 shrink-0" />
 
           <button
+            type="button"
             onClick={handleLeaveClick}
             disabled={leaving || ending}
-            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 h-9 sm:h-10 rounded-xl bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] font-medium text-xs transition-all border border-white/[0.10] hover:border-white/[0.16] disabled:opacity-50 shrink-0"
+            className="flex items-center gap-1.5 h-9 px-2 sm:h-10 sm:px-3.5 rounded-xl bg-[#101012] hover:bg-[#18181c] text-[#888e90] hover:text-[#fcfdff] font-medium text-xs transition-all border border-white/[0.08] disabled:opacity-50 cursor-pointer shrink-0"
           >
             {leaving ? (
               <>
                 <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
-                <span className="hidden xs:inline">Leaving...</span>
+                <span className="hidden sm:inline">Leaving...</span>
               </>
             ) : (
               <>
                 <LogOutIcon size={13} />
-                <span className="hidden xs:inline">Leave Quietly</span>
-                <span className="xs:hidden">Leave</span>
+                <span className="hidden sm:inline">Leave</span>
               </>
             )}
           </button>
 
           {isHost && (
             <button
+              type="button"
               onClick={handleEndRoom}
               disabled={leaving || ending}
-              className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 h-9 sm:h-10 rounded-xl bg-gradient-to-r from-[#240a0f] to-[#1a070b] hover:from-[#2e0e15] hover:to-[#220a0f] text-[#f87171] hover:text-[#fca5a5] border border-red-500/35 hover:border-red-500/50 font-medium text-xs transition-all shadow-[0_0_14px_rgba(220,38,38,0.18)] disabled:opacity-50 shrink-0"
+              className="flex items-center gap-1.5 h-9 px-2.5 sm:h-10 sm:px-3.5 rounded-xl bg-gradient-to-r from-[#240a0f] to-[#1a070b] hover:from-[#2e0e15] hover:to-[#220a0f] text-[#f87171] hover:text-[#fca5a5] border border-red-500/35 hover:border-red-500/50 font-medium text-xs transition-all shadow-[0_0_14px_rgba(220,38,38,0.18)] disabled:opacity-50 cursor-pointer shrink-0"
               title="End audio stage for all participants"
             >
               {ending ? (
                 <>
                   <div className="animate-spin h-3.5 w-3.5 border border-red-400/30 border-t-red-400 rounded-full" />
-                  <span className="hidden xs:inline">Ending Stage...</span>
+                  <span className="hidden sm:inline">Ending Stage...</span>
                 </>
               ) : (
                 <>
                   <PhoneCallIcon size={13} className="text-[#f87171]" />
-                  <span className="hidden xs:inline">End Stage</span>
-                  <span className="xs:hidden">End</span>
+                  <span className="hidden sm:inline">End Stage</span>
+                  <span className="sm:hidden">End</span>
                 </>
               )}
             </button>
@@ -1877,23 +1899,26 @@ export default function TalkPage({ params }: TalkPageProps) {
           onClick={() => setSettingsOpen(false)}
         >
           <div
-            className="w-full max-w-md bg-[#0a0a0e] border border-white/[0.12] rounded-2xl p-4 sm:p-6 shadow-2xl relative overflow-hidden text-[#fcfdff] space-y-4 sm:space-y-5 max-h-[90vh] overflow-y-auto"
+            className="w-full max-w-md bg-[#0a0a0c] border border-white/[0.12] rounded-2xl p-4 sm:p-6 shadow-2xl relative overflow-hidden text-[#fcfdff] space-y-4 sm:space-y-5 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Ambient Radial Glow */}
+            <div className="absolute top-0 right-0 w-64 h-32 rounded-full blur-3xl opacity-20 bg-gradient-brand-br pointer-events-none" />
+
             {/* Top specular highlight line */}
-            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-amber-500/30 to-transparent pointer-events-none" />
+            <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#FF9933]/40 to-transparent pointer-events-none" />
 
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3.5">
+            <div className="flex items-center justify-between border-b border-white/[0.08] pb-3.5 relative z-10">
               <div className="flex items-center gap-2.5">
-                <div className="h-8 w-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+                <div className="h-8 w-8 rounded-xl bg-[#FF9933]/15 border border-[#FF9933]/30 flex items-center justify-center text-[#FF9933] shadow-[0_0_12px_rgba(255,153,51,0.15)]">
                   {isHost ? <SettingsIcon size={16} /> : <ShieldCheckIcon size={16} />}
                 </div>
                 <div>
-                  <h3 className="font-serif-headline text-base font-medium tracking-tight text-[#fcfdff]">
+                  <h3 className="font-serif-headline text-base font-normal tracking-tight text-[#fcfdff]">
                     {isHost ? 'Stage Settings & Controls' : 'Stage Permissions'}
                   </h3>
-                  <p className="text-[11px] text-[#888e90] font-sans">
+                  <p className="text-[11px] text-[#888e90]">
                     {isHost
                       ? 'Live microphone access & room policies'
                       : 'Current broadcast policies set by the host'}
@@ -1903,7 +1928,7 @@ export default function TalkPage({ params }: TalkPageProps) {
               <button
                 type="button"
                 onClick={() => setSettingsOpen(false)}
-                className="h-7 w-7 rounded-lg flex items-center justify-center text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06] transition-colors"
+                className="h-7 w-7 rounded-lg flex items-center justify-center text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06] transition-colors cursor-pointer"
                 aria-label="Close"
               >
                 <XIcon size={15} />
@@ -1912,28 +1937,28 @@ export default function TalkPage({ params }: TalkPageProps) {
 
             {/* Content for Host vs Audience */}
             {isHost ? (
-              <div className="space-y-4">
+              <div className="space-y-4 relative z-10">
                 {/* Hand-raise queue section if someone requested to speak */}
                 {pendingHandRaisesCount > 0 && (
-                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-2.5">
+                  <div className="p-3.5 rounded-xl bg-[#FF9933]/10 border border-[#FF9933]/30 space-y-2.5 shadow-[0_0_15px_rgba(255,153,51,0.08)]">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs font-medium text-amber-300">
+                      <div className="flex items-center gap-1.5 text-xs font-medium text-[#FF9933]">
                         <HandCoinsIcon size={13} className="animate-bounce" />
                         <span>Speaking Requests ({pendingHandRaisesCount})</span>
                       </div>
-                      <span className="text-[10px] font-mono text-amber-400/80">Pending</span>
+                      <span className="text-[10px] font-mono text-[#FF9933]/80">Pending</span>
                     </div>
 
-                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1 no-scrollbar">
                       {participants
                         .filter((p) => p.handRaised && !p.canSpeak && p.userId !== room.hostId)
                         .map((p) => (
                           <div
                             key={p.userId}
-                            className="flex items-center justify-between p-2 rounded-lg bg-black/40 border border-white/[0.06]"
+                            className="flex items-center justify-between p-2 rounded-lg bg-black/50 border border-white/[0.08]"
                           >
                             <div className="flex items-center gap-2 min-w-0">
-                              <div className="h-6 w-6 rounded-full bg-amber-500/20 text-amber-300 font-mono text-xs flex items-center justify-center font-bold">
+                              <div className="h-6 w-6 rounded-full bg-[#FF9933]/20 text-[#FF9933] font-mono text-xs flex items-center justify-center font-bold">
                                 {p.name.charAt(0).toUpperCase()}
                               </div>
                               <span className="text-xs text-[#fcfdff] truncate font-medium max-w-[140px]">
@@ -1943,7 +1968,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                             <button
                               type="button"
                               onClick={() => handleGrantMic(p.userId, p.name)}
-                              className="px-2.5 py-1 rounded-md bg-[#fcfdff] hover:bg-[#f1f7fe] text-black font-semibold text-[11px] shadow-sm transition-all flex items-center gap-1 cursor-pointer"
+                              className="px-2.5 py-1 rounded-lg bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-[11px] shadow-brand-glow transition-all flex items-center gap-1 cursor-pointer active:scale-95"
                             >
                               <MicIcon size={11} />
                               <span>Allow Mic</span>
@@ -1955,105 +1980,135 @@ export default function TalkPage({ params }: TalkPageProps) {
                 )}
 
                 {/* Stage Policies Quick Toggles */}
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   <div className="text-[11px] font-mono uppercase tracking-wider text-[#888e90] px-0.5">
                     Stage Policies
                   </div>
 
                   {/* Open Mic Toggle */}
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${settings.micForAll ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.04] text-zinc-400'}`}>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickToggle('micForAll')}
+                    disabled={updatingKey === 'micForAll'}
+                    className="flex items-center justify-between w-full p-3 rounded-xl bg-[#0f0f14]/60 hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/[0.12] transition-all text-left group cursor-pointer disabled:opacity-50"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 pr-3">
+                      <div
+                        className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                          settings.micForAll
+                            ? 'bg-[#FF9933]/15 text-[#FF9933]'
+                            : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
+                        }`}
+                      >
                         <MicIcon size={14} />
                       </div>
-                      <div>
-                        <div className="text-xs font-medium text-[#fcfdff]">Open Microphone</div>
-                        <div className="text-[11px] text-[#888e90]">
+                      <div className="min-w-0">
+                        <span className="text-xs font-medium text-[#fcfdff] block leading-tight">
+                          Open Microphone
+                        </span>
+                        <span className="text-[11px] text-[#888e90] block leading-normal mt-0.5">
                           {settings.micForAll ? 'Everyone can speak freely' : 'Host & granted speakers only'}
-                        </div>
+                        </span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickToggle('micForAll')}
-                      disabled={updatingKey === 'micForAll'}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        settings.micForAll ? 'bg-amber-500' : 'bg-white/20'
+                    <div
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out ${
+                        settings.micForAll ? 'bg-[#FF9933]' : 'bg-[#1e1e24]'
                       }`}
                     >
                       <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-black shadow ring-0 transition duration-200 ease-in-out ${
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out mt-[1px] ml-[1px] ${
                           settings.micForAll ? 'translate-x-4' : 'translate-x-0'
                         }`}
                       />
-                    </button>
-                  </div>
+                    </div>
+                  </button>
 
                   {/* Stage Chat Toggle */}
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${settings.allowChat ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.04] text-zinc-400'}`}>
+                  <button
+                    type="button"
+                    onClick={() => handleQuickToggle('allowChat')}
+                    disabled={updatingKey === 'allowChat'}
+                    className="flex items-center justify-between w-full p-3 rounded-xl bg-[#0f0f14]/60 hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/[0.12] transition-all text-left group cursor-pointer disabled:opacity-50"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 pr-3">
+                      <div
+                        className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                          settings.allowChat
+                            ? 'bg-[#FF9933]/15 text-[#FF9933]'
+                            : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
+                        }`}
+                      >
                         <MessageSquareIcon size={14} />
                       </div>
-                      <div>
-                        <div className="text-xs font-medium text-[#fcfdff]">In-Room Chat</div>
-                        <div className="text-[11px] text-[#888e90]">
+                      <div className="min-w-0">
+                        <span className="text-xs font-medium text-[#fcfdff] block leading-tight">
+                          In-Room Chat
+                        </span>
+                        <span className="text-[11px] text-[#888e90] block leading-normal mt-0.5">
                           {settings.allowChat ? 'Participants can chat' : 'Chat is muted'}
-                        </div>
+                        </span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickToggle('allowChat')}
-                      disabled={updatingKey === 'allowChat'}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        settings.allowChat ? 'bg-amber-500' : 'bg-white/20'
+                    <div
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out ${
+                        settings.allowChat ? 'bg-[#FF9933]' : 'bg-[#1e1e24]'
                       }`}
                     >
                       <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-black shadow ring-0 transition duration-200 ease-in-out ${
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out mt-[1px] ml-[1px] ${
                           settings.allowChat ? 'translate-x-4' : 'translate-x-0'
                         }`}
                       />
-                    </button>
-                  </div>
+                    </div>
+                  </button>
 
-                  {/* Raise Hand Toggle */}
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-white/[0.02] border border-white/[0.06] hover:bg-white/[0.04] transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg ${settings.allowRaiseHand ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.04] text-zinc-400'}`}>
-                        <HandCoinsIcon size={14} />
+                  {/* Audience Hand Raise Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => handleQuickToggle('allowRaiseHand')}
+                    disabled={updatingKey === 'allowRaiseHand'}
+                    className="flex items-center justify-between w-full p-3 rounded-xl bg-[#0f0f14]/60 hover:bg-white/[0.05] border border-white/[0.06] hover:border-white/[0.12] transition-all text-left group cursor-pointer disabled:opacity-50"
+                  >
+                    <div className="flex items-center gap-3 min-w-0 pr-3">
+                      <div
+                        className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                          settings.allowRaiseHand
+                            ? 'bg-[#FF9933]/15 text-[#FF9933]'
+                            : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
+                        }`}
+                      >
+                        <span className="text-sm">✋</span>
                       </div>
-                      <div>
-                        <div className="text-xs font-medium text-[#fcfdff]">Audience Hand Raise</div>
-                        <div className="text-[11px] text-[#888e90]">
-                          {settings.allowRaiseHand ? 'Listeners can raise hand to speak or show presence' : 'Hand raise disabled'}
-                        </div>
+                      <div className="min-w-0">
+                        <span className="text-xs font-medium text-[#fcfdff] block leading-tight">
+                          Audience Hand Raise
+                        </span>
+                        <span className="text-[11px] text-[#888e90] block leading-normal mt-0.5">
+                          {settings.allowRaiseHand ? 'Listeners can raise hand to speak' : 'Hand raise disabled'}
+                        </span>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickToggle('allowRaiseHand')}
-                      disabled={updatingKey === 'allowRaiseHand'}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        settings.allowRaiseHand ? 'bg-amber-500' : 'bg-white/20'
+                    <div
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border border-transparent transition-colors duration-200 ease-in-out ${
+                        settings.allowRaiseHand ? 'bg-[#FF9933]' : 'bg-[#1e1e24]'
                       }`}
                     >
                       <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-black shadow ring-0 transition duration-200 ease-in-out ${
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out mt-[1px] ml-[1px] ${
                           settings.allowRaiseHand ? 'translate-x-4' : 'translate-x-0'
                         }`}
                       />
-                    </button>
-                  </div>
+                    </div>
+                  </button>
                 </div>
 
                 {/* Footer */}
-                <div className="flex justify-end pt-2 border-t border-white/[0.06] text-xs">
+                <div className="flex justify-end pt-3.5 border-t border-white/[0.08]">
                   <button
                     type="button"
                     onClick={() => setSettingsOpen(false)}
-                    className="px-4 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.14] text-xs font-medium text-[#fcfdff] transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer"
                   >
                     Done
                   </button>
@@ -2061,16 +2116,16 @@ export default function TalkPage({ params }: TalkPageProps) {
               </div>
             ) : (
               /* Non-Host / Audience View */
-              <div className="space-y-4">
+              <div className="space-y-4 relative z-10">
                 <div className="space-y-2.5">
-                  <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                    <div className={`p-2 rounded-lg ${isSpeaker ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.04] text-zinc-400'}`}>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0f0f14]/60 border border-white/[0.06]">
+                    <div className={`p-2 rounded-lg shrink-0 ${isSpeaker ? 'bg-emerald-500/15 text-emerald-400' : 'bg-white/[0.04] text-[#888e90]'}`}>
                       {isSpeaker ? <MicIcon size={14} /> : <MicOffIcon size={14} />}
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-medium text-[#fcfdff]">Microphone Access</span>
-                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full shrink-0 ${
                           isSpeaker
                             ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
                             : 'bg-white/[0.05] text-[#888e90]'
@@ -2088,16 +2143,16 @@ export default function TalkPage({ params }: TalkPageProps) {
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                    <div className={`p-2 rounded-lg ${isChatAllowed ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.04] text-zinc-400'}`}>
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0f0f14]/60 border border-white/[0.06]">
+                    <div className={`p-2 rounded-lg shrink-0 ${isChatAllowed ? 'bg-[#FF9933]/15 text-[#FF9933]' : 'bg-white/[0.04] text-[#888e90]'}`}>
                       <MessageSquareIcon size={14} />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-medium text-[#fcfdff]">Stage Chat</span>
-                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full shrink-0 ${
                           isChatAllowed
-                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                            ? 'bg-[#FF9933]/15 text-[#FF9933] border border-[#FF9933]/30'
                             : 'bg-white/[0.05] text-[#888e90]'
                         }`}>
                           {isChatAllowed ? 'Enabled' : 'Disabled'}
@@ -2111,16 +2166,16 @@ export default function TalkPage({ params }: TalkPageProps) {
                     </div>
                   </div>
 
-                  <div className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                    <div className={`p-2 rounded-lg ${settings.allowRaiseHand ? 'bg-amber-500/15 text-amber-400' : 'bg-white/[0.04] text-zinc-400'}`}>
-                      <HandCoinsIcon size={14} />
+                  <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0f0f14]/60 border border-white/[0.06]">
+                    <div className={`p-2 rounded-lg shrink-0 ${settings.allowRaiseHand ? 'bg-[#FF9933]/15 text-[#FF9933]' : 'bg-white/[0.04] text-[#888e90]'}`}>
+                      <span className="text-sm">✋</span>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
                         <span className="text-xs font-medium text-[#fcfdff]">Raise Hand & Presence</span>
-                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full shrink-0 ${
                           settings.allowRaiseHand
-                            ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                            ? 'bg-[#FF9933]/15 text-[#FF9933] border border-[#FF9933]/30'
                             : 'bg-white/[0.05] text-[#888e90]'
                         }`}>
                           {settings.allowRaiseHand ? 'Allowed' : 'Disabled'}
@@ -2135,11 +2190,11 @@ export default function TalkPage({ params }: TalkPageProps) {
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-2 border-t border-white/[0.06]">
+                <div className="flex justify-end pt-3.5 border-t border-white/[0.08]">
                   <button
                     type="button"
                     onClick={() => setSettingsOpen(false)}
-                    className="px-3.5 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.12] text-xs font-medium text-[#fcfdff] transition-colors cursor-pointer"
+                    className="inline-flex items-center justify-center px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer"
                   >
                     Got it
                   </button>
