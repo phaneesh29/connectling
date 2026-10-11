@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { signIn, useSession } from '@/lib/auth-client';
+import { signIn, useSession, oneTap } from '@/lib/auth-client';
 import {
   SparklesIcon,
   ShieldCheckIcon,
@@ -13,6 +13,7 @@ import {
   XIcon,
 } from '@animateicons/react/lucide';
 import { LoginSkeleton, LoginFormSkeleton } from '@/components/skeleton';
+import { GOOGLE_CLIENT_ID } from '@/lib/config';
 
 function LoginContent() {
   const router = useRouter();
@@ -29,8 +30,12 @@ function LoginContent() {
   useEffect(() => {
     if (session) {
       router.replace(callbackURL.startsWith('/') ? callbackURL : '/');
+    } else if (!isPending && GOOGLE_CLIENT_ID) {
+      oneTap({
+        callbackURL: callbackURL.startsWith('/') ? callbackURL : '/',
+      }).catch(() => {});
     }
-  }, [session, router, callbackURL]);
+  }, [session, isPending, router, callbackURL]);
 
   const handleGoogleSignIn = async () => {
     if (!acceptedTerms) {
@@ -126,7 +131,19 @@ function LoginContent() {
                     checked={acceptedTerms}
                     onChange={(e) => {
                       setAcceptedTerms(e.target.checked);
-                      if (e.target.checked) setTermsError(false);
+                      if (e.target.checked) {
+                        setTermsError(false);
+                        if (GOOGLE_CLIENT_ID) {
+                          const redirectTarget = `${window.location.origin}${
+                            callbackURL.startsWith('/') ? callbackURL : '/'
+                          }`;
+                          oneTap({
+                            callbackURL: redirectTarget,
+                            context: 'signin',
+                            autoSelect: false,
+                          }).catch(() => {});
+                        }
+                      }
                     }}
                     className="sr-only"
                   />
@@ -222,7 +239,7 @@ function LoginContent() {
             <div className="pt-2 text-center">
               <span className="inline-flex items-center gap-1.5 font-mono text-[10px] text-[#888e90]">
                 <SparklesIcon size={11} className="text-[#ff7a1a]" />
-                Zero password friction • Instant OAuth session
+                Google One Tap enabled • Instant 1-tap sign-in
               </span>
             </div>
           </div>
@@ -312,6 +329,16 @@ function LoginContent() {
                     setAcceptedTerms(true);
                     setTermsError(false);
                     setTermsModalOpen(false);
+                    if (GOOGLE_CLIENT_ID) {
+                      const redirectTarget = `${window.location.origin}${
+                        callbackURL.startsWith('/') ? callbackURL : '/'
+                      }`;
+                      oneTap({
+                        callbackURL: redirectTarget,
+                        context: 'signin',
+                        autoSelect: false,
+                      }).catch(() => {});
+                    }
                   }}
                   className="flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs bg-gradient-brand-r hover:brightness-105 text-black transition-all font-semibold shadow-brand-glow cursor-pointer text-center whitespace-nowrap"
                 >

@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { oneTap } from 'better-auth/plugins';
 import { db } from './db/index.js';
 import * as schema from './db/schema.js';
 import { env } from './config/env.js';
@@ -14,6 +15,11 @@ const trustedOrigins = Array.from(new Set(parsedOrigins));
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
+  plugins: [
+    oneTap({
+      clientId: env.GOOGLE_CLIENT_ID,
+    }),
+  ],
   database: drizzleAdapter(db, {
     provider: 'pg',
     schema,
