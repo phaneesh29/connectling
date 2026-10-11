@@ -108,6 +108,27 @@ const FAQ_CATEGORIES: FaqCategory[] = [
   },
 ];
 
+const ARCHITECTURE_FEATURES = [
+  {
+    title: 'Peer-to-Peer Encrypted WebRTC',
+    description:
+      'Direct browser-to-browser media streaming with DTLS-SRTP encryption, sub-second latency, and lossless crystal-clear screen sharing.',
+    badge: 'End-to-End Encrypted',
+  },
+  {
+    title: 'Zero Data Retention Architecture',
+    description:
+      'We do not record calls, store persistent transcripts, or keep historical activity logs on our servers. Your conversations stay strictly in the room.',
+    badge: '100% Private',
+  },
+  {
+    title: '24-Hour Ephemeral Lifespan',
+    description:
+      'Every space automatically self-destructs after 24 hours. Rooms can be password-protected or moderated in real time by the space host.',
+    badge: 'Auto Self-Destruct',
+  },
+];
+
 const allFaqItems = FAQ_CATEGORIES.flatMap((c) => c.items);
 
 const faqPageJsonLd = {
@@ -165,6 +186,39 @@ export default function FaqsPage() {
             <span className="text-[#ff7a1a]">Zero-Telemetry Standard</span>
           </div>
         </header>
+
+        {/* Architecture & Zero-Data Highlights */}
+        <section className="space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-base sm:text-lg font-medium text-[#fcfdff]">
+              Engineered for Zero Surveillance
+            </h2>
+            <p className="text-xs text-[#888e90]">
+              The core architectural principles underpinning Connectling’s private conferences and voice stages.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {ARCHITECTURE_FEATURES.map((feat) => (
+              <div
+                key={feat.title}
+                className="p-5 rounded-2xl border border-white/[0.08] bg-[#0a0a0c] space-y-3 relative group hover:border-white/[0.18] transition-all"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.08] text-[#FF9933]">
+                    {feat.badge}
+                  </span>
+                </div>
+                <h3 className="text-sm font-semibold text-[#fcfdff]">
+                  {feat.title}
+                </h3>
+                <p className="text-xs text-[#888e90] leading-relaxed">
+                  {feat.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
 
         {/* FAQ Category Accordions */}
         <div className="space-y-10">

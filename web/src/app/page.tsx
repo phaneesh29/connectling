@@ -21,27 +21,6 @@ import {
   Trash2Icon,
 } from '@animateicons/react/lucide';
 
-const ARCHITECTURE_FEATURES = [
-  {
-    title: 'Peer-to-Peer Encrypted WebRTC',
-    description:
-      'Direct browser-to-browser media streaming with DTLS-SRTP encryption, sub-second latency, and lossless crystal-clear screen sharing.',
-    badge: 'End-to-End Encrypted',
-  },
-  {
-    title: 'Zero Data Retention Architecture',
-    description:
-      'We do not record calls, store persistent transcripts, or keep historical activity logs on our servers. Your conversations stay strictly in the room.',
-    badge: '100% Private',
-  },
-  {
-    title: '24-Hour Ephemeral Lifespan',
-    description:
-      'Every space automatically self-destructs after 24 hours. Rooms can be password-protected or moderated in real time by the space host.',
-    badge: 'Auto Self-Destruct',
-  },
-];
-
 export default function DashboardPage() {
   const router = useRouter();
   const { data: session, isPending: sessionPending } = useSession();
@@ -584,49 +563,6 @@ export default function DashboardPage() {
             )}
           </section>
         )}
-
-        {/* Architecture & Zero-Data Highlights */}
-        <section className="space-y-4 pt-4 sm:pt-6">
-          <div className="space-y-1">
-            <h2 className="text-base sm:text-lg font-medium text-[#fcfdff]">
-              Engineered for Zero Surveillance
-            </h2>
-            <p className="text-xs text-[#888e90]">
-              How Connectling keeps your video conferences and audio stages unrecorded and private.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {ARCHITECTURE_FEATURES.map((feat) => (
-              <div
-                key={feat.title}
-                className="p-5 rounded-2xl border border-white/[0.08] bg-[#0a0a0c] space-y-3 relative group hover:border-white/[0.18] transition-all"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.08] text-[#FF9933]">
-                    {feat.badge}
-                  </span>
-                </div>
-                <h3 className="text-sm font-semibold text-[#fcfdff]">
-                  {feat.title}
-                </h3>
-                <p className="text-xs text-[#888e90] leading-relaxed">
-                  {feat.description}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <div className="pt-1 flex justify-start sm:justify-end">
-            <Link
-              href="/faqs"
-              className="inline-flex items-center gap-1.5 text-xs text-[#888e90] hover:text-[#fcfdff] transition-colors font-mono group"
-            >
-              <span>Explore architecture details &amp; common questions in FAQs</span>
-              <ArrowRightIcon size={12} className="group-hover:translate-x-0.5 transition-transform" />
-            </Link>
-          </div>
-        </section>
 
         {/* Unauthenticated Bottom CTA Banner */}
         {!session && (
