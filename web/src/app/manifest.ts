@@ -37,5 +37,14 @@ export default function manifest(): MetadataRoute.Manifest {
         type: 'image/png',
       },
     ],
+    screenshots: [
+      {
+        src: '/og-image.png',
+        sizes: '1200x630',
+        type: 'image/png',
+        form_factor: 'wide',
+        label: 'Connectling Real-Time Spaces',
+      },
+    ],
   };
 }

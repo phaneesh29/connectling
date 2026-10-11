@@ -21,15 +21,30 @@ import {
   Trash2Icon,
 } from '@animateicons/react/lucide';
 
+const ARCHITECTURE_FEATURES = [
+  {
+    title: 'Peer-to-Peer Encrypted WebRTC',
+    description:
+      'Direct browser-to-browser media streaming with DTLS-SRTP encryption, sub-second latency, and lossless crystal-clear screen sharing.',
+    badge: 'End-to-End Encrypted',
+  },
+  {
+    title: 'Zero Data Retention Architecture',
+    description:
+      'We do not record calls, store persistent transcripts, or keep historical activity logs on our servers. Your conversations stay strictly in the room.',
+    badge: '100% Private',
+  },
+  {
+    title: '24-Hour Ephemeral Lifespan',
+    description:
+      'Every space automatically self-destructs after 24 hours. Rooms can be password-protected or moderated in real time by the space host.',
+    badge: 'Auto Self-Destruct',
+  },
+];
+
 export default function DashboardPage() {
   const router = useRouter();
   const { data: session, isPending: sessionPending } = useSession();
-
-  useEffect(() => {
-    if (!sessionPending && !session) {
-      router.replace('/login');
-    }
-  }, [session, sessionPending, router]);
 
   const [activeMode, setActiveMode] = useState<'meet' | 'audio' | 'webinar'>('meet');
   const [modalOpen, setModalOpen] = useState(false);
@@ -159,14 +174,14 @@ export default function DashboardPage() {
 
   const openCreateModal = (type: 'meet' | 'audio') => {
     if (!session) {
-      router.push('/login');
+      router.push('/login?callbackURL=/');
       return;
     }
     setModalType(type);
     setModalOpen(true);
   };
 
-  if (sessionPending || !session) {
+  if (sessionPending) {
     return <DashboardSkeleton />;
   }
 
@@ -314,7 +329,11 @@ export default function DashboardPage() {
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl sm:rounded-lg transition-all active:scale-[0.98] shadow-brand-glow shrink-0 cursor-pointer"
               >
                 <SparklesIcon size={13} />
-                <span>Launch {activeMode === 'meet' ? 'Video Meeting' : 'Audio Stage'}</span>
+                <span>
+                  {session
+                    ? `Launch ${activeMode === 'meet' ? 'Video Meeting' : 'Audio Stage'}`
+                    : `Start Free ${activeMode === 'meet' ? 'Video Meeting' : 'Audio Stage'}`}
+                </span>
               </button>
             )}
           </div>
@@ -565,6 +584,73 @@ export default function DashboardPage() {
             )}
           </section>
         )}
+
+        {/* Architecture & Zero-Data Highlights */}
+        <section className="space-y-4 pt-4 sm:pt-6">
+          <div className="space-y-1">
+            <h2 className="text-base sm:text-lg font-medium text-[#fcfdff]">
+              Engineered for Zero Surveillance
+            </h2>
+            <p className="text-xs text-[#888e90]">
+              How Connectling keeps your video conferences and audio stages unrecorded and private.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {ARCHITECTURE_FEATURES.map((feat) => (
+              <div
+                key={feat.title}
+                className="p-5 rounded-2xl border border-white/[0.08] bg-[#0a0a0c] space-y-3 relative group hover:border-white/[0.18] transition-all"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.06] border border-white/[0.08] text-[#FF9933]">
+                    {feat.badge}
+                  </span>
+                </div>
+                <h3 className="text-sm font-semibold text-[#fcfdff]">
+                  {feat.title}
+                </h3>
+                <p className="text-xs text-[#888e90] leading-relaxed">
+                  {feat.description}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="pt-1 flex justify-start sm:justify-end">
+            <Link
+              href="/faqs"
+              className="inline-flex items-center gap-1.5 text-xs text-[#888e90] hover:text-[#fcfdff] transition-colors font-mono group"
+            >
+              <span>Explore architecture details &amp; common questions in FAQs</span>
+              <ArrowRightIcon size={12} className="group-hover:translate-x-0.5 transition-transform" />
+            </Link>
+          </div>
+        </section>
+
+        {/* Unauthenticated Bottom CTA Banner */}
+        {!session && (
+          <section className="relative overflow-hidden p-6 sm:p-8 rounded-2xl border border-white/[0.12] bg-[#0a0a0c] text-center space-y-4 glow-card">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-brand-br opacity-20 blur-3xl pointer-events-none" />
+            <div className="max-w-xl mx-auto space-y-2 relative z-10">
+              <h2 className="font-serif-headline text-xl sm:text-2xl font-normal text-[#fcfdff] tracking-tight">
+                Private Real-Time Conversations. Zero Surveillance.
+              </h2>
+              <p className="text-xs text-[#888e90] leading-relaxed">
+                Launch an instant encrypted video conference or drop-in voice stage in seconds. No desktop apps to install, no recordings, and 100% free.
+              </p>
+            </div>
+            <div className="relative z-10 pt-2">
+              <Link
+                href="/login"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl transition-all shadow-brand-glow active:scale-[0.98]"
+              >
+                <SparklesIcon size={14} />
+                <span>Get Started with Connectling</span>
+              </Link>
+            </div>
+          </section>
+        )}
       </main>
 
       <footer className="mt-14 sm:mt-18 pt-8 pb-12 border-t border-white/[0.06] text-center space-y-3">
@@ -576,6 +662,10 @@ export default function DashboardPage() {
           >
             Report Issue &amp; Feedback
           </button>
+          <span>•</span>
+          <Link href="/faqs" className="hover:text-[#fcfdff] transition-colors">
+            FAQs
+          </Link>
           <span>•</span>
           <Link href="/terms" className="hover:text-[#fcfdff] transition-colors">
             Privacy &amp; Zero-Data Terms

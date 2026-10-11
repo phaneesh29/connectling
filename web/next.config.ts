@@ -7,6 +7,15 @@ const nextConfig: NextConfig = {
       { protocol: 'http', hostname: '**' },
     ],
   },
+  async redirects() {
+    return [
+      {
+        source: '/faq',
+        destination: '/faqs',
+        permanent: true,
+      },
+    ];
+  },
   async rewrites() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
     return [
