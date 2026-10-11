@@ -5,14 +5,11 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   MicIcon,
-  MicOffIcon,
   VideoIcon,
   CopyIcon,
   CheckIcon,
   UsersIcon,
-  LockIcon,
   SparklesIcon,
-  ArrowRightIcon,
   ChevronUpIcon,
 } from '@animateicons/react/lucide';
 import { VideoOff, MicOff as LucideMicOff } from 'lucide-react';
@@ -65,7 +62,7 @@ export function MeetPrejoinLobby({
   const [avatarError, setAvatarError] = useState(false);
 
   // Live microphone level visualizer in lobby
-  const { volume, isSpeaking } = useLocalAudioLevel({
+  const { volume } = useLocalAudioLevel({
     isEnabled: isMicOn,
     deviceId: mediaDevices.selectedAudioInputId,
   });
@@ -79,11 +76,11 @@ export function MeetPrejoinLobby({
       if (videoRef.current) {
         videoRef.current.srcObject = null;
       }
-      setStreamError(null);
       return;
     }
 
     async function setupPreview() {
+      setStreamError(null);
       try {
         const constraints: MediaStreamConstraints = {
           video: mediaDevices.selectedVideoInputId

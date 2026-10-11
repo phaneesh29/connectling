@@ -157,7 +157,6 @@ export function MediaDeviceMenu({
   useEffect(() => {
     // Only monitor audio input when audio menu is actively open and not doing recording/playback test
     if (!isOpen || type !== 'audio' || testingMicStatus === 'recording' || testingMicStatus === 'playing') {
-      setLiveVolume(0);
       return;
     }
 

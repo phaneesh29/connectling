@@ -14,7 +14,6 @@ import {
 import {
   MicIcon,
   MicOffIcon,
-  AudioWaveformIcon,
   HeadphonesIcon,
   HandCoinsIcon,
   CopyIcon,
@@ -40,6 +39,7 @@ import { TransferHostModal } from '@/components/transfer-host-modal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ReportModal } from '@/components/report-modal';
 import { MediaDeviceMenu } from '@/components/media-device-menu';
+import { TalkStageSkeleton } from '@/components/skeleton';
 import { AudioWaveform, AudioRipple } from '@/components/audio-waveform';
 import { useMediaDevices } from '@/hooks/use-media-devices';
 import { useLocalAudioLevel } from '@/hooks/use-local-audio-level';
@@ -1109,14 +1109,7 @@ export default function TalkPage({ params }: TalkPageProps) {
   };
 
   if (sessionPending || loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black">
-        <div className="text-center space-y-3">
-          <div className="animate-spin h-6 w-6 border border-white/20 border-t-[#fcfdff] rounded-full mx-auto" />
-          <p className="text-xs font-mono text-[#888e90]">Connecting to Live Audio Stage...</p>
-        </div>
-      </div>
-    );
+    return <TalkStageSkeleton />;
   }
 
   if (passcodeRequired) {

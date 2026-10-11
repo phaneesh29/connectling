@@ -41,6 +41,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ReportModal } from '@/components/report-modal';
 import { MediaDeviceMenu } from '@/components/media-device-menu';
 import { MeetPrejoinLobby } from '@/components/meet-prejoin-lobby';
+import { MeetPrejoinLobbySkeleton } from '@/components/skeleton';
 import { AudioWaveform, AudioRipple } from '@/components/audio-waveform';
 import { useMediaDevices } from '@/hooks/use-media-devices';
 import { useLocalAudioLevel } from '@/hooks/use-local-audio-level';
@@ -978,14 +979,7 @@ export default function MeetPage({ params }: MeetPageProps) {
   };
 
   if (sessionPending || (loading && !room)) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black">
-        <div className="text-center space-y-3">
-          <div className="animate-spin h-6 w-6 border border-white/20 border-t-[#fcfdff] rounded-full mx-auto" />
-          <p className="text-xs font-mono text-[#888e90]">Loading meeting space...</p>
-        </div>
-      </div>
-    );
+    return <MeetPrejoinLobbySkeleton />;
   }
 
   if (error && !room) {

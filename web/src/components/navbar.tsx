@@ -65,7 +65,7 @@ export function Navbar() {
               </span>
             </Link>
 
-            {session && (
+            {session ? (
               <nav className="flex items-center p-0.5 sm:p-1 bg-white/[0.04] border border-white/[0.08] rounded-xl shrink-0">
                 <Link
                   href="/"
@@ -88,7 +88,12 @@ export function Navbar() {
                   Profile
                 </Link>
               </nav>
-            )}
+            ) : isPending && pathname !== '/login' ? (
+              <div className="flex items-center p-0.5 sm:p-1 bg-white/[0.04] border border-white/[0.08] rounded-xl shrink-0 gap-1" aria-hidden="true">
+                <div className="h-5 sm:h-6 w-12 sm:w-14 rounded-lg skeleton-shimmer" />
+                <div className="h-5 sm:h-6 w-12 sm:w-14 rounded-lg skeleton-shimmer" />
+              </div>
+            ) : null}
           </div>
 
           {/* Right: Auth User Capsule / Feedback / Sign In Button */}
@@ -106,7 +111,13 @@ export function Navbar() {
             </Tooltip>
 
             {isPending ? (
-              <div className="h-7 w-16 sm:w-20 bg-white/[0.06] animate-pulse rounded-full" />
+              <div className="flex items-center gap-1.5 sm:gap-2" aria-hidden="true">
+                <div className="flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-xl bg-white/[0.05] border border-white/[0.12]">
+                  <div className="w-5 h-5 rounded-full skeleton-shimmer" />
+                  <div className="hidden md:inline-block w-16 h-3.5 rounded skeleton-shimmer" />
+                </div>
+                <div className="h-7.5 w-7.5 sm:h-8 sm:w-8 rounded-xl skeleton-shimmer" />
+              </div>
             ) : session ? (
               <div className="flex items-center gap-1.5 sm:gap-2">
                 {/* User Profile Pill */}

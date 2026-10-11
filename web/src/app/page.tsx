@@ -8,6 +8,7 @@ import { roomsApi, type AvailableRoomItem } from '@/lib/rooms-api';
 import { CreateRoomModal } from '@/components/create-room-modal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ReportModal } from '@/components/report-modal';
+import { DashboardSkeleton, HostedSpaceCardSkeleton } from '@/components/skeleton';
 import {
   VideoIcon,
   AudioWaveformIcon,
@@ -166,11 +167,7 @@ export default function DashboardPage() {
   };
 
   if (sessionPending || !session) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black">
-        <div className="animate-spin h-6 w-6 border-2 border-white/20 border-t-[#FF9933] rounded-full" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
@@ -450,8 +447,9 @@ export default function DashboardPage() {
             </div>
 
             {loadingRooms && myRooms.length === 0 ? (
-              <div className="p-8 rounded-2xl border border-white/[0.08] bg-[#0a0a0c] flex items-center justify-center">
-                <div className="animate-spin h-4 w-4 border border-white/30 border-t-white rounded-full" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <HostedSpaceCardSkeleton />
+                <HostedSpaceCardSkeleton />
               </div>
             ) : myRooms.length === 0 ? (
               <div className="p-6 rounded-2xl border border-dashed border-white/[0.08] bg-[#0a0a0c]/60 flex flex-col items-center justify-center text-center space-y-1.5 opacity-70">

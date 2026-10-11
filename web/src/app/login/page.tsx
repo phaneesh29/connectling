@@ -12,6 +12,7 @@ import {
   FileTextIcon,
   XIcon,
 } from '@animateicons/react/lucide';
+import { LoginSkeleton, LoginFormSkeleton } from '@/components/skeleton';
 
 function LoginContent() {
   const router = useRouter();
@@ -101,9 +102,7 @@ function LoginContent() {
         )}
 
         {isPending ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin h-5 w-5 border border-white/20 border-t-[#fcfdff] rounded-full" />
-          </div>
+          <LoginFormSkeleton />
         ) : (
           <div className="space-y-4 pt-1 relative z-10">
             {/* Terms and Conditions Checkbox */}
@@ -329,13 +328,7 @@ function LoginContent() {
 
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <main className="flex min-h-screen pt-24 pb-12 items-center justify-center p-4 bg-black">
-          <div className="animate-spin h-6 w-6 border-2 border-white/20 border-t-[#FF9933] rounded-full" />
-        </main>
-      }
-    >
+    <Suspense fallback={<LoginSkeleton />}>
       <LoginContent />
     </Suspense>
   );

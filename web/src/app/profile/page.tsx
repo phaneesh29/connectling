@@ -21,6 +21,7 @@ import { GoogleIcon } from '@/components/google-icon';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ReportModal } from '@/components/report-modal';
 import { Tooltip } from '@/components/tooltip';
+import { ProfileSkeleton, SessionItemSkeleton } from '@/components/skeleton';
 
 interface SessionItem {
   id: string;
@@ -66,7 +67,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
   const [sessions, setSessions] = useState<SessionItem[]>([]);
-  const [, setLoadingSessions] = useState(false);
+  const [loadingSessions, setLoadingSessions] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [imageError, setImageError] = useState(false);
@@ -153,6 +154,11 @@ export default function ProfilePage() {
               },
             ]);
           }
+        })
+        .finally(() => {
+          if (!ignore) {
+            setLoadingSessions(false);
+          }
         });
     }
     return () => {
@@ -208,11 +214,7 @@ export default function ProfilePage() {
   };
 
   if (isPending || !session) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-black">
-        <div className="animate-spin h-5 w-5 border border-white/20 border-t-[#fcfdff] rounded-full" />
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   const { user } = session;
@@ -310,7 +312,13 @@ export default function ProfilePage() {
           </div>
 
           <div className="space-y-2.5 pt-2">
-            {sessions.map((item) => {
+            {loadingSessions && sessions.length === 0 ? (
+              <>
+                <SessionItemSkeleton />
+                <SessionItemSkeleton />
+              </>
+            ) : (
+              sessions.map((item) => {
               const isCurrent = item.token === currentSessionToken;
               const { browser, os, type } = parseDevice(item.userAgent);
 
@@ -356,7 +364,8 @@ export default function ProfilePage() {
                   )}
                 </div>
               );
-            })}
+            })
+          )}
           </div>
         </section>
 
