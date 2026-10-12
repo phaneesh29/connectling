@@ -2,6 +2,30 @@
 
 import React, { useEffect, useRef } from 'react';
 
+// Keep one autoplay unlock handler per element and remove it on stream replacement.
+function mediaPlayback(element: HTMLMediaElement, stream: MediaStream, muted: boolean) {
+  let disposed = false;
+  let waiting = false;
+  const clearGesture = () => {
+    waiting = false;
+    window.removeEventListener('click', unlock);
+    window.removeEventListener('keydown', unlock);
+  };
+  const unlock = () => { clearGesture(); play(); };
+  const play = () => {
+    if (disposed) return;
+    if (element.srcObject !== stream) element.srcObject = stream;
+    element.muted = muted;
+    void element.play().catch(() => {
+      if (disposed || waiting) return;
+      waiting = true;
+      window.addEventListener('click', unlock, { once: true });
+      window.addEventListener('keydown', unlock, { once: true });
+    });
+  };
+  return { play, dispose: () => { disposed = true; clearGesture(); element.srcObject = null; } };
+}
+
 export interface LocalVideoProps {
   stream: MediaStream | null;
   isActive: boolean;
@@ -102,31 +126,8 @@ export function RemoteVideo({ stream, isVideoActive, className }: RemoteVideoPro
       return;
     }
 
-    if (el.srcObject !== stream) {
-      el.srcObject = stream;
-    }
-    el.muted = true; // Video element is muted so audio doesn't conflict with RemoteAudio
-
-    const playVideo = () => {
-      const currentEl = videoRef.current;
-      if (!currentEl) return;
-      if (currentEl.srcObject !== stream) {
-        currentEl.srcObject = stream;
-      }
-      currentEl.muted = true;
-      const playPromise = currentEl.play();
-      if (playPromise !== undefined) {
-        playPromise.catch(() => {
-          const unlock = () => {
-            currentEl.play().catch(() => {});
-            window.removeEventListener('click', unlock);
-            window.removeEventListener('keydown', unlock);
-          };
-          window.addEventListener('click', unlock, { once: true });
-          window.addEventListener('keydown', unlock, { once: true });
-        });
-      }
-    };
+    const playback = mediaPlayback(el, stream, true);
+    const playVideo = playback.play;
 
     playVideo();
 
@@ -177,9 +178,7 @@ export function RemoteVideo({ stream, isVideoActive, className }: RemoteVideoPro
         track.removeEventListener('unmute', playVideo);
       });
       boundTracks.clear();
-      if (el && !isVideoActive) {
-        el.srcObject = null;
-      }
+      playback.dispose();
     };
   }, [stream, isVideoActive]);
 
@@ -210,22 +209,8 @@ export function RemoteAudio({ stream, audioOutputId }: RemoteAudioProps) {
       return;
     }
 
-    const attachAndPlay = () => {
-      const currentEl = audioRef.current;
-      if (!currentEl) return;
-      if (currentEl.srcObject !== stream) {
-        currentEl.srcObject = stream;
-      }
-      currentEl.play().catch(() => {
-        const unlock = () => {
-          currentEl.play().catch(() => {});
-          window.removeEventListener('click', unlock);
-          window.removeEventListener('keydown', unlock);
-        };
-        window.addEventListener('click', unlock, { once: true });
-        window.addEventListener('keydown', unlock, { once: true });
-      });
-    };
+    const playback = mediaPlayback(el, stream, false);
+    const attachAndPlay = playback.play;
 
     attachAndPlay();
 
@@ -264,16 +249,16 @@ export function RemoteAudio({ stream, audioOutputId }: RemoteAudioProps) {
         track.removeEventListener('unmute', attachAndPlay);
       });
       boundTracks.clear();
-      if (el) el.srcObject = null;
+      playback.dispose();
     };
   }, [stream]);
 
   useEffect(() => {
     const el = audioRef.current;
-    if (!el || !audioOutputId || audioOutputId === 'default') return;
+    if (!el) return;
     if ('setSinkId' in el) {
       void (el as unknown as { setSinkId: (id: string) => Promise<void> })
-        .setSinkId(audioOutputId)
+        .setSinkId(audioOutputId && audioOutputId !== 'default' ? audioOutputId : '')
         .catch((err) => console.warn('Failed to setSinkId on remote audio:', err));
     }
   }, [audioOutputId]);

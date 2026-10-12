@@ -48,7 +48,8 @@ export const leaveRoomHandler = async (req: Request, res: Response): Promise<voi
   const userId = req.user!.id;
   const userName = req.user?.name;
   const { code } = req.params as RoomCodeParam;
-  const result = await roomService.leaveRoom(userId, code, userName);
+  const peerId = typeof req.body?.peerId === 'string' ? req.body.peerId : undefined;
+  const result = await roomService.leaveRoom(userId, code, userName, peerId);
 
   res.status(200).json({
     success: true,

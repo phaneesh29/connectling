@@ -13,12 +13,21 @@ export const getSocket = (): AppSocket => {
       autoConnect: false,
       reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 200,
-      reconnectionDelayMax: 1000,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 5000,
       timeout: 10000,
       transports: ['websocket'],
     });
   }
 
   return socketInstance;
+};
+
+// Stable across transport reconnects, different for every browser tab/page lifetime.
+const roomPeers = new Map<string, string>();
+export const getRoomPeerId = (roomCode: string): string => {
+  const normalized = roomCode.trim().toLowerCase();
+  let id = roomPeers.get(normalized);
+  if (!id) { id = crypto.randomUUID(); roomPeers.set(normalized, id); }
+  return id;
 };

@@ -19,7 +19,6 @@ import {
   getActiveRoomParticipantsCount,
   getActiveRoomUserIds,
   getActiveRoomParticipants,
-  updateParticipant,
 } from '../realtime/realtime.gateway.js';
 import { logger } from '../../utils/logger.js';
 
@@ -201,13 +200,6 @@ export const roomService = {
           }))(foundRoom.settings)
       : null;
 
-    if (typeof input.isVideoOn === 'boolean' || typeof input.isMuted === 'boolean') {
-      updateParticipant(normalized, userId, {
-        ...(typeof input.isVideoOn === 'boolean' ? { isVideoOn: input.isVideoOn } : {}),
-        ...(typeof input.isMuted === 'boolean' ? { isMuted: input.isMuted } : {}),
-      });
-    }
-
     const activeParticipants = await getActiveRoomParticipants(normalized);
 
     return {
@@ -224,10 +216,10 @@ export const roomService = {
     };
   },
 
-  leaveRoom: async (userId: string, code: string, userName?: string) => {
+  leaveRoom: async (userId: string, code: string, userName?: string, peerId?: string) => {
     const normalized = normalizeRoomCode(code);
     try {
-      await notifyUserLeftRoom(userId, normalized, userName);
+      await notifyUserLeftRoom(userId, normalized, userName, peerId);
     } catch (err) {
       logger.error({ err, userId, code }, 'Error notifying realtime gateway on room leave');
     }

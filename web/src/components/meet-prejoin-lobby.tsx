@@ -467,7 +467,7 @@ export function MeetPrejoinLobby({
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {activeParticipants.map((p) => (
                       <div
-                        key={p.userId}
+                        key={p.peerId ?? p.userId}
                         className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#101012] border border-white/[0.08] text-xs"
                       >
                         <div className="h-4 w-4 rounded-full bg-white/10 flex items-center justify-center overflow-hidden shrink-0">

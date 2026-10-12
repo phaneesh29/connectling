@@ -30,7 +30,8 @@ import {
   ChevronUpIcon,
   TriangleAlertIcon,
 } from '@animateicons/react/lucide';
-import { getSocket } from '@/lib/socket';
+import { getRoomPeerId, getSocket } from '@/lib/socket';
+import { CallDuration } from '@/components/call-duration';
 import { SERVER_URL } from '@/lib/config';
 import { playJoinChime, playLeaveChime } from '@/lib/chime';
 import { InRoomChat } from '@/components/in-room-chat';
@@ -158,6 +159,8 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [leaving, setLeaving] = useState(false);
   const [ending, setEnding] = useState(false);
   const [isRoomEnded, setIsRoomEnded] = useState(false);
+  const roomEndedRef = useRef(false);
+  useEffect(() => { roomEndedRef.current = isRoomEnded; }, [isRoomEnded]);
 
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -350,7 +353,10 @@ export default function TalkPage({ params }: TalkPageProps) {
       }
     }, 15000);
 
+    let exited = false;
     const handleExit = () => {
+      if (exited || roomEndedRef.current) return;
+      exited = true;
       try {
         webrtcRef.current?.stopMediaTracks();
       } catch {}
@@ -368,6 +374,8 @@ export default function TalkPage({ params }: TalkPageProps) {
           method: 'POST',
           credentials: 'include',
           keepalive: true,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ peerId: getRoomPeerId(code) }),
         });
       } catch {}
     };
@@ -387,26 +395,26 @@ export default function TalkPage({ params }: TalkPageProps) {
     if (!roomId) return;
     const socket = getSocket();
 
+    let joinedSocketId: string | undefined;
     const sendRoomJoin = () => {
+      if (!socket.connected || roomEndedRef.current || joinedSocketId === socket.id) return;
+      joinedSocketId = socket.id;
       socket.emit('room:join', {
         roomCode: code,
+        peerId: getRoomPeerId(code),
         isMuted: isMutedRef.current,
         handRaised: handRaisedRef.current,
       });
     };
-
-    if (socket.connected) {
-      sendRoomJoin();
-    } else {
-      socket.connect();
-    }
 
     const handleConnect = () => {
       sendRoomJoin();
     };
 
     const handleDisconnect = (reason: string) => {
-      if (reason === 'io server disconnect' || reason === 'transport close' || reason === 'transport error') {
+      joinedSocketId = undefined;
+      // Socket.IO owns transport retries; only server disconnects need a manual connect.
+      if (reason === 'io server disconnect' && !roomEndedRef.current) {
         socket.connect();
       }
     };
@@ -425,7 +433,8 @@ export default function TalkPage({ params }: TalkPageProps) {
       }
     };
 
-    const handleRoster = ({ participants: roster }: { participants: RoomParticipant[] }) => {
+    const handleRoster = ({ roomCode: rosterRoomCode, participants: roster }: { roomCode: string; participants: RoomParticipant[] }) => {
+      if (rosterRoomCode !== code.trim().toLowerCase()) return;
       roster.forEach((p) => knownParticipantsRef.current.add(p.userId));
       setParticipants(roster);
     };
@@ -443,7 +452,8 @@ export default function TalkPage({ params }: TalkPageProps) {
       }, 3500);
     };
 
-    const handleUserLeft = ({ userId, name }: { userId: string; name: string }) => {
+    const handleUserLeft = ({ roomCode: leftRoomCode, userId, name }: { roomCode: string; userId: string; name: string }) => {
+      if (leftRoomCode !== code.trim().toLowerCase()) return;
       if (userId === currentUserIdRef.current) return;
       // Suppress duplicate chime if user was not on the stage
       if (!knownParticipantsRef.current.has(userId)) return;
@@ -594,6 +604,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     };
 
     const handleKicked = ({ message }: { message: string }) => {
+      roomEndedRef.current = true;
       setIsRoomEnded(true);
       try {
         webrtcRef.current?.stopMediaTracks();
@@ -615,6 +626,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     let roomEndedTimer: NodeJS.Timeout | null = null;
 
     const handleRoomEnded = ({ message }: { message?: string }) => {
+      roomEndedRef.current = true;
       setIsRoomEnded(true);
       try {
         webrtcRef.current?.stopMediaTracks();
@@ -731,6 +743,12 @@ export default function TalkPage({ params }: TalkPageProps) {
     socket.on('room:reaction', onReaction);
     socket.on('room:ended', handleRoomEnded);
 
+    if (socket.connected) {
+      sendRoomJoin();
+    } else {
+      socket.connect();
+    }
+
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
@@ -754,7 +772,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     };
   }, [roomId, code, router]);
 
-  const myRosterParticipant = participants.find((p) => p.userId === currentUserId);
+  const myRosterParticipant = participants.find((p) => p.peerId ? p.peerId === getRoomPeerId(code) : p.userId === currentUserId);
   const isSpeaker =
     isHost ||
     participant?.role === 'speaker' ||
@@ -991,7 +1009,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       return;
     }
 
-    const otherParticipants = participants.filter((p) => p.userId !== session?.user?.id);
+    const otherParticipants = participants.filter((p) => p.peerId ? p.peerId !== getRoomPeerId(code) : p.userId !== session?.user?.id);
     if (otherParticipants.length === 0) {
       setConfirmModal({
         isOpen: true,
@@ -1219,8 +1237,9 @@ export default function TalkPage({ params }: TalkPageProps) {
   const displayParticipants: RoomParticipant[] = Array.from(
     rawParticipants
       .reduce((map, p) => {
-        if (!map.has(p.userId)) {
-          map.set(p.userId, p);
+        const peerKey = p.peerId ?? p.userId;
+        if (!map.has(peerKey)) {
+          map.set(peerKey, p);
         }
         return map;
       }, new Map<string, RoomParticipant>())
@@ -1271,7 +1290,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 STAGE LIVE
               </span>
             </div>
-            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate">ID: {room.code}</p>
+            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate">ID: {room.code} <span aria-hidden="true">·</span> <CallDuration key={room.code} active={isInRoom} /></p>
           </div>
         </div>
 
@@ -1366,11 +1385,11 @@ export default function TalkPage({ params }: TalkPageProps) {
         <div className={`grid ${stageGridCols} gap-3 sm:gap-4 items-stretch`}>
           {displayParticipants.map((p) => {
             const isPHost = p.userId === room.hostId;
-            const isMe = p.userId === session?.user?.id;
+            const isMe = p.peerId ? p.peerId === getRoomPeerId(code) : p.userId === session?.user?.id;
             const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'U';
             const gradient = getStageTileGradient(p.userId, isPHost);
             const isMicActive = isMe ? isLocalMicActive : !p.isMuted;
-            const remoteAudio = webrtc.remoteAudioLevels[p.userId];
+            const remoteAudio = webrtc.remoteAudioLevels[p.peerId ?? p.userId];
             const isSpeaking = isMe
               ? isLocalMicActive && localAudio.isSpeaking
               : !p.isMuted && Boolean(remoteAudio?.isSpeaking);
@@ -1378,7 +1397,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
             return (
               <div
-                key={p.userId}
+                key={p.peerId ?? p.userId}
                 style={gradient.containerStyle}
                 className={`relative p-4 sm:p-6 border rounded-2xl flex flex-col items-center justify-center text-center space-y-3 sm:space-y-3.5 transition-all duration-200 group overflow-hidden min-h-[200px] sm:min-h-[230px] ${
                   gradient.borderClass
@@ -1970,7 +1989,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                         .filter((p) => p.handRaised && !p.canSpeak && p.userId !== room.hostId)
                         .map((p) => (
                           <div
-                            key={p.userId}
+                            key={p.peerId ?? p.userId}
                             className="flex items-center justify-between p-2 rounded-lg bg-black/50 border border-white/[0.08]"
                           >
                             <div className="flex items-center gap-2 min-w-0">
@@ -2257,6 +2276,7 @@ export default function TalkPage({ params }: TalkPageProps) {
         onClose={() => setParticipantsOpen(false)}
         participants={participants}
         currentUserId={session?.user?.id}
+        currentPeerId={getRoomPeerId(code)}
         hostId={room?.hostId}
         roomCode={room?.code || code}
         roomType="audio"
@@ -2290,12 +2310,12 @@ export default function TalkPage({ params }: TalkPageProps) {
       {/* Permanent Audio Sinks for all remote participants */}
       <div className="sr-only pointer-events-none" aria-hidden="true">
         {participants
-          .filter((p) => p.userId !== session?.user?.id)
+          .filter((p) => p.peerId ? p.peerId !== getRoomPeerId(code) : p.userId !== session?.user?.id)
           .map((p) => {
-            const stream = webrtc.remoteStreams.get(p.userId);
+            const stream = webrtc.remoteStreams.get(p.peerId ?? p.userId);
             return (
               <RemoteAudio
-                key={`permanent-audio-${p.userId}`}
+                key={`permanent-audio-${p.peerId ?? p.userId}`}
                 stream={stream}
                 audioOutputId={mediaDevices.selectedAudioOutputId}
               />

@@ -1,4 +1,5 @@
 import { SERVER_URL } from './config';
+import { getRoomPeerId } from './socket';
 
 const API_BASE_URL = SERVER_URL;
 
@@ -24,6 +25,7 @@ export interface HostData {
 }
 
 export interface ActiveParticipantItem {
+  peerId?: string;
   userId: string;
   name: string;
   image?: string | null;
@@ -156,6 +158,7 @@ export const roomsApi = {
   leaveRoom: (code: string) => {
     return request<{ success: boolean }>(`/api/v1/rooms/${encodeURIComponent(code)}/leave`, {
       method: 'POST',
+      body: JSON.stringify({ peerId: getRoomPeerId(code) }),
     });
   },
 

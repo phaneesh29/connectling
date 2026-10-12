@@ -23,6 +23,7 @@ interface InRoomParticipantsProps {
   onClose: () => void;
   participants: RoomParticipant[];
   currentUserId?: string;
+  currentPeerId?: string;
   hostId?: string;
   roomCode?: string;
   roomType?: 'meet' | 'audio';
@@ -44,6 +45,7 @@ export function InRoomParticipants({
   onClose,
   participants,
   currentUserId,
+  currentPeerId,
   hostId,
   roomType = 'meet',
   showVideoStatus,
@@ -126,13 +128,13 @@ export function InRoomParticipants({
           </div>
         ) : (
           filtered.map((p) => {
-            const isMe = p.userId === currentUserId;
+            const isMe = p.peerId && currentPeerId ? p.peerId === currentPeerId : p.userId === currentUserId;
             const isHost = p.userId === hostId;
             const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'U';
 
             return (
               <div
-                key={p.userId}
+                key={p.peerId ?? p.userId}
                 className="flex items-center justify-between p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] transition-all group"
               >
                 <div className="flex items-center gap-2.5 min-w-0">

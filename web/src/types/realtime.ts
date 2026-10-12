@@ -8,6 +8,7 @@ export interface ChatMessage {
 }
 
 export interface RoomParticipant {
+  peerId?: string;
   userId: string;
   name: string;
   image?: string | null;
@@ -19,7 +20,8 @@ export interface RoomParticipant {
 }
 
 export interface ClientToServerEvents {
-  'room:join': (payload: { roomCode: string; isMuted?: boolean; isVideoOn?: boolean; isScreenSharing?: boolean; handRaised?: boolean }) => void;
+  'room:join': (payload: { roomCode: string; peerId: string; isMuted?: boolean; isVideoOn?: boolean; isScreenSharing?: boolean; handRaised?: boolean }) => void;
+  'room:sync': (payload: { roomCode: string; peerId: string }) => void;
   'room:leave': (payload: { roomCode: string }) => void;
   'room:media-toggle': (payload: { roomCode: string; isMuted?: boolean; isVideoOn?: boolean; isScreenSharing?: boolean; handRaised?: boolean }) => void;
   'room:raise-hand': (payload: { roomCode: string; handRaised: boolean }) => void;
@@ -36,6 +38,8 @@ export interface ClientToServerEvents {
 
 export interface WebRTCSignalData {
   type: 'offer' | 'answer' | 'candidate';
+  connectionId: string;
+  targetConnectionId?: string;
   sdp?: string;
   candidate?: {
     candidate?: string;
@@ -47,11 +51,13 @@ export interface WebRTCSignalData {
 
 export interface WebRTCSignalPayload {
   roomCode: string;
-  targetUserId: string;
+  targetPeerId: string;
   signal: WebRTCSignalData;
 }
 
 export interface WebRTCIncomingSignalPayload {
+  roomCode: string;
+  fromPeerId: string;
   fromUserId: string;
   signal: WebRTCSignalData;
 }
@@ -80,9 +86,10 @@ export interface RoomSettingsPayload {
 
 export interface ServerToClientEvents {
   'chat:new-message': (payload: ChatMessage) => void;
-  'room:roster': (payload: { participants: RoomParticipant[] }) => void;
+  'room:roster': (payload: { roomCode: string; participants: RoomParticipant[] }) => void;
   'room:user-joined': (payload: { userId: string; name: string; image?: string | null }) => void;
-  'room:user-left': (payload: { userId: string; name: string }) => void;
+  'room:peer-left': (payload: { roomCode: string; peerId: string }) => void;
+  'room:user-left': (payload: { roomCode: string; userId: string; name: string }) => void;
   'room:ended': (payload: { message: string }) => void;
   'room:settings-updated': (payload: RoomSettingsPayload) => void;
   'room:hand-raised': (payload: { userId: string; name: string; handRaised: boolean }) => void;

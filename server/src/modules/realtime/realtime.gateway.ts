@@ -17,6 +17,7 @@ import { room } from '../../db/room-schema.js';
 import { eq } from 'drizzle-orm';
 import { normalizeRoomCode } from '../rooms/room.utils.js';
 import { ROOM_CAPACITY } from '../rooms/rooms.constants.js';
+import { createRoomConnections } from './room-connections.js';
 
 export type RealtimeServer = Server<
   ClientToServerEvents,
@@ -35,6 +36,16 @@ export const getRealtimeServer = (): RealtimeServer => {
 };
 
 const roomParticipants = new Map<string, Map<string, RoomParticipant>>();
+const roomConnections = createRoomConnections();
+const roomTasks = new Map<string, Promise<void>>();
+const serializeRoom = (roomCode: string, operation: () => Promise<void>) => {
+  const task = (roomTasks.get(roomCode) ?? Promise.resolve()).then(operation).catch(err => {
+    logger.error({ err, roomCode }, 'Room operation failed');
+  });
+  roomTasks.set(roomCode, task);
+  void task.then(() => { if (roomTasks.get(roomCode) === task) roomTasks.delete(roomCode); });
+  return task;
+};
 
 export const saveParticipant = (roomCode: string, participant: RoomParticipant): void => {
   const normalized = normalizeRoomCode(roomCode);
@@ -43,7 +54,7 @@ export const saveParticipant = (roomCode: string, participant: RoomParticipant):
     participantsMap = new Map();
     roomParticipants.set(normalized, participantsMap);
   }
-  participantsMap.set(participant.userId, { ...participant });
+  participantsMap.set(participant.peerId ?? participant.userId, { ...participant });
 };
 
 export const updateParticipant = (
@@ -54,9 +65,8 @@ export const updateParticipant = (
   const normalized = normalizeRoomCode(roomCode);
   const participantsMap = roomParticipants.get(normalized);
   if (participantsMap) {
-    const existing = participantsMap.get(userId);
-    if (existing) {
-      Object.assign(existing, updates);
+    for (const participant of participantsMap.values()) {
+      if (participant.userId === userId) Object.assign(participant, updates);
     }
   }
 };
@@ -65,7 +75,9 @@ export const removeParticipant = (roomCode: string, userId: string): void => {
   const normalized = normalizeRoomCode(roomCode);
   const participantsMap = roomParticipants.get(normalized);
   if (participantsMap) {
-    participantsMap.delete(userId);
+    for (const [peerId, participant] of participantsMap) {
+      if (participant.userId === userId) participantsMap.delete(peerId);
+    }
     if (participantsMap.size === 0) {
       roomParticipants.delete(normalized);
     }
@@ -80,8 +92,8 @@ export const getActiveRoomParticipants = async (
   const participantsMap = roomParticipants.get(normalized);
   if (participantsMap && participantsMap.size > 0) {
     const result: RoomParticipant[] = [];
-    for (const [uid, p] of participantsMap.entries()) {
-      if (excludeUserId && uid === excludeUserId) continue;
+    for (const p of participantsMap.values()) {
+      if (excludeUserId && p.userId === excludeUserId) continue;
       result.push({ ...p });
     }
     return result;
@@ -95,8 +107,9 @@ export const getActiveRoomParticipants = async (
     for (const s of sockets) {
       const data = s.data;
       const u = data?.user;
-      if (u?.id && u.id !== excludeUserId && !map.has(u.id)) {
-        map.set(u.id, {
+      if (u?.id && u.id !== excludeUserId && data.peerId && !map.has(data.peerId)) {
+        map.set(data.peerId, {
+          peerId: data.peerId,
           userId: u.id,
           name: u.name,
           image: u.image,
@@ -127,19 +140,36 @@ export const getActiveRoomUserIds = async (roomCode: string): Promise<Set<string
   const normalized = normalizeRoomCode(roomCode);
   const participantsMap = roomParticipants.get(normalized);
   if (participantsMap && participantsMap.size > 0) {
-    return new Set(participantsMap.keys());
+    return new Set(Array.from(participantsMap.values(), participant => participant.userId));
   }
   const participants = await getActiveRoomParticipants(normalized);
   return new Set(participants.map((p) => p.userId));
 };
 
+const removePeerParticipant = (roomCode: string, peerId: string) => {
+  const participants = roomParticipants.get(roomCode);
+  participants?.delete(peerId);
+  if (participants?.size === 0) roomParticipants.delete(roomCode);
+};
+
+const announcePeerLeft = async (io: RealtimeServer, roomCode: string, peerId: string, userId: string, name: string) => {
+  const channel = `room:${roomCode}`;
+  io.to(channel).emit('room:peer-left', { roomCode, peerId });
+  if (roomConnections.forUser(roomCode, userId).length === 0) {
+    io.to(channel).emit('room:user-left', { roomCode, userId, name });
+  }
+  const participants = await getActiveRoomParticipants(roomCode);
+  io.in(channel).emit('room:roster', { roomCode, participants });
+};
+
 const updateParticipantSocketState = (
   io: RealtimeServer,
+  roomCode: string,
   userId: string,
   updates: Partial<SocketData>
 ) => {
   for (const socket of io.sockets.sockets.values()) {
-    if (socket.data?.user?.id === userId) {
+    if (socket.data?.user?.id === userId && socket.data.currentRoomCode === roomCode) {
       Object.assign(socket.data, updates);
     }
   }
@@ -152,10 +182,14 @@ const kickParticipant = async (
   message: string
 ) => {
   const normalized = normalizeRoomCode(roomCode);
+  for (const connection of roomConnections.forUser(normalized, userId)) {
+    roomConnections.remove(normalized, connection.peerId);
+    io.to(`room:${normalized}`).emit('room:peer-left', { roomCode: normalized, peerId: connection.peerId });
+  }
   removeParticipant(normalized, userId);
   const roomChannel = `room:${normalized}`;
   for (const socket of io.sockets.sockets.values()) {
-    if (socket.data?.user?.id === userId) {
+    if (socket.data?.user?.id === userId && socket.data.currentRoomCode === normalized) {
       socket.emit('room:kicked', { message });
       socket.data.currentRoomCode = undefined;
       await socket.leave(roomChannel);
@@ -167,39 +201,27 @@ const kickParticipant = async (
 export const notifyUserLeftRoom = async (
   userId: string,
   roomCode: string,
-  userName?: string
+  userName?: string,
+  peerId?: string,
 ): Promise<void> => {
   const normalized = normalizeRoomCode(roomCode);
-  removeParticipant(normalized, userId);
-
-  if (!ioInstance) return;
-  const roomChannel = `room:${normalized}`;
-
-  let departingName = userName || 'Participant';
-  for (const socket of ioInstance.sockets.sockets.values()) {
-    if (socket.data?.user?.id === userId) {
-      if (socket.data?.user?.name) {
-        departingName = socket.data.user.name;
+  await serializeRoom(normalized, async () => {
+    const connections = roomConnections.forUser(normalized, userId)
+      .filter(connection => !peerId || connection.peerId === peerId);
+    for (const connection of connections) {
+      roomConnections.remove(normalized, connection.peerId);
+      removePeerParticipant(normalized, connection.peerId);
+      if (!ioInstance) continue;
+      const socket = ioInstance.sockets.sockets.get(connection.socketId);
+      if (socket) {
+        socket.data.currentRoomCode = undefined;
+        socket.data.peerId = undefined;
+        await socket.leave(`room:${normalized}`);
+        await socket.leave(`room:${normalized}:user:${userId}`);
       }
-      socket.data.currentRoomCode = undefined;
-      await socket.leave(roomChannel);
-      await socket.leave(`room:${normalized}:user:${userId}`);
-      socket.disconnect(true);
+      await announcePeerLeft(ioInstance, normalized, connection.peerId, userId, userName || 'Participant');
     }
-  }
-
-  ioInstance.to(roomChannel).emit('room:user-left', {
-    userId,
-    name: departingName,
   });
-
-  const participants = await getActiveRoomParticipants(normalized, userId);
-  ioInstance.in(roomChannel).emit('room:roster', { participants });
-
-  logger.info(
-    { userId, roomCode: normalized, remaining: participants.length },
-    'User departed space via instant HTTP leave signal'
-  );
 };
 
 export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
@@ -223,91 +245,90 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
     const user = socket.data.user;
     logger.info({ userId: user.id, socketId: socket.id }, 'Realtime socket connected');
 
-    socket.on('room:join', async ({ roomCode, isMuted, isVideoOn, isScreenSharing, handRaised }) => {
-      try {
-        const normalized = normalizeRoomCode(roomCode);
-        const roomChannel = `room:${normalized}`;
-
-        const activeUserIds = await getActiveRoomUserIds(normalized);
-        const isAlreadyInRoom = activeUserIds.has(user.id);
-
-        if (!isAlreadyInRoom) {
-          const foundRoom = await db.query.room.findFirst({
-            where: eq(room.code, normalized),
-            with: {
-              settings: true,
-            },
-          });
-
-          if (foundRoom) {
-            const isHost = foundRoom.hostId === user.id;
-            const maxCapacity =
-              foundRoom.settings?.maxParticipants ||
-              (foundRoom.type === 'meet' ? ROOM_CAPACITY.meet : ROOM_CAPACITY.audio);
-
-            if (!isHost && activeUserIds.size >= maxCapacity) {
-              logger.warn(
-                { userId: user.id, roomCode: normalized, currentCount: activeUserIds.size, maxCapacity },
-                'User blocked from joining full room via socket'
-              );
-              socket.emit('error:message', {
-                message: `This room has reached its maximum capacity of ${maxCapacity} participants.`,
-              });
-              socket.emit('room:kicked', {
-                message: `This room has reached its maximum capacity of ${maxCapacity} participants.`,
-              });
-              return;
+    socket.on('room:join', ({ roomCode, peerId, isMuted, isVideoOn, isScreenSharing, handRaised }) => {
+      if (typeof roomCode !== 'string' || typeof peerId !== 'string' || !peerId || peerId.length > 100) return;
+      const normalized = normalizeRoomCode(roomCode);
+      void serializeRoom(normalized, async () => {
+        try {
+          if (!socket.connected) return;
+          const previousRoom = socket.data.currentRoomCode;
+          if (previousRoom && (previousRoom !== normalized || socket.data.peerId !== peerId)) await handleLeave(previousRoom);
+          const foundRoom = await db.query.room.findFirst({ where: eq(room.code, normalized), with: { settings: true } });
+          if (!socket.connected) return;
+          if (!foundRoom || foundRoom.expiresAt < new Date()) {
+            socket.emit('room:kicked', { message: 'This room has ended or expired.' });
+            return;
+          }
+          const connection = roomConnections.get(normalized, peerId);
+          if (connection && connection.userId !== user.id) return;
+          const activeParticipants = await getActiveRoomParticipants(normalized);
+          const maxCapacity = foundRoom.settings?.maxParticipants || (foundRoom.type === 'meet' ? ROOM_CAPACITY.meet : ROOM_CAPACITY.audio);
+          if (!connection && activeParticipants.length >= maxCapacity) {
+            socket.emit('room:kicked', { message: `This room has reached its maximum capacity of ${maxCapacity} participants.` });
+            return;
+          }
+          const existing = roomParticipants.get(normalized)?.get(peerId);
+          const knownUser = activeParticipants.some(participant => participant.userId === user.id);
+          const previous = roomConnections.connect(normalized, peerId, user.id, socket.id);
+          socket.data.currentRoomCode = normalized;
+          socket.data.peerId = peerId;
+          if (previous && previous.socketId !== socket.id) {
+            // Only replace the previous transport of this endpoint, never another device.
+            const oldSocket = io.sockets.sockets.get(previous.socketId);
+            if (oldSocket) {
+              oldSocket.data.currentRoomCode = undefined;
+              oldSocket.data.peerId = undefined;
+              await oldSocket.leave(`room:${normalized}`);
+              await oldSocket.leave(`room:${normalized}:user:${user.id}`);
             }
           }
+          const roomChannel = `room:${normalized}`;
+          await socket.join(roomChannel);
+          await socket.join(`room:${normalized}:user:${user.id}`);
+          if (!socket.connected) return;
+          socket.data.isMuted = typeof isMuted === 'boolean' ? isMuted : existing?.isMuted ?? true;
+          socket.data.isVideoOn = typeof isVideoOn === 'boolean' ? isVideoOn : existing?.isVideoOn ?? false;
+          socket.data.isScreenSharing = typeof isScreenSharing === 'boolean' ? isScreenSharing : existing?.isScreenSharing ?? false;
+          socket.data.handRaised = typeof handRaised === 'boolean' ? handRaised : existing?.handRaised ?? false;
+          socket.data.canSpeak = foundRoom.hostId === user.id || activeParticipants.some(participant => participant.userId === user.id && participant.canSpeak);
+          if (foundRoom.type === 'audio' && !socket.data.canSpeak && !foundRoom.settings?.micForAll) socket.data.isMuted = true;
+          saveParticipant(normalized, {
+            userId: user.id, peerId, name: user.name, image: user.image,
+            isMuted: socket.data.isMuted, isVideoOn: socket.data.isVideoOn,
+            isScreenSharing: socket.data.isScreenSharing, handRaised: socket.data.handRaised, canSpeak: socket.data.canSpeak,
+          });
+          if (!knownUser) socket.to(roomChannel).emit('room:user-joined', { userId: user.id, name: user.name, image: user.image });
+          const participants = await getActiveRoomParticipants(normalized);
+          io.in(roomChannel).emit('room:roster', { roomCode: normalized, participants });
+        } catch (err) {
+          logger.error({ err, userId: user.id, roomCode }, 'Error joining chat room');
+          socket.emit('error:message', { message: 'Failed to join chat room' });
         }
+      });
+    });
 
-        await socket.join(roomChannel);
-        await socket.join(`room:${normalized}:user:${user.id}`);
-        socket.data.currentRoomCode = normalized;
-        if (typeof isMuted === 'boolean') socket.data.isMuted = isMuted;
-        if (typeof isVideoOn === 'boolean') socket.data.isVideoOn = isVideoOn;
-        if (typeof isScreenSharing === 'boolean') socket.data.isScreenSharing = isScreenSharing;
-        if (typeof handRaised === 'boolean') socket.data.handRaised = handRaised;
-
-        const participantData: RoomParticipant = {
-          userId: user.id,
-          name: user.name,
-          image: user.image,
-          isMuted: typeof isMuted === 'boolean' ? isMuted : false,
-          isVideoOn: typeof isVideoOn === 'boolean' ? isVideoOn : true,
-          isScreenSharing: typeof isScreenSharing === 'boolean' ? isScreenSharing : false,
-          handRaised: typeof handRaised === 'boolean' ? handRaised : false,
-          canSpeak: false,
-        };
-        saveParticipant(normalized, participantData);
-
-        socket.to(roomChannel).emit('room:user-joined', {
-          userId: user.id,
-          name: user.name,
-          image: user.image,
-        });
-
+    // Queue behind join so a late-mounted media hook gets an authoritative roster.
+    socket.on('room:sync', ({ roomCode, peerId }) => {
+      if (typeof roomCode !== 'string') return;
+      const normalized = normalizeRoomCode(roomCode);
+      void serializeRoom(normalized, async () => {
+        const connection = roomConnections.get(normalized, peerId);
+        if (!socket.connected || connection?.socketId !== socket.id || connection.userId !== user.id) return;
         const participants = await getActiveRoomParticipants(normalized);
-        io.in(roomChannel).emit('room:roster', { participants });
-
-        logger.info(
-          { userId: user.id, roomCode: normalized, participantCount: participants.length },
-          'User joined chat room'
-        );
-      } catch (err) {
-        logger.error({ err, userId: user.id, roomCode }, 'Error joining chat room');
-        socket.emit('error:message', { message: 'Failed to join chat room' });
-      }
+        socket.emit('room:roster', { roomCode: normalized, participants });
+      });
     });
 
     socket.on('room:media-toggle', async ({ roomCode, isMuted, isVideoOn, isScreenSharing, handRaised }) => {
       const normalized = normalizeRoomCode(roomCode);
+      if (!socket.data.peerId || roomConnections.get(normalized, socket.data.peerId)?.socketId !== socket.id) return;
       if (typeof isMuted === 'boolean') socket.data.isMuted = isMuted;
       if (typeof isVideoOn === 'boolean') socket.data.isVideoOn = isVideoOn;
       if (typeof isScreenSharing === 'boolean') socket.data.isScreenSharing = isScreenSharing;
       if (typeof handRaised === 'boolean') socket.data.handRaised = handRaised;
 
-      updateParticipant(normalized, user.id, {
+      const participant = roomParticipants.get(normalized)?.get(socket.data.peerId);
+      if (participant) Object.assign(participant, {
         ...(typeof isMuted === 'boolean' ? { isMuted } : {}),
         ...(typeof isVideoOn === 'boolean' ? { isVideoOn } : {}),
         ...(typeof isScreenSharing === 'boolean' ? { isScreenSharing } : {}),
@@ -315,7 +336,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       });
 
       const participants = await getActiveRoomParticipants(normalized);
-      io.in(`room:${normalized}`).emit('room:roster', { participants });
+      io.in(`room:${normalized}`).emit('room:roster', { roomCode: normalized, participants });
     });
 
     socket.on('room:raise-hand', async ({ roomCode, handRaised }) => {
@@ -332,7 +353,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       });
 
       const participants = await getActiveRoomParticipants(normalized);
-      io.in(roomChannel).emit('room:roster', { participants });
+      io.in(roomChannel).emit('room:roster', { roomCode: normalized, participants });
 
       logger.info({ userId: user.id, roomCode: normalized, handRaised }, 'User toggled hand raise');
     });
@@ -351,7 +372,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         }
 
         const roomChannel = `room:${normalized}`;
-        updateParticipantSocketState(io, targetUserId, {
+        updateParticipantSocketState(io, normalized, targetUserId, {
           canSpeak: true,
           handRaised: false,
           isMuted: false,
@@ -368,7 +389,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         });
 
         const participants = await getActiveRoomParticipants(normalized);
-        io.in(roomChannel).emit('room:roster', { participants });
+        io.in(roomChannel).emit('room:roster', { roomCode: normalized, participants });
 
         logger.info({ hostId: user.id, targetUserId, roomCode: normalized }, 'Host granted mic permission');
       } catch (err) {
@@ -390,7 +411,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         }
 
         const roomChannel = `room:${normalized}`;
-        updateParticipantSocketState(io, targetUserId, {
+        updateParticipantSocketState(io, normalized, targetUserId, {
           canSpeak: false,
           isMuted: true,
         });
@@ -404,7 +425,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         });
 
         const participants = await getActiveRoomParticipants(normalized);
-        io.in(roomChannel).emit('room:roster', { participants });
+        io.in(roomChannel).emit('room:roster', { roomCode: normalized, participants });
 
         logger.info({ hostId: user.id, targetUserId, roomCode: normalized }, 'Host revoked mic permission');
       } catch (err) {
@@ -426,7 +447,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         }
 
         const roomChannel = `room:${normalized}`;
-        updateParticipantSocketState(io, targetUserId, {
+        updateParticipantSocketState(io, normalized, targetUserId, {
           isMuted: true,
         });
         updateParticipant(normalized, targetUserId, {
@@ -439,7 +460,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         });
 
         const participants = await getActiveRoomParticipants(normalized);
-        io.in(roomChannel).emit('room:roster', { participants });
+        io.in(roomChannel).emit('room:roster', { roomCode: normalized, participants });
 
         logger.info({ hostId: user.id, targetUserId, roomCode: normalized }, 'Host remotely muted user');
       } catch (err) {
@@ -461,7 +482,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         }
 
         const roomChannel = `room:${normalized}`;
-        updateParticipantSocketState(io, targetUserId, {
+        updateParticipantSocketState(io, normalized, targetUserId, {
           canSpeak: true,
           handRaised: false,
         });
@@ -476,7 +497,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         });
 
         const participants = await getActiveRoomParticipants(normalized);
-        io.in(roomChannel).emit('room:roster', { participants });
+        io.in(roomChannel).emit('room:roster', { roomCode: normalized, participants });
 
         logger.info({ hostId: user.id, targetUserId, roomCode: normalized }, 'Host requested user to unmute');
       } catch (err) {
@@ -498,7 +519,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         }
 
         const roomChannel = `room:${normalized}`;
-        const targetParticipant = roomParticipants.get(normalized)?.get(targetUserId);
+        const targetParticipant = Array.from(roomParticipants.get(normalized)?.values() ?? []).find(participant => participant.userId === targetUserId);
         const targetName = targetParticipant?.name || 'Participant';
 
         await kickParticipant(
@@ -514,7 +535,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         });
 
         const participants = await getActiveRoomParticipants(normalized);
-        io.in(roomChannel).emit('room:roster', { participants });
+        io.in(roomChannel).emit('room:roster', { roomCode: normalized, participants });
 
         logger.info({ hostId: user.id, targetUserId, roomCode: normalized }, 'Host removed participant from space');
       } catch (err) {
@@ -543,7 +564,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         const newHostParticipant = roomParticipants.get(normalized)?.get(newHostUserId);
         const newHostName = newHostParticipant?.name || 'Participant';
 
-        updateParticipantSocketState(io, newHostUserId, {
+        updateParticipantSocketState(io, normalized, newHostUserId, {
           canSpeak: true,
         });
         updateParticipant(normalized, newHostUserId, { canSpeak: true });
@@ -555,7 +576,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         });
 
         const participants = await getActiveRoomParticipants(normalized);
-        io.in(roomChannel).emit('room:roster', { participants });
+        io.in(roomChannel).emit('room:roster', { roomCode: normalized, participants });
 
         logger.info({ previousHostId: user.id, newHostId: newHostUserId, roomCode: normalized }, 'Host transferred space ownership');
       } catch (err) {
@@ -584,64 +605,50 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       io.in(roomChannel).emit('room:reaction', reactionPayload);
     });
 
-    socket.on('webrtc:signal', async ({ roomCode, targetUserId, signal }) => {
-      if (!targetUserId || !signal) return;
-      try {
-        const normalized = normalizeRoomCode(roomCode);
-        const targetUserChannel = `room:${normalized}:user:${targetUserId}`;
-        io.to(targetUserChannel).emit('webrtc:signal', {
-          fromUserId: user.id,
-          signal,
-        });
-      } catch (err) {
-        logger.error({ err, fromUserId: user.id, targetUserId, roomCode }, 'Error relaying WebRTC signal');
-      }
+    socket.on('webrtc:signal', ({ roomCode, targetPeerId, signal }) => {
+      const peerId = socket.data.peerId;
+      if (typeof roomCode !== 'string' || !peerId || !targetPeerId || targetPeerId === peerId || !signal || !signal.connectionId) return;
+      const normalized = normalizeRoomCode(roomCode);
+      const sender = roomConnections.get(normalized, peerId);
+      const target = roomConnections.get(normalized, targetPeerId);
+      if (sender?.socketId !== socket.id || !target) return;
+      if (!['offer', 'answer', 'candidate'].includes(signal.type)) return;
+      if (signal.sdp && (typeof signal.sdp !== 'string' || signal.sdp.length > 100_000)) return;
+      if (signal.candidate?.candidate && signal.candidate.candidate.length > 4096) return;
+      io.to(target.socketId).emit('webrtc:signal', { roomCode: normalized, fromUserId: user.id, fromPeerId: peerId, signal });
     });
 
     const handleLeave = async (roomCode: string) => {
-      if (!socket.data.currentRoomCode) return;
+      const normalized = normalizeRoomCode(roomCode);
+      const peerId = socket.data.peerId;
+      if (!peerId || !roomConnections.remove(normalized, peerId, socket.id)) return;
       socket.data.currentRoomCode = undefined;
-
-      try {
-        const normalized = normalizeRoomCode(roomCode);
-        removeParticipant(normalized, user.id);
-        const roomChannel = `room:${normalized}`;
-        socket.to(roomChannel).emit('room:user-left', {
-          userId: user.id,
-          name: user.name,
-        });
-
-        await socket.leave(roomChannel);
-        await socket.leave(`room:${normalized}:user:${user.id}`);
-
-        const participants = await getActiveRoomParticipants(normalized, user.id);
-        io.in(roomChannel).emit('room:roster', { participants });
-
-        logger.info(
-          { userId: user.id, roomCode: normalized, remaining: participants.length },
-          'User departed chat room'
-        );
-      } catch (err) {
-        logger.error({ err, userId: user.id, roomCode }, 'Error handling socket leave');
-      }
+      socket.data.peerId = undefined;
+      removePeerParticipant(normalized, peerId);
+      await socket.leave(`room:${normalized}`);
+      await socket.leave(`room:${normalized}:user:${user.id}`);
+      await announcePeerLeft(io, normalized, peerId, user.id, user.name);
     };
 
     socket.on('room:leave', ({ roomCode }) => {
-      void handleLeave(roomCode);
+      if (typeof roomCode !== 'string') return;
+      const normalized = normalizeRoomCode(roomCode);
+      void serializeRoom(normalized, () => handleLeave(normalized));
     });
 
     socket.on('disconnecting', () => {
       const roomCode = socket.data.currentRoomCode;
-      if (roomCode) {
-        void handleLeave(roomCode);
-      } else {
-        for (const r of socket.rooms) {
-          if (r.startsWith('room:')) {
-            const extracted = r.slice(5);
-            void handleLeave(extracted);
-          }
-        }
-      }
+      const peerId = socket.data.peerId;
+      socket.data.currentRoomCode = undefined;
+      socket.data.peerId = undefined;
+      if (!roomCode || !peerId) return;
+      roomConnections.disconnect(roomCode, peerId, socket.id, () => {
+        void serializeRoom(roomCode, async () => {
+          if (roomConnections.get(roomCode, peerId)) return;
+          removePeerParticipant(roomCode, peerId);
+          await announcePeerLeft(io, roomCode, peerId, user.id, user.name);
+        });
+      });
     });
 
     socket.on('disconnect', () => {

@@ -40,11 +40,13 @@ export function TransferHostModal({
   // Filter out current user and match search query
   const eligibleParticipants = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return participants.filter((p) => {
-      if (p.userId === currentUserId) return false;
-      if (!q) return true;
-      return p.name?.toLowerCase().includes(q);
-    });
+    const accounts = new Map<string, RoomParticipant>();
+    for (const participant of participants) {
+      if (participant.userId === currentUserId) continue;
+      if (q && !participant.name?.toLowerCase().includes(q)) continue;
+      if (!accounts.has(participant.userId)) accounts.set(participant.userId, participant);
+    }
+    return Array.from(accounts.values());
   }, [participants, currentUserId, searchQuery]);
 
   if (!isOpen) return null;

@@ -31,7 +31,8 @@ import {
   TriangleAlertIcon,
 } from '@animateicons/react/lucide';
 import { Maximize2, Minimize2 } from 'lucide-react';
-import { getSocket } from '@/lib/socket';
+import { getRoomPeerId, getSocket } from '@/lib/socket';
+import { CallDuration } from '@/components/call-duration';
 import { SERVER_URL } from '@/lib/config';
 import { playJoinChime, playLeaveChime } from '@/lib/chime';
 import { InRoomChat } from '@/components/in-room-chat';
@@ -85,6 +86,8 @@ export default function MeetPage({ params }: MeetPageProps) {
   const [leaving, setLeaving] = useState(false);
   const [ending, setEnding] = useState(false);
   const [isRoomEnded, setIsRoomEnded] = useState(false);
+  const roomEndedRef = useRef(false);
+  useEffect(() => { roomEndedRef.current = isRoomEnded; }, [isRoomEnded]);
 
   const [chatOpen, setChatOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -118,6 +121,8 @@ export default function MeetPage({ params }: MeetPageProps) {
   const chatOpenRef = useRef(chatOpen);
   const isMicOnRef = useRef(isMicOn);
   const isVideoOnRef = useRef(isVideoOn);
+  const screenSharingRef = useRef(isScreenSharing);
+  useEffect(() => { screenSharingRef.current = isScreenSharing; }, [isScreenSharing]);
   const [handRaised, setHandRaised] = useState(false);
   const handRaisedRef = useRef(handRaised);
   const joinedCodeRef = useRef<string | null>(null);
@@ -251,7 +256,7 @@ export default function MeetPage({ params }: MeetPageProps) {
 
   useEffect(() => {
     let ignore = false;
-    if (sessionPending || !session) return;
+    if (sessionPending || !currentUserId || hasJoined) return;
 
     if (code) {
       roomsApi
@@ -283,7 +288,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     return () => {
       ignore = true;
     };
-  }, [code, currentUserId, router, session, sessionPending]);
+  }, [code, currentUserId, router, hasJoined, sessionPending]);
 
   const roomId = room?.id;
   const roomCode = room?.code;
@@ -304,7 +309,10 @@ export default function MeetPage({ params }: MeetPageProps) {
       }
     }, 15000);
 
+    let exited = false;
     const handleExit = () => {
+      if (exited || roomEndedRef.current) return;
+      exited = true;
       try {
         webrtcRef.current?.stopMediaTracks();
       } catch {}
@@ -322,6 +330,8 @@ export default function MeetPage({ params }: MeetPageProps) {
           method: 'POST',
           credentials: 'include',
           keepalive: true,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ peerId: getRoomPeerId(code) }),
         });
       } catch {}
     };
@@ -340,29 +350,28 @@ export default function MeetPage({ params }: MeetPageProps) {
   useEffect(() => {
     if (!roomId || !hasJoined) return;
     const socket = getSocket();
+    let joinedSocketId: string | undefined;
     const sendRoomJoin = () => {
+      if (!socket.connected || roomEndedRef.current || joinedSocketId === socket.id) return;
+      joinedSocketId = socket.id;
       socket.emit('room:join', {
         roomCode: code,
+        peerId: getRoomPeerId(code),
         isMuted: !isMicOnRef.current,
         isVideoOn: isVideoOnRef.current,
-        isScreenSharing: false,
+        isScreenSharing: screenSharingRef.current,
         handRaised: handRaisedRef.current,
       });
     };
-
-    if (socket.connected) {
-      sendRoomJoin();
-    } else {
-      socket.connect();
-    }
 
     const handleConnect = () => {
       sendRoomJoin();
     };
 
     const handleDisconnect = (reason: string) => {
-      // Reconnect immediately if serverless timeout or proxy closed socket
-      if (reason === 'io server disconnect' || reason === 'transport close' || reason === 'transport error') {
+      joinedSocketId = undefined;
+      // Socket.IO owns transport retries; only server disconnects need a manual connect.
+      if (reason === 'io server disconnect' && !roomEndedRef.current) {
         socket.connect();
       }
     };
@@ -381,7 +390,8 @@ export default function MeetPage({ params }: MeetPageProps) {
       }
     };
 
-    const handleRoster = ({ participants: roster }: { participants: RoomParticipant[] }) => {
+    const handleRoster = ({ roomCode: rosterRoomCode, participants: roster }: { roomCode: string; participants: RoomParticipant[] }) => {
+      if (rosterRoomCode !== code.trim().toLowerCase()) return;
       roster.forEach((p) => knownParticipantsRef.current.add(p.userId));
       setParticipants(roster);
     };
@@ -399,7 +409,8 @@ export default function MeetPage({ params }: MeetPageProps) {
       }, 3500);
     };
 
-    const handleUserLeft = ({ userId, name }: { userId: string; name: string }) => {
+    const handleUserLeft = ({ roomCode: leftRoomCode, userId, name }: { roomCode: string; userId: string; name: string }) => {
+      if (leftRoomCode !== code.trim().toLowerCase()) return;
       if (userId === currentUserIdRef.current) return;
       // Suppress duplicate chime if user wasn't in the space
       if (!knownParticipantsRef.current.has(userId)) return;
@@ -471,6 +482,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     };
 
     const handleKicked = ({ message }: { message: string }) => {
+      roomEndedRef.current = true;
       setIsRoomEnded(true);
       webrtcRef.current?.stopMediaTracks();
       setConfirmModal({
@@ -490,6 +502,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     let roomEndedTimer: NodeJS.Timeout | null = null;
 
     const handleRoomEnded = ({ message }: { message?: string }) => {
+      roomEndedRef.current = true;
       setIsRoomEnded(true);
       webrtcRef.current?.stopMediaTracks();
       playLeaveChime();
@@ -621,6 +634,12 @@ export default function MeetPage({ params }: MeetPageProps) {
     socket.on('room:reaction', onReaction);
     socket.on('room:hand-raised', handleHandRaised);
     socket.on('room:ended', handleRoomEnded);
+
+    if (socket.connected) {
+      sendRoomJoin();
+    } else {
+      socket.connect();
+    }
 
     return () => {
       socket.off('connect', handleConnect);
@@ -890,7 +909,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       return;
     }
 
-    const otherParticipants = participants.filter((p) => p.userId !== session?.user?.id);
+    const otherParticipants = participants.filter((p) => p.peerId ? p.peerId !== getRoomPeerId(code) : p.userId !== session?.user?.id);
     if (otherParticipants.length === 0) {
       setConfirmModal({
         isOpen: true,
@@ -1044,7 +1063,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     );
   }
 
-  const otherParticipants = participants.filter((p) => p.userId !== session?.user?.id);
+  const otherParticipants = participants.filter((p) => p.peerId ? p.peerId !== getRoomPeerId(code) : p.userId !== session?.user?.id);
   const isLocalVideoLive = Boolean(
     (isVideoOn || isScreenSharing) &&
       webrtc.localStream &&
@@ -1209,19 +1228,19 @@ export default function MeetPage({ params }: MeetPageProps) {
   const renderParticipantTile = (p: RoomParticipant, isCompact: boolean) => {
     const isOtherHost = p.userId === room.hostId;
     const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'U';
-    const remoteStream = webrtc.remoteStreams.get(p.userId);
+    const remoteStream = webrtc.remoteStreams.get(p.peerId ?? p.userId);
     const isThisPresenter = Boolean(p.isScreenSharing);
     const isVideoActive = Boolean(
       !isCompact && p.isScreenSharing
         ? true
         : Boolean(p.isVideoOn) && (!isCompact || !isThisPresenter)
     );
-    const remoteAudio = webrtc.remoteAudioLevels[p.userId];
+    const remoteAudio = webrtc.remoteAudioLevels[p.peerId ?? p.userId];
     const isSpeaking = !p.isMuted && Boolean(remoteAudio?.isSpeaking);
 
     return (
       <div
-        key={p.userId}
+        key={p.peerId ?? p.userId}
         className={`relative bg-[#0a0a0c] overflow-hidden flex items-center justify-center shadow-2xl group transition-all duration-300 ${
           isCompact
             ? 'rounded-xl aspect-video w-36 sm:w-44 lg:w-full min-h-[75px] sm:min-h-[90px] lg:min-h-[105px] shrink-0'
@@ -1445,7 +1464,7 @@ export default function MeetPage({ params }: MeetPageProps) {
             <h1 className="font-serif-headline text-xs sm:text-sm font-normal text-[#fcfdff] truncate max-w-[130px] xs:max-w-[200px] sm:max-w-md tracking-tight">
               {room.title}
             </h1>
-            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate">ID: {room.code}</p>
+            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate">ID: {room.code} <span aria-hidden="true">·</span> <CallDuration key={room.code} active={isInRoom} /></p>
           </div>
         </div>
 
@@ -1516,7 +1535,7 @@ export default function MeetPage({ params }: MeetPageProps) {
                 />
               ) : remotePresenter ? (
                 <RemoteVideo
-                  stream={webrtc.remoteStreams.get(remotePresenter.userId)}
+                  stream={webrtc.remoteStreams.get(remotePresenter.peerId ?? remotePresenter.userId)}
                   isVideoActive={true}
                   className="w-full h-full object-contain absolute inset-0 z-0 bg-[#050508]"
                 />
@@ -2216,6 +2235,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         onClose={() => setParticipantsOpen(false)}
         participants={participants}
         currentUserId={session?.user?.id}
+        currentPeerId={getRoomPeerId(code)}
         hostId={room?.hostId}
         roomCode={room?.code || code}
         roomType="meet"
@@ -2266,10 +2286,10 @@ export default function MeetPage({ params }: MeetPageProps) {
       {/* Mounted continuously so audio never cuts out regardless of presentation mode, fullscreen, or collapse */}
       <div className="sr-only pointer-events-none" aria-hidden="true">
         {otherParticipants.map((p) => {
-          const stream = webrtc.remoteStreams.get(p.userId);
+          const stream = webrtc.remoteStreams.get(p.peerId ?? p.userId);
           return (
             <RemoteAudio
-              key={`permanent-audio-${p.userId}`}
+              key={`permanent-audio-${p.peerId ?? p.userId}`}
               stream={stream}
               audioOutputId={mediaDevices.selectedAudioOutputId}
             />
