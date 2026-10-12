@@ -1,15 +1,15 @@
 export const ROOM_CAPACITY = {
-  meet: 4,
-  audio: 10,
+  meet: 6,
+  audio: 16,
 } as const;
 
 export const ROOM_CONSTANTS = {
   MEET: {
-    MAX_PARTICIPANTS: 4,
+    MAX_PARTICIPANTS: 6,
     MIN_PARTICIPANTS: 2,
   },
   AUDIO: {
-    MAX_PARTICIPANTS: 10,
+    MAX_PARTICIPANTS: 16,
     MIN_PARTICIPANTS: 2,
   },
   MAX_ROOM_DURATION_HOURS: 24,

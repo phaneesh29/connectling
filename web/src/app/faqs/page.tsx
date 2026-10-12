@@ -75,7 +75,7 @@ const FAQ_CATEGORIES: FaqCategory[] = [
       {
         question: 'What are the capacity limits for video meetings and audio lounges?',
         answer:
-          'Video spaces support up to 4 concurrent high-definition video feeds with screen sharing, engineered for ultra-low latency team standups and private consultations. Voice rooms accommodate up to 10 active stage participants with moderation controls (speaker permission grants, mic muting, and hand raising).',
+          'Video spaces support up to 6 concurrent high-definition video feeds with screen sharing, engineered for ultra-low latency team standups and private consultations. Voice rooms accommodate up to 16 active stage participants with moderation controls (speaker permission grants, mic muting, and hand raising).',
       },
       {
         question: 'Does Connectling support screen sharing and audio device selection?',
