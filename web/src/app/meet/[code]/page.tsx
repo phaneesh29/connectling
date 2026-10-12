@@ -48,7 +48,7 @@ import {
   ChevronUpIcon,
   TriangleAlertIcon,
 } from '@animateicons/react/lucide';
-import { Maximize2, Minimize2, FlipHorizontal, Radio } from 'lucide-react';
+import { Maximize2, Minimize2, FlipHorizontal, Radio, Pencil } from 'lucide-react';
 import { getRoomPeerId, getSocket } from '@/lib/socket';
 import { CallDuration } from '@/components/call-duration';
 import { SERVER_URL } from '@/lib/config';
@@ -63,6 +63,7 @@ import { MediaDeviceMenu } from '@/components/media-device-menu';
 import { MeetPrejoinLobby } from '@/components/meet-prejoin-lobby';
 import { MeetPrejoinLobbySkeleton } from '@/components/skeleton';
 import { AudioWaveform, AudioRipple } from '@/components/audio-waveform';
+import { Whiteboard } from '@/components/whiteboard';
 import { useMediaDevices } from '@/hooks/use-media-devices';
 import { useLocalAudioLevel } from '@/hooks/use-local-audio-level';
 import { useWebRTC } from '@/hooks/use-webrtc';
@@ -72,7 +73,7 @@ import { FloatingReactions } from '@/components/reactions/floating-reactions';
 import { ReactionBadge } from '@/components/reactions/reaction-badge';
 import { useRoomReactions } from '@/hooks/use-room-reactions';
 import { ConnectionQualityPill, NetworkDisconnectAlert } from '@/components/connection-quality-pill';
-import type { ChatMessage, RoomParticipant, RoomSwitchedPayload } from '@/types/realtime';
+import type { ChatMessage, RoomParticipant, RoomSwitchedPayload, WhiteboardTogglePayload } from '@/types/realtime';
 
 interface MeetPageProps {
   params: Promise<{ code: string }>;
@@ -138,6 +139,9 @@ export default function MeetPage({ params }: MeetPageProps) {
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [isSwitchingMode, setIsSwitchingMode] = useState(false);
   const [switchedRoomNotice, setSwitchedRoomNotice] = useState<RoomSwitchedPayload | null>(null);
+  const [isWhiteboardOpen, setIsWhiteboardOpen] = useState(false);
+  const [whiteboardElements, setWhiteboardElements] = useState<readonly unknown[]>([]);
+  const [whiteboardAppState, setWhiteboardAppState] = useState<Record<string, unknown> | undefined>(undefined);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -684,6 +688,23 @@ export default function MeetPage({ params }: MeetPageProps) {
     };
     socket.on('room:switched', handleRoomSwitched);
 
+    const handleWhiteboardToggled = (payload: WhiteboardTogglePayload) => {
+      if (payload.roomCode !== code.trim().toLowerCase()) return;
+      setIsWhiteboardOpen(payload.isOpen);
+      if (payload.elements) setWhiteboardElements(payload.elements);
+      if (payload.appState) setWhiteboardAppState(payload.appState);
+      if (payload.isOpen) {
+        playJoinChime();
+        setRoomToast({ text: 'Whiteboard opened', type: 'join' });
+      } else {
+        setRoomToast({ text: 'Whiteboard closed', type: 'leave' });
+      }
+      setTimeout(() => {
+        setRoomToast((curr) => (curr?.text?.includes('Whiteboard') ? null : curr));
+      }, 3500);
+    };
+    socket.on('whiteboard:toggled', handleWhiteboardToggled);
+
     if (socket.connected) {
       sendRoomJoin();
     } else {
@@ -704,6 +725,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       socket.off('room:user-kicked', handleUserKicked);
       socket.off('room:host-transferred', handleHostTransferred);
       socket.off('room:switched', handleRoomSwitched);
+      socket.off('whiteboard:toggled', handleWhiteboardToggled);
       socket.off('room:reaction', onReaction);
       socket.off('room:hand-raised', handleHandRaised);
       socket.off('room:ended', handleRoomEnded);
@@ -902,6 +924,19 @@ export default function MeetPage({ params }: MeetPageProps) {
       onCancel: () => setConfirmModal(null),
     });
   };
+
+  const handleToggleWhiteboard = useCallback(() => {
+    if (!isHost) return;
+    const nextState = !isWhiteboardOpen;
+    setIsWhiteboardOpen(nextState);
+    const socket = getSocket();
+    if (socket.connected) {
+      socket.emit('whiteboard:toggle', {
+        roomCode: code,
+        isOpen: nextState,
+      });
+    }
+  }, [isHost, isWhiteboardOpen, code]);
 
   const handleRemoteMute = (targetUserId: string, targetName: string) => {
     if (!isHost) return;
@@ -1678,6 +1713,22 @@ export default function MeetPage({ params }: MeetPageProps) {
 
           {isHost && (
             <button
+              type="button"
+              onClick={handleToggleWhiteboard}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all border cursor-pointer ${
+                isWhiteboardOpen
+                  ? 'bg-[#FF9933]/20 text-[#FF9933] border-[#FF9933]/40 shadow-[0_0_12px_rgba(255,153,51,0.2)]'
+                  : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
+              }`}
+              title={isWhiteboardOpen ? 'Close Whiteboard' : 'Open Whiteboard'}
+            >
+              <Pencil className={`w-3.5 h-3.5 shrink-0 ${isWhiteboardOpen ? 'text-[#FF9933]' : 'text-zinc-400'}`} />
+              <span className="hidden sm:inline font-mono text-[11px]">Whiteboard</span>
+            </button>
+          )}
+
+          {isHost && (
+            <button
               onClick={() => setSettingsOpen(true)}
               className="px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08] flex items-center gap-1.5 cursor-pointer"
             >
@@ -1690,10 +1741,32 @@ export default function MeetPage({ params }: MeetPageProps) {
 
       <main
         className={`flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center ${
-          isAnyoneScreenSharing ? 'p-1.5 sm:p-2.5' : 'p-2 sm:p-5'
+          isWhiteboardOpen || isAnyoneScreenSharing ? 'p-1.5 sm:p-2.5' : 'p-2 sm:p-5'
         }`}
       >
-        {isAnyoneScreenSharing ? (
+        {isWhiteboardOpen ? (
+          <div className="w-full h-full min-h-0 flex flex-col lg:flex-row gap-2 sm:gap-3 items-stretch">
+            {/* Whiteboard Spotlight Canvas */}
+            <div className="flex-1 min-h-0 min-w-0 w-full h-full rounded-2xl overflow-hidden relative">
+              <Whiteboard
+                roomCode={code}
+                isHost={isHost}
+                socket={getSocket()}
+                initialElements={whiteboardElements}
+                initialAppState={whiteboardAppState}
+                onClose={handleToggleWhiteboard}
+              />
+            </div>
+
+            {/* Sidebar Filmstrip of Participant Tiles */}
+            {!filmstripCollapsed && (
+              <div className="w-full lg:w-44 xl:w-52 flex lg:flex-col gap-2 overflow-x-auto lg:overflow-y-auto lg:overflow-x-hidden shrink-0 max-h-full pb-2 lg:pb-0 scrollbar-thin">
+                {renderLocalTile(true)}
+                {otherParticipants.map((p) => renderParticipantTile(p, true))}
+              </div>
+            )}
+          </div>
+        ) : isAnyoneScreenSharing ? (
           <div className="w-full h-full min-h-0 flex flex-col lg:flex-row gap-2 sm:gap-3 items-stretch">
             {/* Big Spotlight Presentation Stage (Google Meet style) */}
             <div
@@ -2025,6 +2098,22 @@ export default function MeetPage({ params }: MeetPageProps) {
           >
             <MonitorIcon size={16} />
           </button>
+
+          {isHost && (
+            <button
+              type="button"
+              onClick={handleToggleWhiteboard}
+              className={`h-9 px-2 sm:h-10 sm:px-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                isWhiteboardOpen
+                  ? 'bg-orange-500/20 text-[#ff7a1a] border border-orange-500/40 shadow-sm'
+                  : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border border-white/[0.08]'
+              }`}
+              title={isWhiteboardOpen ? 'Close Whiteboard' : 'Open Whiteboard'}
+            >
+              <Pencil className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline font-mono text-[11px]">Whiteboard</span>
+            </button>
+          )}
 
           {/* Universal Raise Hand Button */}
           <button

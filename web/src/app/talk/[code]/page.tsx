@@ -30,7 +30,7 @@ import {
   ChevronUpIcon,
   TriangleAlertIcon,
 } from '@animateicons/react/lucide';
-import { Video } from 'lucide-react';
+import { Video, Pencil } from 'lucide-react';
 import { getRoomPeerId, getSocket } from '@/lib/socket';
 import { CallDuration } from '@/components/call-duration';
 import { SERVER_URL } from '@/lib/config';
@@ -44,6 +44,7 @@ import { ReportModal } from '@/components/report-modal';
 import { MediaDeviceMenu } from '@/components/media-device-menu';
 import { TalkStageSkeleton } from '@/components/skeleton';
 import { AudioWaveform, AudioRipple } from '@/components/audio-waveform';
+import { Whiteboard } from '@/components/whiteboard';
 import { useMediaDevices } from '@/hooks/use-media-devices';
 import { useLocalAudioLevel } from '@/hooks/use-local-audio-level';
 import { useWebRTC } from '@/hooks/use-webrtc';
@@ -53,7 +54,7 @@ import { FloatingReactions } from '@/components/reactions/floating-reactions';
 import { ReactionBadge } from '@/components/reactions/reaction-badge';
 import { useRoomReactions } from '@/hooks/use-room-reactions';
 import { ConnectionQualityPill, NetworkDisconnectAlert } from '@/components/connection-quality-pill';
-import type { ChatMessage, RoomParticipant, RoomSwitchedPayload } from '@/types/realtime';
+import type { ChatMessage, RoomParticipant, RoomSwitchedPayload, WhiteboardTogglePayload } from '@/types/realtime';
 
 interface StageTileGradient {
   containerStyle: React.CSSProperties;
@@ -178,6 +179,9 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [isSwitchingMode, setIsSwitchingMode] = useState(false);
   const [switchedRoomNotice, setSwitchedRoomNotice] = useState<RoomSwitchedPayload | null>(null);
+  const [isWhiteboardOpen, setIsWhiteboardOpen] = useState(false);
+  const [whiteboardElements, setWhiteboardElements] = useState<readonly unknown[]>([]);
+  const [whiteboardAppState, setWhiteboardAppState] = useState<Record<string, unknown> | undefined>(undefined);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -755,6 +759,23 @@ export default function TalkPage({ params }: TalkPageProps) {
     };
     socket.on('room:switched', handleRoomSwitched);
 
+    const handleWhiteboardToggled = (payload: WhiteboardTogglePayload) => {
+      if (payload.roomCode !== code.trim().toLowerCase()) return;
+      setIsWhiteboardOpen(payload.isOpen);
+      if (payload.elements) setWhiteboardElements(payload.elements);
+      if (payload.appState) setWhiteboardAppState(payload.appState);
+      if (payload.isOpen) {
+        playJoinChime();
+        setRoomToast({ text: 'Whiteboard opened', type: 'join' });
+      } else {
+        setRoomToast({ text: 'Whiteboard closed', type: 'leave' });
+      }
+      setTimeout(() => {
+        setRoomToast((curr) => (curr?.text?.includes('Whiteboard') ? null : curr));
+      }, 3500);
+    };
+    socket.on('whiteboard:toggled', handleWhiteboardToggled);
+
     if (socket.connected) {
       sendRoomJoin();
     } else {
@@ -778,6 +799,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       socket.off('room:user-kicked', handleUserKicked);
       socket.off('room:host-transferred', handleHostTransferred);
       socket.off('room:switched', handleRoomSwitched);
+      socket.off('whiteboard:toggled', handleWhiteboardToggled);
       socket.off('room:reaction', onReaction);
       socket.off('room:ended', handleRoomEnded);
       if (roomEndedTimer) clearTimeout(roomEndedTimer);
@@ -894,6 +916,19 @@ export default function TalkPage({ params }: TalkPageProps) {
       onCancel: () => setConfirmModal(null),
     });
   };
+
+  const handleToggleWhiteboard = useCallback(() => {
+    if (!isHost) return;
+    const nextState = !isWhiteboardOpen;
+    setIsWhiteboardOpen(nextState);
+    const socket = getSocket();
+    if (socket.connected) {
+      socket.emit('whiteboard:toggle', {
+        roomCode: code,
+        isOpen: nextState,
+      });
+    }
+  }, [isHost, isWhiteboardOpen, code]);
 
   const handleToggleMic = () => {
     if (!isSpeaker) {
@@ -1432,6 +1467,22 @@ export default function TalkPage({ params }: TalkPageProps) {
             </button>
           )}
 
+          {isHost && (
+            <button
+              type="button"
+              onClick={handleToggleWhiteboard}
+              className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all border cursor-pointer ${
+                isWhiteboardOpen
+                  ? 'bg-[#FF9933]/20 text-[#FF9933] border-[#FF9933]/40 shadow-[0_0_12px_rgba(255,153,51,0.2)]'
+                  : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
+              }`}
+              title={isWhiteboardOpen ? 'Close Whiteboard' : 'Open Whiteboard'}
+            >
+              <Pencil className={`w-3.5 h-3.5 shrink-0 ${isWhiteboardOpen ? 'text-[#FF9933]' : 'text-zinc-400'}`} />
+              <span className="hidden sm:inline font-mono text-[11px]">Whiteboard</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => {
@@ -1463,7 +1514,20 @@ export default function TalkPage({ params }: TalkPageProps) {
         </div>
       </header>
 
-      <main className={`flex-1 p-3.5 sm:p-6 overflow-y-auto ${stageContainerMaxWidth} mx-auto w-full flex flex-col ${totalTiles <= 4 ? 'justify-center my-auto' : ''} space-y-4 sm:space-y-6 transition-all duration-300`}>
+      <main className={`flex-1 p-3.5 sm:p-6 overflow-y-auto ${stageContainerMaxWidth} mx-auto w-full flex flex-col ${totalTiles <= 4 && !isWhiteboardOpen ? 'justify-center my-auto' : ''} space-y-4 sm:space-y-6 transition-all duration-300`}>
+        {isWhiteboardOpen && (
+          <div className="w-full h-[55vh] min-h-[380px] max-h-[650px] shrink-0 rounded-2xl overflow-hidden relative shadow-2xl">
+            <Whiteboard
+              roomCode={code}
+              isHost={isHost}
+              socket={getSocket()}
+              initialElements={whiteboardElements}
+              initialAppState={whiteboardAppState}
+              onClose={handleToggleWhiteboard}
+            />
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <span className="text-[11px] sm:text-xs font-mono text-[#888e90] uppercase tracking-wider">
@@ -1938,6 +2002,22 @@ export default function TalkPage({ params }: TalkPageProps) {
             onSelectReaction={handleSendReaction}
             accentColor="orange"
           />
+
+          {isHost && (
+            <button
+              type="button"
+              onClick={handleToggleWhiteboard}
+              className={`h-9 px-2 sm:h-10 sm:px-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                isWhiteboardOpen
+                  ? 'bg-orange-500/20 text-[#ff7a1a] border border-orange-500/40 shadow-sm'
+                  : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
+              }`}
+              title={isWhiteboardOpen ? 'Close Whiteboard' : 'Open Whiteboard'}
+            >
+              <Pencil className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline font-mono text-[11px]">Whiteboard</span>
+            </button>
+          )}
 
           <button
             type="button"

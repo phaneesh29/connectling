@@ -1,7 +1,7 @@
 import type { Request, Response } from 'express';
 import { roomService } from './room.service.js';
 import { normalizeRoomCode } from './room.utils.js';
-import { getRealtimeServer } from '../realtime/realtime.gateway.js';
+import { getRealtimeServer, clearRoomWhiteboard } from '../realtime/realtime.gateway.js';
 import type {
   CreateRoomInput,
   JoinRoomInput,
@@ -87,6 +87,7 @@ export const endRoomHandler = async (req: Request, res: Response): Promise<void>
   try {
     const io = getRealtimeServer();
     const normalized = normalizeRoomCode(code);
+    clearRoomWhiteboard(normalized);
     const payload = { message: 'The host has ended this space for all participants.' };
     io.in(`room:${normalized}`).emit('room:ended', payload);
     if (normalized !== code) {

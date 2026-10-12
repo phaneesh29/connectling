@@ -37,6 +37,17 @@ export const getRealtimeServer = (): RealtimeServer => {
 
 const roomParticipants = new Map<string, Map<string, RoomParticipant>>();
 const roomConnections = createRoomConnections();
+interface RoomWhiteboardState {
+  isOpen: boolean;
+  elements: readonly unknown[];
+  appState?: Record<string, unknown>;
+}
+const roomWhiteboards = new Map<string, RoomWhiteboardState>();
+
+export const clearRoomWhiteboard = (roomCode: string): void => {
+  const normalized = normalizeRoomCode(roomCode);
+  roomWhiteboards.delete(normalized);
+};
 const roomTasks = new Map<string, Promise<void>>();
 const serializeRoom = (roomCode: string, operation: () => Promise<void>) => {
   const task = (roomTasks.get(roomCode) ?? Promise.resolve()).then(operation).catch(err => {
@@ -303,6 +314,15 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
           if (!knownUser) socket.to(roomChannel).emit('room:user-joined', { userId: user.id, name: user.name, image: user.image });
           const participants = await getActiveRoomParticipants(normalized);
           io.in(roomChannel).emit('room:roster', { roomCode: normalized, participants });
+          const wb = roomWhiteboards.get(normalized);
+          if (wb?.isOpen) {
+            socket.emit('whiteboard:toggled', {
+              roomCode: normalized,
+              isOpen: true,
+              elements: wb.elements,
+              appState: wb.appState,
+            });
+          }
         } catch (err) {
           logger.error({ err, userId: user.id, roomCode }, 'Error joining chat room');
           socket.emit('error:message', { message: 'Failed to join chat room' });
@@ -615,6 +635,82 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         logger.info({ hostId: user.id, fromRoom: normalized, toRoom: normalizedNew, newType }, 'Host switched room mode');
       } catch (err) {
         logger.error({ err, hostId: user.id, roomCode }, 'Error switching room mode');
+      }
+    });
+
+    socket.on('whiteboard:toggle', async ({ roomCode, isOpen }) => {
+      try {
+        const normalized = normalizeRoomCode(roomCode);
+        const foundRoom = await db.query.room.findFirst({
+          where: eq(room.code, normalized),
+          columns: { id: true, hostId: true },
+        });
+
+        if (!foundRoom || foundRoom.hostId !== user.id) {
+          socket.emit('error:message', { message: 'Only the space host can toggle the whiteboard.' });
+          return;
+        }
+
+        let state = roomWhiteboards.get(normalized);
+        if (!state) {
+          state = { isOpen: false, elements: [] };
+          roomWhiteboards.set(normalized, state);
+        }
+        state.isOpen = isOpen;
+
+        const roomChannel = `room:${normalized}`;
+        io.in(roomChannel).emit('whiteboard:toggled', {
+          roomCode: normalized,
+          isOpen,
+          elements: state.elements,
+          appState: state.appState,
+        });
+
+        logger.info({ hostId: user.id, roomCode: normalized, isOpen }, 'Host toggled whiteboard');
+      } catch (err) {
+        logger.error({ err, hostId: user.id, roomCode }, 'Error toggling whiteboard');
+      }
+    });
+
+    socket.on('whiteboard:update', async ({ roomCode, elements, appState }) => {
+      try {
+        const normalized = normalizeRoomCode(roomCode);
+        const foundRoom = await db.query.room.findFirst({
+          where: eq(room.code, normalized),
+          columns: { id: true, hostId: true },
+        });
+
+        if (!foundRoom || foundRoom.hostId !== user.id) return;
+
+        let state = roomWhiteboards.get(normalized);
+        if (!state) {
+          state = { isOpen: true, elements: [] };
+          roomWhiteboards.set(normalized, state);
+        }
+        state.elements = elements || [];
+        state.appState = appState;
+
+        const roomChannel = `room:${normalized}`;
+        socket.to(roomChannel).emit('whiteboard:updated', {
+          roomCode: normalized,
+          elements: state.elements,
+          appState,
+        });
+      } catch (err) {
+        logger.error({ err, hostId: user.id, roomCode }, 'Error updating whiteboard');
+      }
+    });
+
+    socket.on('whiteboard:sync', ({ roomCode }) => {
+      const normalized = normalizeRoomCode(roomCode);
+      const state = roomWhiteboards.get(normalized);
+      if (state && state.isOpen) {
+        socket.emit('whiteboard:toggled', {
+          roomCode: normalized,
+          isOpen: state.isOpen,
+          elements: state.elements,
+          appState: state.appState,
+        });
       }
     });
 
