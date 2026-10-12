@@ -13,6 +13,15 @@ interface ExcalidrawAPI {
     appState?: Partial<AppState>;
     commitToHistory?: boolean;
   }) => void;
+  scrollToContent?: (
+    target?: unknown,
+    opts?: {
+      fitToViewport?: boolean;
+      viewportZoomFactor?: number;
+      animate?: boolean;
+      duration?: number;
+    }
+  ) => void;
 }
 
 // Dynamically import Excalidraw so that browser-only dependencies (window, document, canvas) don't trigger SSR errors
@@ -56,8 +65,28 @@ export function Whiteboard({
   }, [isHost]);
 
   const latestElementsRef = useRef<readonly unknown[]>(initialElements);
+  const pendingElementsRef = useRef<readonly unknown[] | null>(
+    initialElements && initialElements.length > 0 ? initialElements : null
+  );
+  const pendingAppStateRef = useRef<Record<string, unknown> | null>(initialAppState || null);
+  const hasCenteredContentRef = useRef(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isReceivingRemoteUpdateRef = useRef(false);
+
+  // Request latest whiteboard state on mount from server
+  useEffect(() => {
+    if (!socket) return;
+    const requestSync = () => {
+      if (socket.connected) {
+        socket.emit('whiteboard:sync', { roomCode });
+      }
+    };
+    socket.on('connect', requestSync);
+    requestSync();
+    return () => {
+      socket.off('connect', requestSync);
+    };
+  }, [socket, roomCode]);
 
   // Sync incoming updates from host to viewer peers
   useEffect(() => {
@@ -66,6 +95,12 @@ export function Whiteboard({
     const handleWhiteboardUpdated = (payload: WhiteboardScenePayload) => {
       if (isHostRef.current) return; // Host does not overwrite own active drawing
       if (payload.roomCode !== roomCode.trim().toLowerCase()) return;
+
+      if (payload.elements) {
+        pendingElementsRef.current = payload.elements;
+        latestElementsRef.current = payload.elements;
+        if (payload.appState) pendingAppStateRef.current = payload.appState;
+      }
 
       if (excalidrawAPI && payload.elements) {
         isReceivingRemoteUpdateRef.current = true;
@@ -82,6 +117,16 @@ export function Whiteboard({
               : undefined,
             commitToHistory: false,
           });
+
+          // Ensure drawings are fitted and visible in viewport on mobile / smaller screens
+          if (!hasCenteredContentRef.current && payload.elements.length > 0 && excalidrawAPI.scrollToContent) {
+            hasCenteredContentRef.current = true;
+            setTimeout(() => {
+              try {
+                excalidrawAPI.scrollToContent?.(payload.elements, { fitToViewport: true, viewportZoomFactor: 0.85 });
+              } catch { /* ignore */ }
+            }, 100);
+          }
         } finally {
           setTimeout(() => {
             isReceivingRemoteUpdateRef.current = false;
@@ -98,8 +143,17 @@ export function Whiteboard({
 
   useEffect(() => {
     if (!excalidrawAPI || isHostRef.current) return;
-    if (initialElements && initialElements.length > 0) {
-      excalidrawAPI.updateScene({ elements: initialElements, appState: initialAppState as Partial<AppState> | undefined });
+    const elementsToLoad = pendingElementsRef.current || (initialElements && initialElements.length > 0 ? initialElements : null);
+    if (elementsToLoad && elementsToLoad.length > 0) {
+      excalidrawAPI.updateScene({ elements: elementsToLoad, appState: initialAppState as Partial<AppState> | undefined });
+      if (!hasCenteredContentRef.current && excalidrawAPI.scrollToContent) {
+        hasCenteredContentRef.current = true;
+        setTimeout(() => {
+          try {
+            excalidrawAPI.scrollToContent?.(elementsToLoad, { fitToViewport: true, viewportZoomFactor: 0.85 });
+          } catch { /* ignore */ }
+        }, 150);
+      }
     }
   }, [excalidrawAPI, initialElements, initialAppState]);
 
@@ -148,8 +202,15 @@ export function Whiteboard({
           excalidrawAPI={(api: unknown) => {
             const typedApi = api as ExcalidrawAPI;
             setExcalidrawAPI(typedApi);
-            if (initialElements && initialElements.length > 0) {
-              typedApi.updateScene({ elements: initialElements, appState: initialAppState as Partial<AppState> | undefined });
+            const elementsToLoad = pendingElementsRef.current || (initialElements && initialElements.length > 0 ? initialElements : null);
+            if (elementsToLoad && elementsToLoad.length > 0) {
+              typedApi.updateScene({ elements: elementsToLoad, appState: (pendingAppStateRef.current || initialAppState) as Partial<AppState> | undefined });
+              setTimeout(() => {
+                try {
+                  typedApi.scrollToContent?.(elementsToLoad, { fitToViewport: true, viewportZoomFactor: 0.85 });
+                  hasCenteredContentRef.current = true;
+                } catch { /* ignore */ }
+              }, 150);
             }
           }}
           theme="dark"

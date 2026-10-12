@@ -41,6 +41,7 @@ interface RoomWhiteboardState {
   isOpen: boolean;
   elements: readonly unknown[];
   appState?: Record<string, unknown>;
+  hostId?: string;
 }
 const roomWhiteboards = new Map<string, RoomWhiteboardState>();
 
@@ -653,10 +654,11 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
 
         let state = roomWhiteboards.get(normalized);
         if (!state) {
-          state = { isOpen: false, elements: [] };
+          state = { isOpen: false, elements: [], hostId: foundRoom.hostId };
           roomWhiteboards.set(normalized, state);
         }
         state.isOpen = isOpen;
+        state.hostId = foundRoom.hostId;
 
         const roomChannel = `room:${normalized}`;
         io.in(roomChannel).emit('whiteboard:toggled', {
@@ -675,17 +677,24 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
     socket.on('whiteboard:update', async ({ roomCode, elements, appState }) => {
       try {
         const normalized = normalizeRoomCode(roomCode);
-        const foundRoom = await db.query.room.findFirst({
-          where: eq(room.code, normalized),
-          columns: { id: true, hostId: true },
-        });
-
-        if (!foundRoom || foundRoom.hostId !== user.id) return;
-
         let state = roomWhiteboards.get(normalized);
+        let hostId = state?.hostId;
+        if (!hostId) {
+          const foundRoom = await db.query.room.findFirst({
+            where: eq(room.code, normalized),
+            columns: { id: true, hostId: true },
+          });
+          if (!foundRoom) return;
+          hostId = foundRoom.hostId;
+        }
+
+        if (hostId !== user.id) return;
+
         if (!state) {
-          state = { isOpen: true, elements: [] };
+          state = { isOpen: true, elements: [], hostId };
           roomWhiteboards.set(normalized, state);
+        } else {
+          state.hostId = hostId;
         }
         state.elements = elements || [];
         state.appState = appState;
@@ -708,6 +717,11 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         socket.emit('whiteboard:toggled', {
           roomCode: normalized,
           isOpen: state.isOpen,
+          elements: state.elements,
+          appState: state.appState,
+        });
+        socket.emit('whiteboard:updated', {
+          roomCode: normalized,
           elements: state.elements,
           appState: state.appState,
         });

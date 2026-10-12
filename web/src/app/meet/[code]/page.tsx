@@ -73,7 +73,7 @@ import { FloatingReactions } from '@/components/reactions/floating-reactions';
 import { ReactionBadge } from '@/components/reactions/reaction-badge';
 import { useRoomReactions } from '@/hooks/use-room-reactions';
 import { ConnectionQualityPill, NetworkDisconnectAlert } from '@/components/connection-quality-pill';
-import type { ChatMessage, RoomParticipant, RoomSwitchedPayload, WhiteboardTogglePayload } from '@/types/realtime';
+import type { ChatMessage, RoomParticipant, RoomSwitchedPayload, WhiteboardTogglePayload, WhiteboardScenePayload } from '@/types/realtime';
 
 interface MeetPageProps {
   params: Promise<{ code: string }>;
@@ -703,7 +703,12 @@ export default function MeetPage({ params }: MeetPageProps) {
         setRoomToast((curr) => (curr?.text?.includes('Whiteboard') ? null : curr));
       }, 3500);
     };
-    socket.on('whiteboard:toggled', handleWhiteboardToggled);
+    const handleWhiteboardUpdated = (payload: WhiteboardScenePayload) => {
+      if (payload.roomCode !== code.trim().toLowerCase()) return;
+      if (payload.elements) setWhiteboardElements(payload.elements);
+      if (payload.appState) setWhiteboardAppState(payload.appState);
+    };
+    socket.on('whiteboard:updated', handleWhiteboardUpdated);
 
     if (socket.connected) {
       sendRoomJoin();
@@ -726,6 +731,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       socket.off('room:host-transferred', handleHostTransferred);
       socket.off('room:switched', handleRoomSwitched);
       socket.off('whiteboard:toggled', handleWhiteboardToggled);
+      socket.off('whiteboard:updated', handleWhiteboardUpdated);
       socket.off('room:reaction', onReaction);
       socket.off('room:hand-raised', handleHandRaised);
       socket.off('room:ended', handleRoomEnded);
