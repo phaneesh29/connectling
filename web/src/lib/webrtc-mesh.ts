@@ -21,6 +21,8 @@ interface Peer {
   lastPackets?: { sent: number; lost: number };
 }
 
+export type PeerConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'failed' | 'disconnected';
+
 interface MeshOptions {
   peerId: string;
   roomCode: string;
@@ -30,6 +32,7 @@ interface MeshOptions {
   send: (targetPeerId: string, signal: WebRTCSignalData) => boolean;
   onStreams: (streams: Map<string, MediaStream>) => void;
   onConnected: (connected: boolean) => void;
+  onPeerConnectionStatuses?: (statuses: Map<string, PeerConnectionStatus>) => void;
   onError: (message: string) => void;
 }
 
@@ -60,10 +63,39 @@ export function createWebRTCMesh(options: MeshOptions) {
     return peer.queue;
   }
 
+  function getPeerStatus(peer: Peer): PeerConnectionStatus {
+    const ice = peer.pc.iceConnectionState;
+    const conn = peer.pc.connectionState;
+
+    if (conn === 'failed' || ice === 'failed') {
+      return 'failed';
+    }
+    if (ice === 'disconnected' || conn === 'disconnected') {
+      return 'reconnecting';
+    }
+    if (peer.recoveryAttempts > 0 && (ice === 'checking' || conn === 'connecting')) {
+      return 'reconnecting';
+    }
+    if (conn === 'connected' || ice === 'connected' || ice === 'completed') {
+      return 'connected';
+    }
+    if (conn === 'closed' || ice === 'closed') {
+      return 'disconnected';
+    }
+    return 'connecting';
+  }
+
   function publish() {
     if (state.stopped) return;
     options.onStreams(new Map(Array.from(state.peers, ([id, peer]) => [id, peer.stream])));
     options.onConnected(Array.from(state.peers.values()).some(peer => peer.pc.connectionState === 'connected'));
+    if (options.onPeerConnectionStatuses) {
+      const statuses = new Map<string, PeerConnectionStatus>();
+      for (const [id, peer] of state.peers) {
+        statuses.set(id, getPeerStatus(peer));
+      }
+      options.onPeerConnectionStatuses(statuses);
+    }
   }
 
   function emit(peer: Peer, signal: Omit<WebRTCSignalData, 'connectionId'>) {
@@ -156,6 +188,22 @@ export function createWebRTCMesh(options: MeshOptions) {
     pc.onsignalingstatechange = () => {
       if (pc.signalingState === 'stable' && peer.needsNegotiation) void negotiate(peer);
     };
+    pc.oniceconnectionstatechange = () => {
+      if (!alive(peer)) return;
+      if (pc.iceConnectionState === 'disconnected') {
+        scheduleRecovery(peer, 3500);
+      } else if (pc.iceConnectionState === 'failed') {
+        scheduleRecovery(peer, 1000);
+      } else if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed') {
+        if (peer.recoveryTimer && pc.connectionState === 'connected') {
+          clearTimeout(peer.recoveryTimer);
+          peer.recoveryTimer = undefined;
+          peer.recoveryAttempts = 0;
+          peer.recoveryExhausted = false;
+        }
+      }
+      publish();
+    };
     pc.onconnectionstatechange = () => {
       if (!alive(peer)) return;
       if (pc.connectionState === 'connected') {
@@ -179,7 +227,7 @@ export function createWebRTCMesh(options: MeshOptions) {
     state.peers.delete(peerId);
     if (peer.recoveryTimer) clearTimeout(peer.recoveryTimer);
     peer.pc.onicecandidate = peer.pc.ontrack = peer.pc.onnegotiationneeded = null;
-    peer.pc.onsignalingstatechange = peer.pc.onconnectionstatechange = null;
+    peer.pc.onsignalingstatechange = peer.pc.onconnectionstatechange = peer.pc.oniceconnectionstatechange = null;
     for (const track of peer.stream.getTracks()) {
       track.onended = track.onmute = track.onunmute = null;
       track.stop();

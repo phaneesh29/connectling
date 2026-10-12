@@ -52,6 +52,7 @@ import { ReactionPicker } from '@/components/reactions/reaction-picker';
 import { FloatingReactions } from '@/components/reactions/floating-reactions';
 import { ReactionBadge } from '@/components/reactions/reaction-badge';
 import { useRoomReactions } from '@/hooks/use-room-reactions';
+import { ConnectionQualityPill, NetworkDisconnectAlert } from '@/components/connection-quality-pill';
 import type { ChatMessage, RoomParticipant } from '@/types/realtime';
 
 interface MeetPageProps {
@@ -1228,19 +1229,21 @@ export default function MeetPage({ params }: MeetPageProps) {
   const renderParticipantTile = (p: RoomParticipant, isCompact: boolean) => {
     const isOtherHost = p.userId === room.hostId;
     const initial = p.name ? p.name.trim().charAt(0).toUpperCase() : 'U';
-    const remoteStream = webrtc.remoteStreams.get(p.peerId ?? p.userId);
+    const peerKey = p.peerId ?? p.userId;
+    const peerConnStatus = webrtc.peerConnectionStatuses[peerKey];
+    const remoteStream = webrtc.remoteStreams.get(peerKey);
     const isThisPresenter = Boolean(p.isScreenSharing);
     const isVideoActive = Boolean(
       !isCompact && p.isScreenSharing
         ? true
         : Boolean(p.isVideoOn) && (!isCompact || !isThisPresenter)
     );
-    const remoteAudio = webrtc.remoteAudioLevels[p.peerId ?? p.userId];
+    const remoteAudio = webrtc.remoteAudioLevels[peerKey];
     const isSpeaking = !p.isMuted && Boolean(remoteAudio?.isSpeaking);
 
     return (
       <div
-        key={p.peerId ?? p.userId}
+        key={peerKey}
         className={`relative bg-[#0a0a0c] overflow-hidden flex items-center justify-center shadow-2xl group transition-all duration-300 ${
           isCompact
             ? 'rounded-xl aspect-video w-36 sm:w-44 lg:w-full min-h-[75px] sm:min-h-[90px] lg:min-h-[105px] shrink-0'
@@ -1258,7 +1261,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           audioOutputId={mediaDevices.selectedAudioOutputId}
         />
 
-        {/* Hand Raised & Reaction Badges on Other Participant Tile */}
+        {/* Hand Raised & Reaction Badges & Connection Quality on Other Participant Tile */}
         <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-30">
           {p.handRaised && (
             <div className="bg-[#0e0c0a]/90 border border-[#FF9933]/50 text-[#FF9933] rounded-full px-2 py-0.5 text-xs font-bold flex items-center gap-1 shadow-[0_0_16px_rgba(255,153,51,0.3)] ring-1 ring-[#FF9933]/40 animate-bounce">
@@ -1269,6 +1272,7 @@ export default function MeetPage({ params }: MeetPageProps) {
             </div>
           )}
           <ReactionBadge emoji={tileReactions[p.userId]?.emoji} />
+          <ConnectionQualityPill status={peerConnStatus} isCompact={isCompact} />
         </div>
 
         {isVideoActive ? (
@@ -1451,6 +1455,7 @@ export default function MeetPage({ params }: MeetPageProps) {
 
   return (
     <div className="flex flex-col h-screen bg-black text-[#fcfdff] select-none ambient-glow-meet">
+      <NetworkDisconnectAlert isReconnecting={webrtc.isReconnecting} />
       {roomToast && (
         <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#121217]/90 border border-white/[0.14] text-xs shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 pointer-events-none">
           <span className={`h-2 w-2 rounded-full ${roomToast.type === 'join' ? 'bg-[#11ff99]' : 'bg-[#ff7a1a]'}`} />
@@ -1459,12 +1464,28 @@ export default function MeetPage({ params }: MeetPageProps) {
       )}
       <header className="h-14 border-b border-white/[0.06] px-3 sm:px-6 flex items-center justify-between bg-black/60 backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-          <span className="h-2 w-2 rounded-full bg-[#11ff99] shadow-[0_0_8px_#11ff99] shrink-0" />
+          <span
+            className={`h-2 w-2 rounded-full shrink-0 transition-colors ${
+              webrtc.isReconnecting
+                ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b] animate-ping'
+                : 'bg-[#11ff99] shadow-[0_0_8px_#11ff99]'
+            }`}
+            title={webrtc.isReconnecting ? 'Reconnecting to space...' : 'Connected'}
+          />
           <div className="min-w-0">
             <h1 className="font-serif-headline text-xs sm:text-sm font-normal text-[#fcfdff] truncate max-w-[130px] xs:max-w-[200px] sm:max-w-md tracking-tight">
               {room.title}
             </h1>
-            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate">ID: {room.code} <span aria-hidden="true">·</span> <CallDuration key={room.code} active={isInRoom} /></p>
+            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate flex items-center gap-1.5">
+              <span>ID: {room.code}</span>
+              <span aria-hidden="true">·</span>
+              <CallDuration key={room.code} active={isInRoom} />
+              {webrtc.isReconnecting && (
+                <span className="hidden sm:inline-flex items-center gap-1 text-[9px] font-mono text-amber-300 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.2 rounded-full animate-pulse">
+                  Reconnecting...
+                </span>
+              )}
+            </p>
           </div>
         </div>
 
@@ -1550,6 +1571,12 @@ export default function MeetPage({ params }: MeetPageProps) {
                   <span className="font-mono text-[10px] sm:text-[11px] font-semibold tracking-wide truncate">
                     {isScreenSharing ? 'You are presenting' : `${remotePresenter?.name || 'Participant'} is presenting`}
                   </span>
+                  {remotePresenter && (
+                    <ConnectionQualityPill
+                      status={webrtc.peerConnectionStatuses[remotePresenter.peerId ?? remotePresenter.userId]}
+                      isCompact={true}
+                    />
+                  )}
                 </div>
 
                 {/* Right: Controls (Tiles toggle, Fullscreen, Stop) */}

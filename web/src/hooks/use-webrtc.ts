@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getRoomPeerId, getSocket } from '@/lib/socket';
-import { createWebRTCMesh, type WebRTCMesh } from '@/lib/webrtc-mesh';
+import { createWebRTCMesh, type WebRTCMesh, type PeerConnectionStatus } from '@/lib/webrtc-mesh';
 import type { RoomParticipant, WebRTCIncomingSignalPayload } from '@/types/realtime';
 
 export interface UseWebRTCOptions {
@@ -26,6 +26,8 @@ export interface UseWebRTCReturn {
   localStream: MediaStream | null;
   remoteStreams: Map<string, MediaStream>;
   remoteAudioLevels: Record<string, PeerAudioLevel>;
+  peerConnectionStatuses: Record<string, PeerConnectionStatus>;
+  isReconnecting: boolean;
   isConnected: boolean;
   connectionError: string | null;
   attachMediaElement: (peerId: string, el: HTMLMediaElement | null) => void;
@@ -88,6 +90,8 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStreams, setRemoteStreams] = useState<Map<string, MediaStream>>(new Map());
   const [remoteAudioLevels, setRemoteAudioLevels] = useState<Record<string, PeerAudioLevel>>({});
+  const [peerConnectionStatuses, setPeerConnectionStatuses] = useState<Record<string, PeerConnectionStatus>>({});
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
@@ -267,6 +271,8 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
     setLocalStream(null);
     setRemoteStreams(new Map());
     setRemoteAudioLevels({});
+    setPeerConnectionStatuses({});
+    setIsReconnecting(false);
     setIsConnected(false);
   }, []);
 
@@ -290,6 +296,16 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
           element.srcObject = streams.get(id) ?? null;
           if (element.srcObject) void element.play().catch(() => {});
         }
+      },
+      onPeerConnectionStatuses: statuses => {
+        const obj: Record<string, PeerConnectionStatus> = {};
+        let anyReconnecting = false;
+        for (const [id, status] of statuses) {
+          obj[id] = status;
+          if (status === 'reconnecting') anyReconnecting = true;
+        }
+        setPeerConnectionStatuses(obj);
+        setIsReconnecting(anyReconnecting);
       },
       onConnected: connected => { setIsConnected(connected); if (connected) setConnectionError(null); },
       onError: reportError,
@@ -463,6 +479,6 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
     }
   }, [selectedAudioOutputId]);
 
-  return { localStream, remoteStreams, remoteAudioLevels, isConnected, connectionError,
+  return { localStream, remoteStreams, remoteAudioLevels, peerConnectionStatuses, isReconnecting, isConnected, connectionError,
     attachMediaElement, attachLocalVideo, refreshLocalMedia, stopMediaTracks };
 }

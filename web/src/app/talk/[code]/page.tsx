@@ -50,6 +50,7 @@ import { ReactionPicker } from '@/components/reactions/reaction-picker';
 import { FloatingReactions } from '@/components/reactions/floating-reactions';
 import { ReactionBadge } from '@/components/reactions/reaction-badge';
 import { useRoomReactions } from '@/hooks/use-room-reactions';
+import { ConnectionQualityPill, NetworkDisconnectAlert } from '@/components/connection-quality-pill';
 import type { ChatMessage, RoomParticipant } from '@/types/realtime';
 
 interface StageTileGradient {
@@ -1272,6 +1273,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
   return (
     <div className="flex flex-col h-screen bg-black text-[#fcfdff] select-none ambient-glow-audio">
+      <NetworkDisconnectAlert isReconnecting={webrtc.isReconnecting} />
       {roomToast && (
         <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#121217]/90 border border-white/[0.14] text-xs shadow-2xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 pointer-events-none">
           <span className={`h-2 w-2 rounded-full ${roomToast.type === 'join' ? 'bg-[#11ff99]' : 'bg-[#ff7a1a]'}`} />
@@ -1280,7 +1282,14 @@ export default function TalkPage({ params }: TalkPageProps) {
       )}
       <header className="h-14 border-b border-white/[0.06] px-3 sm:px-6 flex items-center justify-between bg-black/60 backdrop-blur-xl shrink-0">
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <span className="h-2 w-2 rounded-full bg-[#11ff99] shadow-[0_0_8px_#11ff99] shrink-0" />
+          <span
+            className={`h-2 w-2 rounded-full shrink-0 transition-colors ${
+              webrtc.isReconnecting
+                ? 'bg-amber-400 shadow-[0_0_8px_#f59e0b] animate-ping'
+                : 'bg-[#11ff99] shadow-[0_0_8px_#11ff99]'
+            }`}
+            title={webrtc.isReconnecting ? 'Reconnecting to stage...' : 'Connected'}
+          />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 sm:gap-2">
               <h1 className="font-serif-headline text-xs sm:text-sm font-normal text-[#fcfdff] truncate max-w-[120px] xs:max-w-[190px] sm:max-w-md tracking-tight">
@@ -1290,7 +1299,16 @@ export default function TalkPage({ params }: TalkPageProps) {
                 STAGE LIVE
               </span>
             </div>
-            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate">ID: {room.code} <span aria-hidden="true">·</span> <CallDuration key={room.code} active={isInRoom} /></p>
+            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate flex items-center gap-1.5">
+              <span>ID: {room.code}</span>
+              <span aria-hidden="true">·</span>
+              <CallDuration key={room.code} active={isInRoom} />
+              {webrtc.isReconnecting && (
+                <span className="hidden sm:inline-flex items-center gap-1 text-[9px] font-mono text-amber-300 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.2 rounded-full animate-pulse">
+                  Reconnecting...
+                </span>
+              )}
+            </p>
           </div>
         </div>
 
@@ -1409,6 +1427,16 @@ export default function TalkPage({ params }: TalkPageProps) {
 
                 {/* Subtle top edge specular highlight line */}
                 <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent pointer-events-none" />
+
+                {/* Connection Quality Pill on Remote Stage Tile */}
+                {!isMe && (
+                  <div className="absolute top-2.5 left-2.5 z-30">
+                    <ConnectionQualityPill
+                      status={webrtc.peerConnectionStatuses[p.peerId ?? p.userId]}
+                      isCompact={true}
+                    />
+                  </div>
+                )}
 
                 {/* Host Hover Action Buttons (Mute / Make Host / Kick) */}
                 {isHost && !isPHost && (
