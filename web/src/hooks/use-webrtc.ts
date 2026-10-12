@@ -378,9 +378,23 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
     }
     const start = async () => {
       try {
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-          video: { frameRate: { ideal: 15, max: 30 } }, audio: true,
-        });
+        let stream: MediaStream;
+        try {
+          stream = await navigator.mediaDevices.getDisplayMedia({
+            video: {
+              frameRate: { ideal: 15, max: 30 },
+              width: { ideal: 1920, max: 3840 },
+              height: { ideal: 1080, max: 2160 },
+            },
+            audio: true,
+          });
+        } catch (displayError) {
+          if (displayError instanceof DOMException && displayError.name === 'NotAllowedError') throw displayError;
+          stream = await navigator.mediaDevices.getDisplayMedia({
+            video: { frameRate: { ideal: 15, max: 30 } },
+            audio: true,
+          });
+        }
         if (cancelled || session.stopped || session.screenRevision !== revision || !latest.current.isScreenSharing) {
           stream.getTracks().forEach(track => stopTrack(track));
           return;

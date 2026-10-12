@@ -439,12 +439,15 @@ export function createWebRTCMesh(options: MeshOptions) {
         if (!params.encodings?.length) return;
         const profile = VIDEO_PROFILES[peer.profile];
         const height = sender.track.getSettings().height ?? 720;
-        params.degradationPreference = sender.track.contentHint === 'detail' ? 'maintain-resolution' : 'balanced';
+        const isScreenShare = sender.track.contentHint === 'detail';
+        params.degradationPreference = isScreenShare ? 'maintain-resolution' : 'balanced';
         for (const encoding of params.encodings) {
           encoding.active = peer.videoBudget >= 80_000;
-          encoding.maxBitrate = Math.max(10_000, Math.min(peer.videoBudget, profile.bitrate));
-          encoding.maxFramerate = sender.track.contentHint === 'detail' ? Math.min(15, profile.frameRate) : profile.frameRate;
-          encoding.scaleResolutionDownBy = Math.max(1, height / profile.height);
+          encoding.maxBitrate = isScreenShare
+            ? Math.max(250_000, Math.min(peer.videoBudget, 3_000_000))
+            : Math.max(10_000, Math.min(peer.videoBudget, profile.bitrate));
+          encoding.maxFramerate = isScreenShare ? Math.min(15, profile.frameRate) : profile.frameRate;
+          encoding.scaleResolutionDownBy = isScreenShare ? 1 : Math.max(1, height / profile.height);
         }
         try { await sender.setParameters(params); }
         catch { /* Older browsers retain their built-in congestion controller. */ }
