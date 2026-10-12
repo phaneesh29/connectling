@@ -30,7 +30,7 @@ import {
   ChevronUpIcon,
   TriangleAlertIcon,
 } from '@animateicons/react/lucide';
-import { Video, Pencil } from 'lucide-react';
+import { Video, Pencil, Hand } from 'lucide-react';
 import { getRoomPeerId, getSocket } from '@/lib/socket';
 import { CallDuration } from '@/components/call-duration';
 import { SERVER_URL } from '@/lib/config';
@@ -494,9 +494,9 @@ export default function TalkPage({ params }: TalkPageProps) {
 
       if (isRaised && userId !== currentUserIdRef.current) {
         playJoinChime();
-        setRoomToast({ text: `${name} raised their hand ✋`, type: 'join' });
+        setRoomToast({ text: `${name} raised their hand`, type: 'join' });
         setTimeout(() => {
-          setRoomToast((curr) => (curr?.text === `${name} raised their hand ✋` ? null : curr));
+          setRoomToast((curr) => (curr?.text === `${name} raised their hand` ? null : curr));
         }, 4000);
       }
     };
@@ -957,7 +957,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       handRaised: next,
     });
     setRoomToast({
-      text: next ? 'Hand raised ✋ (showing presence)' : 'Hand lowered',
+      text: next ? 'Hand raised (showing presence)' : 'Hand lowered',
       type: next ? 'join' : 'leave',
     });
     setTimeout(() => {
@@ -1673,10 +1673,10 @@ export default function TalkPage({ params }: TalkPageProps) {
 
                   {((isMe && handRaised) || p.handRaised) && (
                     <span
-                      className="absolute -top-1 -left-1 h-6 w-6 rounded-full bg-[#151210] border border-[#FF9933]/50 text-[#FF9933] flex items-center justify-center animate-bounce shadow-[0_0_12px_rgba(255,153,51,0.3)] ring-1 ring-[#FF9933]/40 z-30 text-xs leading-none"
+                      className="absolute -top-1 -left-1 h-6 w-6 rounded-full bg-[#151210] border border-[#FF9933]/50 text-[#FF9933] flex items-center justify-center animate-bounce shadow-[0_0_12px_rgba(255,153,51,0.3)] ring-1 ring-[#FF9933]/40 z-30 leading-none"
                       title={`${p.name} raised hand`}
                     >
-                      ✋
+                      <Hand className="w-3.5 h-3.5" />
                     </span>
                   )}
 
@@ -1993,7 +1993,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 : 'Raise Hand (Show presence / request mic)'
             }
           >
-            <span className="text-base leading-none">✋</span>
+            <Hand className="w-4 h-4" />
           </button>
 
           {/* Emoji Reactions Picker */}
@@ -2294,7 +2294,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                             : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
                         }`}
                       >
-                        <span className="text-sm">✋</span>
+                        <Hand className="w-4 h-4" />
                       </div>
                       <div className="min-w-0">
                         <span className="text-xs font-medium text-[#fcfdff] block leading-tight">
@@ -2384,7 +2384,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
                   <div className="flex items-start gap-3 p-3 rounded-xl bg-[#0f0f14]/60 border border-white/[0.06]">
                     <div className={`p-2 rounded-lg shrink-0 ${settings.allowRaiseHand ? 'bg-[#FF9933]/15 text-[#FF9933]' : 'bg-white/[0.04] text-[#888e90]'}`}>
-                      <span className="text-sm">✋</span>
+                      <Hand className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">

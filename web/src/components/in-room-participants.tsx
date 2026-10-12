@@ -17,6 +17,7 @@ import {
   SearchIcon,
   LogOutIcon,
 } from '@animateicons/react/lucide';
+import { Hand } from 'lucide-react';
 
 interface InRoomParticipantsProps {
   isOpen: boolean;
@@ -164,10 +165,10 @@ export function InRoomParticipants({
                     )}
                     {p.handRaised && (
                       <span
-                        className="absolute -top-1 -left-1 h-4 w-4 rounded-full bg-[#151210] border border-[#FF9933]/50 text-[#FF9933] flex items-center justify-center shadow-[0_0_10px_rgba(255,153,51,0.3)] animate-bounce text-[9px] leading-none z-20 ring-1 ring-[#FF9933]/40"
+                        className="absolute -top-1 -left-1 h-4 w-4 rounded-full bg-[#151210] border border-[#FF9933]/50 text-[#FF9933] flex items-center justify-center shadow-[0_0_10px_rgba(255,153,51,0.3)] animate-bounce z-20 ring-1 ring-[#FF9933]/40"
                         title="Hand Raised"
                       >
-                        ✋
+                        <Hand className="w-2.5 h-2.5" />
                       </span>
                     )}
                   </div>
@@ -191,7 +192,7 @@ export function InRoomParticipants({
                       )}
                       {p.handRaised && (
                         <span className="text-[9px] font-mono text-[#FF9933] flex items-center gap-1 font-semibold animate-pulse bg-[#FF9933]/15 px-1.5 py-0.5 rounded border border-[#FF9933]/30">
-                          <span>✋</span>
+                          <Hand className="w-2.5 h-2.5" />
                           <span>Hand Raised</span>
                         </span>
                       )}

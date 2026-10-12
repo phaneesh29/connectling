@@ -48,7 +48,7 @@ import {
   ChevronUpIcon,
   TriangleAlertIcon,
 } from '@animateicons/react/lucide';
-import { Maximize2, Minimize2, FlipHorizontal, Radio, Pencil } from 'lucide-react';
+import { Maximize2, Minimize2, FlipHorizontal, Radio, Pencil, Hand } from 'lucide-react';
 import { getRoomPeerId, getSocket } from '@/lib/socket';
 import { CallDuration } from '@/components/call-duration';
 import { SERVER_URL } from '@/lib/config';
@@ -616,7 +616,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       handRaised: boolean;
     }) => {
       if (isRaised) {
-        setRoomToast({ text: `${name} raised their hand ✋`, type: 'join' });
+        setRoomToast({ text: `${name} raised their hand`, type: 'join' });
         setTimeout(() => {
           setRoomToast((curr) => (curr?.text?.includes('raised their hand') ? null : curr));
         }, 3500);
@@ -808,7 +808,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       socket.emit('room:raise-hand', { roomCode: code, handRaised: next });
     }
     setRoomToast({
-      text: next ? 'Hand raised ✋ (showing presence)' : 'Hand lowered',
+      text: next ? 'Hand raised (showing presence)' : 'Hand lowered',
       type: next ? 'join' : 'leave',
     });
     setTimeout(() => {
@@ -1233,7 +1233,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         {/* Hand Raised Badge on Local Tile */}
         {handRaised && (
           <div className="absolute top-2.5 left-2.5 bg-[#0e0c0a]/90 border border-[#FF9933]/50 text-[#FF9933] rounded-full px-2 py-0.5 text-xs font-bold flex items-center gap-1 shadow-[0_0_16px_rgba(255,153,51,0.3)] ring-1 ring-[#FF9933]/40 z-30 animate-bounce">
-            <span className="text-xs">✋</span>
+            <Hand className="w-3.5 h-3.5" />
             {!isCompact && (
               <span className="text-[10px] font-mono tracking-wider uppercase font-extrabold hidden sm:inline">Hand Raised</span>
             )}
@@ -1418,7 +1418,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5 z-30">
           {p.handRaised && (
             <div className="bg-[#0e0c0a]/90 border border-[#FF9933]/50 text-[#FF9933] rounded-full px-2 py-0.5 text-xs font-bold flex items-center gap-1 shadow-[0_0_16px_rgba(255,153,51,0.3)] ring-1 ring-[#FF9933]/40 animate-bounce">
-              <span className="text-xs">✋</span>
+              <Hand className="w-3.5 h-3.5" />
               {!isCompact && (
                 <span className="text-[10px] font-mono tracking-wider uppercase font-extrabold hidden sm:inline">Hand Raised</span>
               )}
@@ -2128,7 +2128,7 @@ export default function MeetPage({ params }: MeetPageProps) {
             }`}
             title={handRaised ? 'Lower Hand' : 'Raise Hand (Show presence / ask question)'}
           >
-            <span className="text-base leading-none">✋</span>
+            <Hand className="w-4 h-4" />
           </button>
 
           {/* Emoji Reactions Picker */}
@@ -2433,7 +2433,7 @@ export default function MeetPage({ params }: MeetPageProps) {
                         : 'bg-white/[0.04] text-[#888e90] group-hover:text-[#fcfdff]'
                     }`}
                   >
-                    <span className="text-sm">✋</span>
+                    <Hand className="w-4 h-4" />
                   </div>
                   <div className="min-w-0">
                     <span className="text-xs font-medium text-[#fcfdff] block leading-tight">
