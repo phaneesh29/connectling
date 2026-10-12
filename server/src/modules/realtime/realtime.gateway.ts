@@ -589,6 +589,35 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       }
     });
 
+    socket.on('room:switch-mode', async ({ roomCode, newRoomCode, newType, title }) => {
+      try {
+        const normalized = normalizeRoomCode(roomCode);
+        const normalizedNew = normalizeRoomCode(newRoomCode);
+        const foundRoom = await db.query.room.findFirst({
+          where: eq(room.code, normalized),
+          columns: { id: true, hostId: true, title: true, type: true },
+        });
+
+        if (!foundRoom || foundRoom.hostId !== user.id) {
+          socket.emit('error:message', { message: 'Only the space host can switch room mode.' });
+          return;
+        }
+
+        const roomChannel = `room:${normalized}`;
+        io.in(roomChannel).emit('room:switched', {
+          fromRoomCode: normalized,
+          newRoomCode: normalizedNew,
+          newType,
+          title: title || foundRoom.title,
+          hostName: user.name || 'The host',
+        });
+
+        logger.info({ hostId: user.id, fromRoom: normalized, toRoom: normalizedNew, newType }, 'Host switched room mode');
+      } catch (err) {
+        logger.error({ err, hostId: user.id, roomCode }, 'Error switching room mode');
+      }
+    });
+
     socket.on('chat:message', ({ roomCode, text }) => {
       if (!text || !text.trim()) return;
       const normalized = normalizeRoomCode(roomCode);

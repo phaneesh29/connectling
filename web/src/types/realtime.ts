@@ -32,6 +32,7 @@ export interface ClientToServerEvents {
   'room:request-unmute': (payload: { roomCode: string; targetUserId: string }) => void;
   'room:kick-user': (payload: { roomCode: string; targetUserId: string }) => void;
   'room:transfer-host': (payload: { roomCode: string; newHostUserId: string }) => void;
+  'room:switch-mode': (payload: { roomCode: string; newRoomCode: string; newType: 'meet' | 'audio'; title?: string }) => void;
   'chat:message': (payload: { roomCode: string; text: string }) => void;
   'room:reaction': (payload: { roomCode: string; emoji: string }) => void;
   'webrtc:signal': (payload: WebRTCSignalPayload) => void;
@@ -85,6 +86,14 @@ export interface RoomSettingsPayload {
   hasPasscode?: boolean;
 }
 
+export interface RoomSwitchedPayload {
+  fromRoomCode: string;
+  newRoomCode: string;
+  newType: 'meet' | 'audio';
+  title?: string;
+  hostName: string;
+}
+
 export interface ServerToClientEvents {
   'chat:new-message': (payload: ChatMessage) => void;
   'room:roster': (payload: { roomCode: string; participants: RoomParticipant[] }) => void;
@@ -101,6 +110,7 @@ export interface ServerToClientEvents {
   'room:kicked': (payload: { message: string }) => void;
   'room:user-kicked': (payload: { targetUserId: string; targetName: string }) => void;
   'room:host-transferred': (payload: { previousHostId: string; newHostId: string; newHostName: string }) => void;
+  'room:switched': (payload: RoomSwitchedPayload) => void;
   'room:reaction': (payload: RoomReaction) => void;
   'webrtc:signal': (payload: WebRTCIncomingSignalPayload) => void;
   'error:message': (payload: { message: string }) => void;

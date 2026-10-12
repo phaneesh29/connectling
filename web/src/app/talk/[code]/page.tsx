@@ -30,6 +30,7 @@ import {
   ChevronUpIcon,
   TriangleAlertIcon,
 } from '@animateicons/react/lucide';
+import { Video } from 'lucide-react';
 import { getRoomPeerId, getSocket } from '@/lib/socket';
 import { CallDuration } from '@/components/call-duration';
 import { SERVER_URL } from '@/lib/config';
@@ -38,6 +39,7 @@ import { InRoomChat } from '@/components/in-room-chat';
 import { InRoomParticipants } from '@/components/in-room-participants';
 import { TransferHostModal } from '@/components/transfer-host-modal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { RoomSwitchedModal } from '@/components/room-switched-modal';
 import { ReportModal } from '@/components/report-modal';
 import { MediaDeviceMenu } from '@/components/media-device-menu';
 import { TalkStageSkeleton } from '@/components/skeleton';
@@ -51,7 +53,7 @@ import { FloatingReactions } from '@/components/reactions/floating-reactions';
 import { ReactionBadge } from '@/components/reactions/reaction-badge';
 import { useRoomReactions } from '@/hooks/use-room-reactions';
 import { ConnectionQualityPill, NetworkDisconnectAlert } from '@/components/connection-quality-pill';
-import type { ChatMessage, RoomParticipant } from '@/types/realtime';
+import type { ChatMessage, RoomParticipant, RoomSwitchedPayload } from '@/types/realtime';
 
 interface StageTileGradient {
   containerStyle: React.CSSProperties;
@@ -174,6 +176,8 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [grantedSpeaker, setGrantedSpeaker] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [isSwitchingMode, setIsSwitchingMode] = useState(false);
+  const [switchedRoomNotice, setSwitchedRoomNotice] = useState<RoomSwitchedPayload | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -744,6 +748,13 @@ export default function TalkPage({ params }: TalkPageProps) {
     socket.on('room:reaction', onReaction);
     socket.on('room:ended', handleRoomEnded);
 
+    const handleRoomSwitched = (payload: RoomSwitchedPayload) => {
+      if (payload.fromRoomCode !== code.trim().toLowerCase()) return;
+      playJoinChime();
+      setSwitchedRoomNotice(payload);
+    };
+    socket.on('room:switched', handleRoomSwitched);
+
     if (socket.connected) {
       sendRoomJoin();
     } else {
@@ -766,6 +777,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       socket.off('room:kicked', handleKicked);
       socket.off('room:user-kicked', handleUserKicked);
       socket.off('room:host-transferred', handleHostTransferred);
+      socket.off('room:switched', handleRoomSwitched);
       socket.off('room:reaction', onReaction);
       socket.off('room:ended', handleRoomEnded);
       if (roomEndedTimer) clearTimeout(roomEndedTimer);
@@ -833,6 +845,54 @@ export default function TalkPage({ params }: TalkPageProps) {
     if (socket.connected) {
       socket.emit('room:reaction', { roomCode: code, emoji });
     }
+  };
+
+  const handleSwitchToMeet = () => {
+    if (!isHost || !room || isSwitchingMode) return;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Switch to Video Meeting?',
+      description: 'This will create a new Video Meeting and invite everyone on this audio stage to join.',
+      confirmText: 'Switch & Invite All',
+      cancelText: 'Cancel',
+      variant: 'primary',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        setIsSwitchingMode(true);
+        try {
+          const res = await roomsApi.createRoom({
+            title: room.title ? `${room.title} (Video)` : 'Video Meeting',
+            type: 'meet',
+            settings: {
+              micForAll: settings?.micForAll ?? true,
+              videoForAll: true,
+              allowChat: settings?.allowChat ?? true,
+              allowRaiseHand: settings?.allowRaiseHand ?? true,
+            },
+          });
+
+          if (res.data?.room) {
+            const newRoom = res.data.room;
+            const socket = getSocket();
+            if (socket.connected) {
+              socket.emit('room:switch-mode', {
+                roomCode: code,
+                newRoomCode: newRoom.code,
+                newType: 'meet',
+                title: newRoom.title,
+              });
+            }
+            setRoomToast({ text: 'Switched! Moving to Video Meeting...', type: 'join' });
+            router.push(`/meet/${newRoom.code}`);
+          }
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Failed to switch to Video Meeting';
+          setRoomToast({ text: msg, type: 'leave' });
+          setIsSwitchingMode(false);
+        }
+      },
+      onCancel: () => setConfirmModal(null),
+    });
   };
 
   const handleToggleMic = () => {
@@ -1354,6 +1414,21 @@ export default function TalkPage({ params }: TalkPageProps) {
                   {pendingHandRaisesCount}
                 </span>
               )}
+            </button>
+          )}
+
+          {isHost && (
+            <button
+              type="button"
+              onClick={handleSwitchToMeet}
+              disabled={isSwitchingMode}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition-all text-xs font-medium cursor-pointer shadow-sm hover:shadow-[0_0_12px_rgba(16,185,129,0.2)] disabled:opacity-50"
+              title="Switch to Video Meet Room"
+            >
+              <Video className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline font-mono text-[11px]">
+                {isSwitchingMode ? 'Switching...' : 'Switch to Meet'}
+              </span>
             </button>
           )}
 
@@ -2332,6 +2407,26 @@ export default function TalkPage({ params }: TalkPageProps) {
           alertOnly={confirmModal.alertOnly}
           onConfirm={confirmModal.onConfirm}
           onCancel={confirmModal.onCancel}
+        />
+      )}
+
+      {switchedRoomNotice && (
+        <RoomSwitchedModal
+          isOpen={Boolean(switchedRoomNotice)}
+          fromType="audio"
+          toType={switchedRoomNotice.newType}
+          newRoomCode={switchedRoomNotice.newRoomCode}
+          roomTitle={switchedRoomNotice.title}
+          hostName={switchedRoomNotice.hostName}
+          onJoin={() => {
+            const target =
+              switchedRoomNotice.newType === 'audio'
+                ? `/talk/${switchedRoomNotice.newRoomCode}`
+                : `/meet/${switchedRoomNotice.newRoomCode}`;
+            setSwitchedRoomNotice(null);
+            router.push(target);
+          }}
+          onDismiss={() => setSwitchedRoomNotice(null)}
         />
       )}
 

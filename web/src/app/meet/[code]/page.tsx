@@ -48,7 +48,7 @@ import {
   ChevronUpIcon,
   TriangleAlertIcon,
 } from '@animateicons/react/lucide';
-import { Maximize2, Minimize2, FlipHorizontal } from 'lucide-react';
+import { Maximize2, Minimize2, FlipHorizontal, Radio } from 'lucide-react';
 import { getRoomPeerId, getSocket } from '@/lib/socket';
 import { CallDuration } from '@/components/call-duration';
 import { SERVER_URL } from '@/lib/config';
@@ -57,6 +57,7 @@ import { InRoomChat } from '@/components/in-room-chat';
 import { InRoomParticipants } from '@/components/in-room-participants';
 import { TransferHostModal } from '@/components/transfer-host-modal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { RoomSwitchedModal } from '@/components/room-switched-modal';
 import { ReportModal } from '@/components/report-modal';
 import { MediaDeviceMenu } from '@/components/media-device-menu';
 import { MeetPrejoinLobby } from '@/components/meet-prejoin-lobby';
@@ -71,7 +72,7 @@ import { FloatingReactions } from '@/components/reactions/floating-reactions';
 import { ReactionBadge } from '@/components/reactions/reaction-badge';
 import { useRoomReactions } from '@/hooks/use-room-reactions';
 import { ConnectionQualityPill, NetworkDisconnectAlert } from '@/components/connection-quality-pill';
-import type { ChatMessage, RoomParticipant } from '@/types/realtime';
+import type { ChatMessage, RoomParticipant, RoomSwitchedPayload } from '@/types/realtime';
 
 interface MeetPageProps {
   params: Promise<{ code: string }>;
@@ -135,6 +136,8 @@ export default function MeetPage({ params }: MeetPageProps) {
   const [participantsOpen, setParticipantsOpen] = useState(false);
   const [transferModalOpen, setTransferModalOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [isSwitchingMode, setIsSwitchingMode] = useState(false);
+  const [switchedRoomNotice, setSwitchedRoomNotice] = useState<RoomSwitchedPayload | null>(null);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -674,6 +677,13 @@ export default function MeetPage({ params }: MeetPageProps) {
     socket.on('room:hand-raised', handleHandRaised);
     socket.on('room:ended', handleRoomEnded);
 
+    const handleRoomSwitched = (payload: RoomSwitchedPayload) => {
+      if (payload.fromRoomCode !== code.trim().toLowerCase()) return;
+      playJoinChime();
+      setSwitchedRoomNotice(payload);
+    };
+    socket.on('room:switched', handleRoomSwitched);
+
     if (socket.connected) {
       sendRoomJoin();
     } else {
@@ -693,6 +703,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       socket.off('room:kicked', handleKicked);
       socket.off('room:user-kicked', handleUserKicked);
       socket.off('room:host-transferred', handleHostTransferred);
+      socket.off('room:switched', handleRoomSwitched);
       socket.off('room:reaction', onReaction);
       socket.off('room:hand-raised', handleHandRaised);
       socket.off('room:ended', handleRoomEnded);
@@ -843,6 +854,53 @@ export default function MeetPage({ params }: MeetPageProps) {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleSwitchToTalk = () => {
+    if (!isHost || !room || isSwitchingMode) return;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Switch to Audio Talk Space?',
+      description: 'This will create a new Audio Talk space and invite everyone in this video meeting to join.',
+      confirmText: 'Switch & Invite All',
+      cancelText: 'Cancel',
+      variant: 'primary',
+      onConfirm: async () => {
+        setConfirmModal(null);
+        setIsSwitchingMode(true);
+        try {
+          const res = await roomsApi.createRoom({
+            title: room.title ? `${room.title} (Audio)` : 'Audio Talk Space',
+            type: 'audio',
+            settings: {
+              micForAll: settings?.micForAll ?? true,
+              allowChat: settings?.allowChat ?? true,
+              allowRaiseHand: settings?.allowRaiseHand ?? true,
+            },
+          });
+
+          if (res.data?.room) {
+            const newRoom = res.data.room;
+            const socket = getSocket();
+            if (socket.connected) {
+              socket.emit('room:switch-mode', {
+                roomCode: code,
+                newRoomCode: newRoom.code,
+                newType: 'audio',
+                title: newRoom.title,
+              });
+            }
+            setRoomToast({ text: 'Switched! Moving to Audio Talk space...', type: 'join' });
+            router.push(`/talk/${newRoom.code}`);
+          }
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : 'Failed to switch to Audio space';
+          setRoomToast({ text: msg, type: 'leave' });
+          setIsSwitchingMode(false);
+        }
+      },
+      onCancel: () => setConfirmModal(null),
+    });
   };
 
   const handleRemoteMute = (targetUserId: string, targetName: string) => {
@@ -1602,6 +1660,21 @@ export default function MeetPage({ params }: MeetPageProps) {
             {copied ? <CheckIcon size={13} className="text-[#11ff99]" /> : <CopyIcon size={13} />}
             <span className="hidden sm:inline font-mono text-[11px]">{copied ? 'Copied' : 'Share Space'}</span>
           </button>
+
+          {isHost && (
+            <button
+              type="button"
+              onClick={handleSwitchToTalk}
+              disabled={isSwitchingMode}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#FF9933]/10 hover:bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/30 transition-all text-xs font-medium cursor-pointer shadow-sm hover:shadow-[0_0_12px_rgba(255,153,51,0.2)] disabled:opacity-50"
+              title="Switch to Audio Talk Space"
+            >
+              <Radio className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline font-mono text-[11px]">
+                {isSwitchingMode ? 'Switching...' : 'Switch to Talk'}
+              </span>
+            </button>
+          )}
 
           {isHost && (
             <button
@@ -2388,6 +2461,26 @@ export default function MeetPage({ params }: MeetPageProps) {
           alertOnly={confirmModal.alertOnly}
           onConfirm={confirmModal.onConfirm}
           onCancel={confirmModal.onCancel}
+        />
+      )}
+
+      {switchedRoomNotice && (
+        <RoomSwitchedModal
+          isOpen={Boolean(switchedRoomNotice)}
+          fromType="meet"
+          toType={switchedRoomNotice.newType}
+          newRoomCode={switchedRoomNotice.newRoomCode}
+          roomTitle={switchedRoomNotice.title}
+          hostName={switchedRoomNotice.hostName}
+          onJoin={() => {
+            const target =
+              switchedRoomNotice.newType === 'audio'
+                ? `/talk/${switchedRoomNotice.newRoomCode}`
+                : `/meet/${switchedRoomNotice.newRoomCode}`;
+            setSwitchedRoomNotice(null);
+            router.push(target);
+          }}
+          onDismiss={() => setSwitchedRoomNotice(null)}
         />
       )}
 
