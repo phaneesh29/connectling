@@ -1976,7 +1976,7 @@ export default function TalkPage({ params }: TalkPageProps) {
             type="button"
             onClick={handleToggleHandRaise}
             disabled={!isRaiseHandAllowed && !handRaised}
-            className={`h-9 px-2 sm:h-10 sm:px-3 rounded-xl flex items-center gap-1.5 font-medium text-xs transition-all cursor-pointer shrink-0 ${
+            className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center font-medium text-xs transition-all cursor-pointer shrink-0 ${
               !isRaiseHandAllowed && !handRaised
                 ? 'opacity-40 cursor-not-allowed bg-[#121216] text-[#888e90] border border-white/[0.06]'
                 : handRaised
@@ -1994,7 +1994,6 @@ export default function TalkPage({ params }: TalkPageProps) {
             }
           >
             <span className="text-base leading-none">✋</span>
-            <span className="hidden sm:inline">{handRaised ? 'Hand Raised' : 'Raise Hand'}</span>
           </button>
 
           {/* Emoji Reactions Picker */}
@@ -2007,15 +2006,14 @@ export default function TalkPage({ params }: TalkPageProps) {
             <button
               type="button"
               onClick={handleToggleWhiteboard}
-              className={`h-9 px-2 sm:h-10 sm:px-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+              className={`h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 ${
                 isWhiteboardOpen
                   ? 'bg-orange-500/20 text-[#ff7a1a] border border-orange-500/40 shadow-sm'
                   : 'bg-[#121216] hover:bg-[#18181f] text-[#888e90] hover:text-[#fcfdff] border border-white/[0.10] hover:border-white/[0.16]'
               }`}
               title={isWhiteboardOpen ? 'Close Whiteboard' : 'Open Whiteboard'}
             >
-              <Pencil className="w-4 h-4 shrink-0" />
-              <span className="hidden sm:inline font-mono text-[11px]">Whiteboard</span>
+              <Pencil className="w-4 h-4" />
             </button>
           )}
 
