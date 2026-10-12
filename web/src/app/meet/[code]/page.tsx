@@ -859,6 +859,19 @@ export default function MeetPage({ params }: MeetPageProps) {
       setRoomToast({ text: 'Screen sharing is disabled by the host', type: 'leave' });
       return;
     }
+    if (!isScreenSharing) {
+      const activeRemotePresenter = participants.find(
+        (p) => p.isScreenSharing && (p.peerId ? p.peerId !== getRoomPeerId(code) : p.userId !== session?.user?.id)
+      );
+      if (activeRemotePresenter) {
+        const presenterName = activeRemotePresenter.name || 'Another participant';
+        setRoomToast({
+          text: `${presenterName} is already presenting. Please ask them to stop sharing first.`,
+          type: 'leave',
+        });
+        return;
+      }
+    }
     setIsScreenSharing(!isScreenSharing);
   };
 
@@ -2099,6 +2112,8 @@ export default function MeetPage({ params }: MeetPageProps) {
                 ? 'Screen sharing disabled by host'
                 : isScreenSharing
                 ? 'Stop Presenting Screen'
+                : remotePresenter
+                ? `${remotePresenter.name || 'Someone'} is already presenting`
                 : 'Share Screen'
             }
           >

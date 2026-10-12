@@ -348,7 +348,21 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       if (!socket.data.peerId || roomConnections.get(normalized, socket.data.peerId)?.socketId !== socket.id) return;
       if (typeof isMuted === 'boolean') socket.data.isMuted = isMuted;
       if (typeof isVideoOn === 'boolean') socket.data.isVideoOn = isVideoOn;
-      if (typeof isScreenSharing === 'boolean') socket.data.isScreenSharing = isScreenSharing;
+      if (typeof isScreenSharing === 'boolean') {
+        if (isScreenSharing) {
+          const participantsMap = roomParticipants.get(normalized);
+          const alreadySharing = Array.from(participantsMap?.values() ?? []).find(
+            (p) => p.isScreenSharing && (p.peerId ? p.peerId !== socket.data.peerId : p.userId !== user.id)
+          );
+          if (alreadySharing) {
+            socket.emit('error:message', {
+              message: `${alreadySharing.name || 'Another participant'} is already presenting. Please ask them to stop sharing first.`,
+            });
+            return;
+          }
+        }
+        socket.data.isScreenSharing = isScreenSharing;
+      }
       if (typeof handRaised === 'boolean') socket.data.handRaised = handRaised;
       if (typeof isMirrored === 'boolean') socket.data.isMirrored = isMirrored;
 
