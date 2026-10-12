@@ -109,12 +109,9 @@ export function LocalVideo({ stream, isActive, isMirrored = false, className }: 
       autoPlay
       playsInline
       muted
-      className={
-        className ||
-        `w-full h-full object-cover absolute inset-0 z-0 ${
-          isActive && stream ? 'block' : 'hidden'
-        } ${isMirrored ? '-scale-x-100' : ''}`
-      }
+      className={`${
+        className || 'w-full h-full object-cover absolute inset-0 z-0'
+      } ${isActive && stream ? 'block' : 'hidden'} ${isMirrored ? '-scale-x-100' : ''}`}
     />
   );
 }
@@ -123,10 +120,16 @@ export interface RemoteVideoProps {
   stream?: MediaStream | null;
   isVideoActive: boolean;
   audioOutputId?: string;
+  isMirrored?: boolean;
   className?: string;
 }
 
-export function RemoteVideo({ stream, isVideoActive, className }: RemoteVideoProps) {
+export function RemoteVideo({
+  stream,
+  isVideoActive,
+  isMirrored = false,
+  className,
+}: RemoteVideoProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
@@ -200,7 +203,9 @@ export function RemoteVideo({ stream, isVideoActive, className }: RemoteVideoPro
       autoPlay
       playsInline
       muted
-      className={className || `w-full h-full object-cover absolute inset-0 z-0 ${isVideoActive ? 'block' : 'hidden'}`}
+      className={`${
+        className || 'w-full h-full object-cover absolute inset-0 z-0'
+      } ${isVideoActive ? 'block' : 'hidden'} ${isMirrored ? '-scale-x-100' : ''}`}
     />
   );
 }

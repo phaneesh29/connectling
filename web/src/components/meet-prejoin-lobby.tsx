@@ -37,6 +37,8 @@ export interface MeetPrejoinLobbyProps {
   onJoin: () => void;
   joining: boolean;
   error?: string | null;
+  isMirrored?: boolean;
+  onToggleMirror?: () => void;
 }
 
 export function MeetPrejoinLobby({
@@ -53,6 +55,8 @@ export function MeetPrejoinLobby({
   onJoin,
   joining,
   error,
+  isMirrored = true,
+  onToggleMirror,
 }: MeetPrejoinLobbyProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [audioMenuOpen, setAudioMenuOpen] = useState(false);
@@ -196,7 +200,9 @@ export function MeetPrejoinLobby({
                 autoPlay
                 playsInline
                 muted
-                className={`w-full h-full object-cover scale-x-[-1] transition-opacity duration-300 ${
+                className={`w-full h-full object-cover ${
+                  isMirrored ? 'scale-x-[-1]' : ''
+                } transition-opacity duration-300 ${
                   isVideoOn ? 'opacity-100' : 'opacity-0 pointer-events-none'
                 }`}
               />
@@ -405,6 +411,8 @@ export function MeetPrejoinLobby({
                       selectedVideoInputId={mediaDevices.selectedVideoInputId}
                       onSelectVideoInput={mediaDevices.setSelectedVideoInputId}
                       onRequestPermissions={() => mediaDevices.requestPermissions(false, true)}
+                      isMirrored={isMirrored}
+                      onToggleMirror={onToggleMirror}
                     />
                   </div>
                 </div>

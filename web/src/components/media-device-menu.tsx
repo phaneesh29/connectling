@@ -13,6 +13,7 @@ import {
   XIcon,
   PlayIcon,
 } from '@animateicons/react/lucide';
+import { FlipHorizontal } from 'lucide-react';
 
 export interface MediaDeviceMenuProps {
   isOpen: boolean;
@@ -33,6 +34,8 @@ export interface MediaDeviceMenuProps {
   onTestMic?: () => void;
   testingMicStatus?: 'idle' | 'recording' | 'playing' | 'done';
   micVolume?: number;
+  isMirrored?: boolean;
+  onToggleMirror?: () => void;
 }
 
 export function MediaDeviceMenu({
@@ -54,6 +57,8 @@ export function MediaDeviceMenu({
   onTestMic,
   testingMicStatus = 'idle',
   micVolume = 0,
+  isMirrored = true,
+  onToggleMirror,
 }: MediaDeviceMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
@@ -698,6 +703,48 @@ export function MediaDeviceMenu({
                 })
               )}
             </div>
+
+            {onToggleMirror && (
+              <div className="pt-3 border-t border-white/[0.08] mt-2">
+                <button
+                  type="button"
+                  onClick={onToggleMirror}
+                  className="w-full text-left p-2.5 sm:p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.06] hover:border-white/[0.12] flex items-center justify-between transition-all cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                    <div
+                      className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                        isMirrored
+                          ? 'bg-[#FF9933]/20 text-[#FF9933]'
+                          : 'bg-white/[0.04] text-[#888e90]'
+                      }`}
+                    >
+                      <FlipHorizontal className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-xs font-medium text-[#fcfdff] block leading-tight">
+                        Mirror My Video
+                      </span>
+                      <span className="text-[10px] text-[#888e90] block leading-normal">
+                        Flip camera horizontally for yourself
+                      </span>
+                    </div>
+                  </div>
+
+                  <div
+                    className={`w-8 h-4.5 rounded-full p-0.5 transition-colors relative flex items-center shrink-0 ${
+                      isMirrored ? 'bg-[#FF9933]' : 'bg-white/[0.16]'
+                    }`}
+                  >
+                    <div
+                      className={`w-3.5 h-3.5 rounded-full bg-black shadow-md transition-transform ${
+                        isMirrored ? 'translate-x-3.5' : 'translate-x-0'
+                      }`}
+                    />
+                  </div>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

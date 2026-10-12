@@ -118,6 +118,7 @@ export const getActiveRoomParticipants = async (
           isScreenSharing: data.isScreenSharing ?? false,
           handRaised: data.handRaised ?? false,
           canSpeak: data.canSpeak ?? false,
+          isMirrored: data.isMirrored ?? false,
         });
       }
     }
@@ -245,7 +246,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
     const user = socket.data.user;
     logger.info({ userId: user.id, socketId: socket.id }, 'Realtime socket connected');
 
-    socket.on('room:join', ({ roomCode, peerId, isMuted, isVideoOn, isScreenSharing, handRaised }) => {
+    socket.on('room:join', ({ roomCode, peerId, isMuted, isVideoOn, isScreenSharing, handRaised, isMirrored }) => {
       if (typeof roomCode !== 'string' || typeof peerId !== 'string' || !peerId || peerId.length > 100) return;
       const normalized = normalizeRoomCode(roomCode);
       void serializeRoom(normalized, async () => {
@@ -292,10 +293,12 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
           socket.data.handRaised = typeof handRaised === 'boolean' ? handRaised : existing?.handRaised ?? false;
           socket.data.canSpeak = foundRoom.hostId === user.id || activeParticipants.some(participant => participant.userId === user.id && participant.canSpeak);
           if (foundRoom.type === 'audio' && !socket.data.canSpeak && !foundRoom.settings?.micForAll) socket.data.isMuted = true;
+          socket.data.isMirrored = typeof isMirrored === 'boolean' ? isMirrored : existing?.isMirrored ?? false;
           saveParticipant(normalized, {
             userId: user.id, peerId, name: user.name, image: user.image,
             isMuted: socket.data.isMuted, isVideoOn: socket.data.isVideoOn,
             isScreenSharing: socket.data.isScreenSharing, handRaised: socket.data.handRaised, canSpeak: socket.data.canSpeak,
+            isMirrored: socket.data.isMirrored,
           });
           if (!knownUser) socket.to(roomChannel).emit('room:user-joined', { userId: user.id, name: user.name, image: user.image });
           const participants = await getActiveRoomParticipants(normalized);
@@ -319,13 +322,14 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       });
     });
 
-    socket.on('room:media-toggle', async ({ roomCode, isMuted, isVideoOn, isScreenSharing, handRaised }) => {
+    socket.on('room:media-toggle', async ({ roomCode, isMuted, isVideoOn, isScreenSharing, handRaised, isMirrored }) => {
       const normalized = normalizeRoomCode(roomCode);
       if (!socket.data.peerId || roomConnections.get(normalized, socket.data.peerId)?.socketId !== socket.id) return;
       if (typeof isMuted === 'boolean') socket.data.isMuted = isMuted;
       if (typeof isVideoOn === 'boolean') socket.data.isVideoOn = isVideoOn;
       if (typeof isScreenSharing === 'boolean') socket.data.isScreenSharing = isScreenSharing;
       if (typeof handRaised === 'boolean') socket.data.handRaised = handRaised;
+      if (typeof isMirrored === 'boolean') socket.data.isMirrored = isMirrored;
 
       const participant = roomParticipants.get(normalized)?.get(socket.data.peerId);
       if (participant) Object.assign(participant, {
@@ -333,6 +337,7 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         ...(typeof isVideoOn === 'boolean' ? { isVideoOn } : {}),
         ...(typeof isScreenSharing === 'boolean' ? { isScreenSharing } : {}),
         ...(typeof handRaised === 'boolean' ? { handRaised } : {}),
+        ...(typeof isMirrored === 'boolean' ? { isMirrored } : {}),
       });
 
       const participants = await getActiveRoomParticipants(normalized);

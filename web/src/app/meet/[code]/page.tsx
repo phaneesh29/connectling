@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, use, useRef } from 'react';
+import { useEffect, useState, useCallback, use, useRef, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -11,6 +11,24 @@ import {
   type RoomSettingsData,
   type ParticipantData,
 } from '@/lib/rooms-api';
+
+const subscribeMirrorStorage = (callback: () => void) => {
+  if (typeof window === 'undefined') return () => {};
+  window.addEventListener('storage', callback);
+  return () => window.removeEventListener('storage', callback);
+};
+
+const getMirrorSnapshot = () => {
+  if (typeof window === 'undefined') return true;
+  try {
+    const saved = localStorage.getItem('connectling_mirror_video');
+    return saved !== null ? saved === 'true' : true;
+  } catch {
+    return true;
+  }
+};
+
+const getMirrorServerSnapshot = () => true;
 import {
   MicIcon,
   MicOffIcon,
@@ -30,7 +48,7 @@ import {
   ChevronUpIcon,
   TriangleAlertIcon,
 } from '@animateicons/react/lucide';
-import { Maximize2, Minimize2 } from 'lucide-react';
+import { Maximize2, Minimize2, FlipHorizontal } from 'lucide-react';
 import { getRoomPeerId, getSocket } from '@/lib/socket';
 import { CallDuration } from '@/components/call-duration';
 import { SERVER_URL } from '@/lib/config';
@@ -78,7 +96,26 @@ export default function MeetPage({ params }: MeetPageProps) {
 
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
+  const isMirrored = useSyncExternalStore(subscribeMirrorStorage, getMirrorSnapshot, getMirrorServerSnapshot);
+  const [remoteMirrorOverrides, setRemoteMirrorOverrides] = useState<Record<string, boolean>>({});
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+
+  const toggleMirror = useCallback(() => {
+    try {
+      const next = !getMirrorSnapshot();
+      localStorage.setItem('connectling_mirror_video', String(next));
+      window.dispatchEvent(new Event('storage'));
+      if (hasJoined) {
+        const socket = getSocket();
+        if (socket.connected) {
+          socket.emit('room:media-toggle', {
+            roomCode: code,
+            isMirrored: next,
+          });
+        }
+      }
+    } catch {}
+  }, [code, hasJoined]);
   const [filmstripCollapsed, setFilmstripCollapsed] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -362,6 +399,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         isVideoOn: isVideoOnRef.current,
         isScreenSharing: screenSharingRef.current,
         handRaised: handRaisedRef.current,
+        isMirrored: getMirrorSnapshot(),
       });
     };
 
@@ -757,6 +795,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       roomCode: code,
       isMuted: !next,
       isVideoOn,
+      isMirrored: getMirrorSnapshot(),
     });
   };
 
@@ -772,6 +811,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       roomCode: code,
       isMuted: !isMicOn,
       isVideoOn: next,
+      isMirrored: getMirrorSnapshot(),
     });
   };
 
@@ -794,9 +834,10 @@ export default function MeetPage({ params }: MeetPageProps) {
         isVideoOn,
         isScreenSharing,
         handRaised,
+        isMirrored,
       });
     }
-  }, [roomId, code, isScreenSharing, isMicOn, isVideoOn, handRaised]);
+  }, [roomId, code, isScreenSharing, isMicOn, isVideoOn, handRaised, isMirrored]);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
@@ -1038,6 +1079,8 @@ export default function MeetPage({ params }: MeetPageProps) {
         onJoin={() => void joinMeeting()}
         joining={joining}
         error={error}
+        isMirrored={isMirrored}
+        onToggleMirror={toggleMirror}
       />
     );
   }
@@ -1114,13 +1157,25 @@ export default function MeetPage({ params }: MeetPageProps) {
         <LocalVideo
           stream={webrtc.localStream}
           isActive={showVideo}
-          isMirrored={isVideoOn && !isScreenSharing}
+          isMirrored={isMirrored && !isScreenSharing}
         />
 
         {showVideo ? (
-          <div className="w-full h-full relative z-10 flex flex-col justify-between p-3 pointer-events-none">
+          <div className="w-full h-full relative z-10 flex flex-col justify-between p-2.5 sm:p-3 pointer-events-none">
             <div className="flex items-center justify-between">
-              <div />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleMirror();
+                }}
+                className={`h-6 w-6 sm:h-7 sm:w-7 rounded-lg bg-black/80 hover:bg-black text-[#fcfdff] border border-white/[0.14] flex items-center justify-center opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-all cursor-pointer shadow-lg pointer-events-auto ${
+                  isMirrored ? 'text-[#ff7a1a]' : 'text-[#888e90]'
+                }`}
+                title={isMirrored ? 'Mirroring video (Click to unmirror)' : 'Mirror video disabled (Click to mirror)'}
+              >
+                <FlipHorizontal size={12} />
+              </button>
               {isHost && (
                 <span
                   className="h-4.5 w-4.5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 pointer-events-auto"
@@ -1240,6 +1295,10 @@ export default function MeetPage({ params }: MeetPageProps) {
     );
     const remoteAudio = webrtc.remoteAudioLevels[peerKey];
     const isSpeaking = !p.isMuted && Boolean(remoteAudio?.isSpeaking);
+    const isTileMirrored =
+      (remoteMirrorOverrides[peerKey] !== undefined
+        ? remoteMirrorOverrides[peerKey]
+        : Boolean(p.isMirrored)) && !p.isScreenSharing;
 
     return (
       <div
@@ -1259,6 +1318,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           stream={remoteStream}
           isVideoActive={isVideoActive}
           audioOutputId={mediaDevices.selectedAudioOutputId}
+          isMirrored={isTileMirrored}
         />
 
         {/* Hand Raised & Reaction Badges & Connection Quality on Other Participant Tile */}
@@ -1276,9 +1336,28 @@ export default function MeetPage({ params }: MeetPageProps) {
         </div>
 
         {isVideoActive ? (
-          <div className="w-full h-full relative z-10 flex flex-col justify-between p-3 pointer-events-none">
+          <div className="w-full h-full relative z-10 flex flex-col justify-between p-2.5 sm:p-3 pointer-events-none">
             <div className="flex items-center justify-between">
-              <div />
+              {!p.isScreenSharing ? (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRemoteMirrorOverrides((prev) => ({
+                      ...prev,
+                      [peerKey]: !isTileMirrored,
+                    }));
+                  }}
+                  className={`h-6 w-6 sm:h-7 sm:w-7 rounded-lg bg-black/80 hover:bg-black text-[#fcfdff] border border-white/[0.14] flex items-center justify-center opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-all cursor-pointer shadow-lg pointer-events-auto ${
+                    isTileMirrored ? 'text-[#ff7a1a]' : 'text-[#888e90]'
+                  }`}
+                  title={isTileMirrored ? 'Video mirrored (Click to unmirror)' : 'Mirror video (Click to mirror)'}
+                >
+                  <FlipHorizontal size={12} />
+                </button>
+              ) : (
+                <div />
+              )}
               {isOtherHost && (
                 <span
                   className="h-4.5 w-4.5 rounded-full bg-gradient-to-br from-amber-300 via-amber-400 to-yellow-500 text-black flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.6)] ring-2 ring-amber-300/90 pointer-events-auto"
@@ -1558,6 +1637,7 @@ export default function MeetPage({ params }: MeetPageProps) {
                 <RemoteVideo
                   stream={webrtc.remoteStreams.get(remotePresenter.peerId ?? remotePresenter.userId)}
                   isVideoActive={true}
+                  isMirrored={false}
                   className="w-full h-full object-contain absolute inset-0 z-0 bg-[#050508]"
                 />
               ) : null}
@@ -1845,6 +1925,8 @@ export default function MeetPage({ params }: MeetPageProps) {
                 selectedVideoInputId={mediaDevices.selectedVideoInputId}
                 onSelectVideoInput={mediaDevices.setSelectedVideoInputId}
                 onRequestPermissions={() => mediaDevices.requestPermissions(false, true)}
+                isMirrored={isMirrored}
+                onToggleMirror={toggleMirror}
               />
             </div>
           </div>

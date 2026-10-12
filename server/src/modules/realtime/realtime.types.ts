@@ -17,13 +17,14 @@ export interface RoomParticipant {
   isScreenSharing?: boolean;
   handRaised?: boolean;
   canSpeak?: boolean;
+  isMirrored?: boolean;
 }
 
 export interface ClientToServerEvents {
-  'room:join': (payload: { roomCode: string; peerId: string; isMuted?: boolean; isVideoOn?: boolean; isScreenSharing?: boolean; handRaised?: boolean }) => void;
+  'room:join': (payload: { roomCode: string; peerId: string; isMuted?: boolean; isVideoOn?: boolean; isScreenSharing?: boolean; handRaised?: boolean; isMirrored?: boolean }) => void;
   'room:sync': (payload: { roomCode: string; peerId: string }) => void;
   'room:leave': (payload: { roomCode: string }) => void;
-  'room:media-toggle': (payload: { roomCode: string; isMuted?: boolean; isVideoOn?: boolean; isScreenSharing?: boolean; handRaised?: boolean }) => void;
+  'room:media-toggle': (payload: { roomCode: string; isMuted?: boolean; isVideoOn?: boolean; isScreenSharing?: boolean; handRaised?: boolean; isMirrored?: boolean }) => void;
   'room:raise-hand': (payload: { roomCode: string; handRaised: boolean }) => void;
   'room:grant-mic': (payload: { roomCode: string; targetUserId: string }) => void;
   'room:revoke-mic': (payload: { roomCode: string; targetUserId: string }) => void;
@@ -120,4 +121,5 @@ export interface SocketData {
   isScreenSharing?: boolean;
   handRaised?: boolean;
   canSpeak?: boolean;
+  isMirrored?: boolean;
 }
