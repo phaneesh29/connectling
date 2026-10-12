@@ -14,7 +14,12 @@ function mediaPlayback(element: HTMLMediaElement, stream: MediaStream, muted: bo
   const unlock = () => { clearGesture(); play(); };
   const play = () => {
     if (disposed) return;
-    if (element.srcObject !== stream) element.srcObject = stream;
+    const currentTrackId = (element.srcObject as MediaStream | null)?.getVideoTracks().find(t => t.readyState === 'live')?.id;
+    const expectedTrackId = stream.getVideoTracks().find(t => t.readyState === 'live')?.id;
+    if (element.srcObject !== stream || (expectedTrackId && currentTrackId !== expectedTrackId)) {
+      element.srcObject = null;
+      element.srcObject = stream;
+    }
     element.muted = muted;
     void element.play().catch(() => {
       if (disposed || waiting) return;
@@ -47,16 +52,18 @@ export function LocalVideo({ stream, isActive, isMirrored = false, className }: 
     const attachAndPlay = () => {
       const currentEl = videoRef.current;
       if (!currentEl) return;
-      const hasLiveVideo = stream.getVideoTracks().some((t) => t.readyState === 'live');
-      if (!hasLiveVideo) {
+      const liveTrack = stream.getVideoTracks().find((t) => t.readyState === 'live');
+      if (!liveTrack) {
         currentEl.srcObject = null;
         return;
       }
-      if (currentEl.srcObject !== stream) {
+      const attachedTrack = (currentEl.srcObject as MediaStream | null)?.getVideoTracks().find((t) => t.readyState === 'live');
+      if (currentEl.srcObject !== stream || attachedTrack?.id !== liveTrack.id) {
+        currentEl.srcObject = null;
         currentEl.srcObject = stream;
       }
       currentEl.muted = true;
-      currentEl.play().catch(() => {});
+      void currentEl.play().catch(() => {});
     };
 
     attachAndPlay();
@@ -66,6 +73,7 @@ export function LocalVideo({ stream, isActive, isMirrored = false, className }: 
       if (boundTracks.has(track)) return;
       boundTracks.add(track);
       track.addEventListener('unmute', attachAndPlay);
+      track.addEventListener('ended', attachAndPlay);
     };
 
     stream.getVideoTracks().forEach(bindTrack);
@@ -81,7 +89,12 @@ export function LocalVideo({ stream, isActive, isMirrored = false, className }: 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         const currentEl = videoRef.current;
-        if (currentEl && currentEl.srcObject === stream) {
+        if (currentEl) {
+          if (currentEl.paused || currentEl.readyState < 2) {
+            currentEl.srcObject = null;
+            currentEl.srcObject = stream;
+          }
+          currentEl.muted = true;
           void currentEl.play().catch(() => {});
         }
       }
@@ -97,6 +110,7 @@ export function LocalVideo({ stream, isActive, isMirrored = false, className }: 
       document.removeEventListener('visibilitychange', handleVisibility);
       boundTracks.forEach((track) => {
         track.removeEventListener('unmute', attachAndPlay);
+        track.removeEventListener('ended', attachAndPlay);
       });
       boundTracks.clear();
       if (el && (!stream || !isActive)) el.srcObject = null;
@@ -168,12 +182,7 @@ export function RemoteVideo({
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        const currentEl = videoRef.current;
-        if (currentEl && currentEl.srcObject === stream) {
-          void currentEl.play().catch(() => {});
-        } else {
-          playVideo();
-        }
+        playVideo();
       }
     };
 

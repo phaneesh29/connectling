@@ -122,8 +122,11 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
       for (const track of tracks) {
         if (!preview.getTracks().includes(track)) preview.addTrack(track);
       }
-      if (localVideoRef.current && localVideoRef.current.srcObject !== preview) {
-        localVideoRef.current.srcObject = preview;
+      const updatedPreview = new MediaStream(preview.getTracks());
+      localRef.current = updatedPreview;
+      setLocalStream(updatedPreview);
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = updatedPreview;
         localVideoRef.current.muted = true;
         void localVideoRef.current.play().catch(() => {});
       }
