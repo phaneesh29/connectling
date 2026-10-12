@@ -54,6 +54,8 @@ interface LocalMediaState {
   displayAudio: MediaStreamTrack | null;
   mixedAudio: MediaStreamTrack | null;
   mixer: AudioContext | null;
+  mixerMic: MediaStreamTrack | null;
+  mixerDisplayAudio: MediaStreamTrack | null;
   audioDevice: string;
   videoDevice: string;
 }
@@ -96,40 +98,65 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
 
   const publishMedia = useCallback(async (session: LocalMediaState) => {
     if (session.stopped || sessionRef.current !== session) return;
-    const previousMixer = session.mixer;
-    const previousMixedTrack = session.mixedAudio;
-    session.mixer = null;
-    session.mixedAudio = null;
-    let audio = session.mic;
-    if (session.displayAudio?.readyState === 'live') {
-      try {
-        const context = new AudioContext();
-        session.mixer = context;
-        session.ownedMixers.add(context);
-        const destination = context.createMediaStreamDestination();
-        if (session.mic?.readyState === 'live') context.createMediaStreamSource(new MediaStream([session.mic])).connect(destination);
-        context.createMediaStreamSource(new MediaStream([session.displayAudio])).connect(destination);
-        session.mixedAudio = destination.stream.getAudioTracks()[0];
-        session.ownedTracks.add(session.mixedAudio);
-        audio = session.mixedAudio;
-        void context.resume().catch(() => {});
-      } catch {
-        audio = session.mic ?? session.displayAudio;
+    const video = session.screen ?? session.camera;
+    const tracks = [session.mic, video].filter((track): track is MediaStreamTrack => track !== null);
+
+    let preview = localRef.current;
+    if (!preview) {
+      preview = new MediaStream();
+      localRef.current = preview;
+      setLocalStream(preview);
+    }
+    const currentTracks = preview.getTracks();
+    const tracksChanged = currentTracks.length !== tracks.length ||
+      tracks.some(track => !currentTracks.includes(track));
+
+    if (tracksChanged) {
+      for (const old of preview.getTracks()) {
+        if (!tracks.includes(old)) preview.removeTrack(old);
+      }
+      for (const track of tracks) {
+        if (!preview.getTracks().includes(track)) preview.addTrack(track);
+      }
+      if (localVideoRef.current && localVideoRef.current.srcObject !== preview) {
+        localVideoRef.current.srcObject = preview;
+        localVideoRef.current.muted = true;
+        void localVideoRef.current.play().catch(() => {});
       }
     }
-    const video = session.screen ?? session.camera;
+
+    const displayAudio = session.displayAudio?.readyState === 'live' ? session.displayAudio : null;
+    const mixerChanged = session.mixerMic !== session.mic || session.mixerDisplayAudio !== displayAudio ||
+      session.mixedAudio?.readyState === 'ended';
+    if (!tracksChanged && !mixerChanged) return;
+
+    let previousMixer: AudioContext | null = null;
+    let previousMixedTrack: MediaStreamTrack | null = null;
+    if (mixerChanged) {
+      previousMixer = session.mixer;
+      previousMixedTrack = session.mixedAudio;
+      session.mixer = null;
+      session.mixedAudio = null;
+      session.mixerMic = session.mic;
+      session.mixerDisplayAudio = displayAudio;
+      if (displayAudio) {
+        try {
+          const context = new AudioContext();
+          session.mixer = context;
+          session.ownedMixers.add(context);
+          const destination = context.createMediaStreamDestination();
+          if (session.mic?.readyState === 'live') context.createMediaStreamSource(new MediaStream([session.mic])).connect(destination);
+          context.createMediaStreamSource(new MediaStream([displayAudio])).connect(destination);
+          session.mixedAudio = destination.stream.getAudioTracks()[0];
+          session.ownedTracks.add(session.mixedAudio);
+          void context.resume().catch(() => {});
+        } catch { /* Send the available raw audio if mixing is unavailable. */ }
+      }
+    }
+    const audio = session.mixedAudio ?? session.mic ?? displayAudio;
     // Keep raw mic in the local stream for speaking detection and avoid tab audio feedback.
-    const tracks = [session.mic, video].filter((track): track is MediaStreamTrack => track !== null);
     for (const old of session.stream.getTracks()) if (!tracks.includes(old)) session.stream.removeTrack(old);
     for (const track of tracks) if (!session.stream.getTracks().includes(track)) session.stream.addTrack(track);
-    const stream = new MediaStream(tracks);
-    localRef.current = stream;
-    setLocalStream(stream);
-    if (localVideoRef.current) {
-      localVideoRef.current.srcObject = stream;
-      localVideoRef.current.muted = true;
-      void localVideoRef.current.play().catch(() => {});
-    }
     await session.mesh.setTracks(audio, video, session.stream);
     releaseTrack(session, previousMixedTrack);
     releaseMixer(session, previousMixer);
@@ -229,7 +256,11 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
     for (const context of session.ownedMixers) releaseMixer(session, context);
     session.mic = session.camera = session.screen = session.displayAudio = session.mixedAudio = null;
     session.mixer = null;
-    localRef.current = null;
+    session.mixerMic = session.mixerDisplayAudio = null;
+    if (localRef.current) {
+      for (const track of localRef.current.getTracks()) localRef.current.removeTrack(track);
+      localRef.current = null;
+    }
     remoteRef.current = new Map();
     if (localVideoRef.current) localVideoRef.current.srcObject = null;
     for (const element of mediaElements.current.values()) element.srcObject = null;
@@ -265,7 +296,7 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
     });
     const session: LocalMediaState = { mesh, stream: outgoingStream, ownedTracks: new Set(), ownedMixers: new Set(), stopped: false, revision: 0, screenRevision: 0,
       queue: Promise.resolve(), mic: null, camera: null, screen: null, displayAudio: null,
-      mixedAudio: null, mixer: null, audioDevice: '', videoDevice: '' };
+      mixedAudio: null, mixer: null, mixerMic: null, mixerDisplayAudio: null, audioDevice: '', videoDevice: '' };
     sessionRef.current = session;
     let rejoining = false;
     const onRoster = ({ roomCode: rosterRoomCode, participants }: { roomCode: string; participants: RoomParticipant[] }) => {
@@ -280,8 +311,10 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
     const onDisconnect = () => { mesh.signalingDisconnected(); rejoining = true; };
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
-        void refreshLocalMedia();
-        mesh.signalingRejoined();
+        const desired = latest.current;
+        const micEnded = desired.isMicOn && session.mic?.readyState === 'ended';
+        const cameraEnded = desired.isVideoOn && !desired.isScreenSharing && session.camera?.readyState === 'ended';
+        if (micEnded || cameraEnded) void refreshLocalMedia();
         if (session.mixer?.state === 'suspended') void session.mixer.resume().catch(() => {});
       }
     };

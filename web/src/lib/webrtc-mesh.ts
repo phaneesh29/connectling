@@ -44,7 +44,6 @@ export function createWebRTCMesh(options: MeshOptions) {
     stopped: false,
     signalingReady: false,
     sampling: false,
-    cameraProfile: 3,
   };
 
   function alive(peer: Peer) {
@@ -358,7 +357,6 @@ export function createWebRTCMesh(options: MeshOptions) {
       // conservative shared-uplink estimate; browser congestion control remains active.
       uplink = Math.min(uplink, observedUplink || 4_000_000);
       const sharedBudget = meshVideoBudget(peers.length, uplink);
-      let captureProfile = 0;
       for (const { peer, stats } of reports) {
         if (!alive(peer)) continue;
         const pathCapacity = pathCapacities.get(peer);
@@ -385,17 +383,6 @@ export function createWebRTCMesh(options: MeshOptions) {
         const next = nextVideoProfile(peer.profile, desired, peer.healthySamples);
         peer.profile = next.profile;
         peer.healthySamples = next.healthySamples;
-        captureProfile = Math.max(captureProfile, peer.profile);
-      }
-      if (peers.length === 0) captureProfile = profileForBitrate(sharedBudget);
-      const video = state.video;
-      // Camera capture follows the highest outgoing resolution; each weak link is scaled separately.
-      if (video.contentHint !== 'detail' && captureProfile !== state.cameraProfile && video.readyState === 'live') {
-        const profile = VIDEO_PROFILES[captureProfile];
-        try {
-          await video.applyConstraints({ width: { ideal: profile.width }, height: { ideal: profile.height }, frameRate: { ideal: profile.frameRate, max: profile.frameRate } });
-          state.cameraProfile = captureProfile;
-        } catch { /* Per-sender adaptation still works when the camera rejects constraints. */ }
       }
       await Promise.all(peers.map(peer => enqueue(peer, async () => {
         const sender = peer.pc.getSenders().find(s => s.track?.kind === 'video');

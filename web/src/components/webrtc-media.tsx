@@ -78,17 +78,28 @@ export function LocalVideo({ stream, isActive, isMirrored = false, className }: 
       attachAndPlay();
     };
 
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        const currentEl = videoRef.current;
+        if (currentEl && currentEl.srcObject === stream) {
+          void currentEl.play().catch(() => {});
+        }
+      }
+    };
+
     stream.addEventListener('addtrack', onAddTrack);
     stream.addEventListener('removetrack', attachAndPlay);
+    document.addEventListener('visibilitychange', handleVisibility);
 
     return () => {
       stream.removeEventListener('addtrack', onAddTrack);
       stream.removeEventListener('removetrack', attachAndPlay);
+      document.removeEventListener('visibilitychange', handleVisibility);
       boundTracks.forEach((track) => {
         track.removeEventListener('unmute', attachAndPlay);
       });
       boundTracks.clear();
-      if (el) el.srcObject = null;
+      if (el && (!stream || !isActive)) el.srcObject = null;
     };
   }, [stream, isActive]);
 
@@ -145,10 +156,6 @@ export function RemoteVideo({ stream, isVideoActive, className }: RemoteVideoPro
       if (trackEvent.track) {
         bindTrack(trackEvent.track);
       }
-      const currentEl = videoRef.current;
-      if (currentEl) {
-        currentEl.srcObject = stream;
-      }
       playVideo();
     };
 
@@ -158,7 +165,12 @@ export function RemoteVideo({ stream, isVideoActive, className }: RemoteVideoPro
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
-        playVideo();
+        const currentEl = videoRef.current;
+        if (currentEl && currentEl.srcObject === stream) {
+          void currentEl.play().catch(() => {});
+        } else {
+          playVideo();
+        }
       }
     };
 
@@ -178,7 +190,7 @@ export function RemoteVideo({ stream, isVideoActive, className }: RemoteVideoPro
         track.removeEventListener('unmute', playVideo);
       });
       boundTracks.clear();
-      playback.dispose();
+      if (el && (!stream || !isVideoActive)) playback.dispose();
     };
   }, [stream, isVideoActive]);
 
