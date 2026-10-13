@@ -6,6 +6,7 @@ import '@excalidraw/excalidraw/index.css';
 import type { Socket } from 'socket.io-client';
 import type { ClientToServerEvents, ServerToClientEvents, WhiteboardScenePayload, WhiteboardTogglePayload } from '@/types/realtime';
 import type { AppState, ExcalidrawProps } from '@excalidraw/excalidraw/types';
+import { useWhiteboardStore } from '@/stores/whiteboard-store';
 
 interface ExcalidrawAPI {
   updateScene: (scene: {
@@ -66,28 +67,62 @@ export function Whiteboard({
     isHostRef.current = isHost;
   }, [isHost]);
 
-  const latestElementsRef = useRef<readonly unknown[]>(initialElements);
+  const storeElements = useWhiteboardStore((s) => s.elements);
+  const storeAppState = useWhiteboardStore((s) => s.appState);
+
+  const effectiveInitialElements = storeElements.length > 0 ? storeElements : initialElements;
+  const effectiveInitialAppState = storeAppState || initialAppState || null;
+
+  const latestElementsRef = useRef<readonly unknown[]>(effectiveInitialElements);
   const pendingElementsRef = useRef<readonly unknown[] | null>(
-    initialElements && initialElements.length > 0 ? initialElements : null
+    effectiveInitialElements && effectiveInitialElements.length > 0 ? effectiveInitialElements : null
   );
-  const pendingAppStateRef = useRef<Record<string, unknown> | null>(initialAppState || null);
+  const pendingAppStateRef = useRef<Record<string, unknown> | null>(effectiveInitialAppState);
   const hasCenteredContentRef = useRef(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isReceivingRemoteUpdateRef = useRef(false);
+  const isMountedRef = useRef(true);
+  const timeoutsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
 
-  // Sync initial props into refs when parent updates them
-  useEffect(() => {
-    if (initialElements && initialElements.length > 0) {
-      latestElementsRef.current = initialElements;
-      pendingElementsRef.current = initialElements;
-    }
-  }, [initialElements]);
+  const safeTimeout = useCallback((fn: () => void, delay: number) => {
+    const id = setTimeout(() => {
+      timeoutsRef.current.delete(id);
+      if (isMountedRef.current) {
+        fn();
+      }
+    }, delay);
+    timeoutsRef.current.add(id);
+    return id;
+  }, []);
 
   useEffect(() => {
-    if (initialAppState) {
-      pendingAppStateRef.current = initialAppState;
+    isMountedRef.current = true;
+    const timeouts = timeoutsRef.current;
+    return () => {
+      isMountedRef.current = false;
+      for (const id of timeouts) {
+        clearTimeout(id);
+      }
+      timeouts.clear();
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Sync initial props or store into refs when updated
+  useEffect(() => {
+    if (effectiveInitialElements && effectiveInitialElements.length > 0) {
+      latestElementsRef.current = effectiveInitialElements;
+      pendingElementsRef.current = effectiveInitialElements;
     }
-  }, [initialAppState]);
+  }, [effectiveInitialElements]);
+
+  useEffect(() => {
+    if (effectiveInitialAppState) {
+      pendingAppStateRef.current = effectiveInitialAppState;
+    }
+  }, [effectiveInitialAppState]);
 
   // Request latest whiteboard state on mount from server
   useEffect(() => {
@@ -113,6 +148,10 @@ export function Whiteboard({
       if (payload.roomCode?.trim().toLowerCase() !== roomCode.trim().toLowerCase()) return;
 
       if (payload.elements) {
+        useWhiteboardStore.getState().syncState({
+          elements: payload.elements,
+          appState: payload.appState,
+        });
         pendingElementsRef.current = payload.elements;
         latestElementsRef.current = payload.elements;
         if (payload.appState) pendingAppStateRef.current = payload.appState;
@@ -138,14 +177,14 @@ export function Whiteboard({
           // Ensure drawings are fitted and visible in viewport on mobile / smaller screens
           if (!hasCenteredContentRef.current && payload.elements.length > 0 && excalidrawAPI.scrollToContent) {
             hasCenteredContentRef.current = true;
-            setTimeout(() => {
+            safeTimeout(() => {
               try {
                 excalidrawAPI.scrollToContent?.(payload.elements, { fitToViewport: true, viewportZoomFactor: 0.85 });
               } catch { /* ignore */ }
             }, 100);
           }
         } finally {
-          setTimeout(() => {
+          safeTimeout(() => {
             isReceivingRemoteUpdateRef.current = false;
           }, 50);
         }
@@ -154,6 +193,12 @@ export function Whiteboard({
 
     const handleWhiteboardToggled = (payload: WhiteboardTogglePayload) => {
       if (payload.roomCode?.trim().toLowerCase() !== roomCode.trim().toLowerCase()) return;
+      useWhiteboardStore.getState().syncState({
+        isOpen: payload.isOpen,
+        elements: payload.elements,
+        appState: payload.appState,
+      });
+
       if (!payload.isOpen) {
         onClose?.();
         return;
@@ -183,14 +228,14 @@ export function Whiteboard({
             });
             if (!hasCenteredContentRef.current && payload.elements.length > 0 && excalidrawAPI.scrollToContent) {
               hasCenteredContentRef.current = true;
-              setTimeout(() => {
+              safeTimeout(() => {
                 try {
                   excalidrawAPI.scrollToContent?.(payload.elements, { fitToViewport: true, viewportZoomFactor: 0.85 });
                 } catch { /* ignore */ }
               }, 100);
             }
           } finally {
-            setTimeout(() => {
+            safeTimeout(() => {
               isReceivingRemoteUpdateRef.current = false;
             }, 50);
           }
@@ -204,7 +249,7 @@ export function Whiteboard({
       socket.off('whiteboard:updated', handleWhiteboardUpdated);
       socket.off('whiteboard:toggled', handleWhiteboardToggled);
     };
-  }, [socket, roomCode, excalidrawAPI, onClose]);
+  }, [socket, roomCode, excalidrawAPI, onClose, safeTimeout]);
 
   useEffect(() => {
     if (!excalidrawAPI || isHostRef.current) return;
@@ -218,22 +263,14 @@ export function Whiteboard({
       });
       if (!hasCenteredContentRef.current && excalidrawAPI.scrollToContent) {
         hasCenteredContentRef.current = true;
-        setTimeout(() => {
+        safeTimeout(() => {
           try {
             excalidrawAPI.scrollToContent?.(elementsToLoad, { fitToViewport: true, viewportZoomFactor: 0.85 });
           } catch { /* ignore */ }
         }, 150);
       }
     }
-  }, [excalidrawAPI, initialElements, initialAppState]);
-
-  useEffect(() => {
-    return () => {
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-      }
-    };
-  }, []);
+  }, [excalidrawAPI, initialElements, initialAppState, safeTimeout]);
 
   // Host change handler: debounces sending canvas changes to room peers
   const handleExcalidrawChange: NonNullable<ExcalidrawProps['onChange']> = useCallback(
@@ -249,6 +286,7 @@ export function Whiteboard({
 
       syncTimeoutRef.current = setTimeout(() => {
         if (!socket || !socket.connected) return;
+        useWhiteboardStore.getState().setElements(latestElementsRef.current);
         socket.emit('whiteboard:update', {
           roomCode,
           elements: latestElementsRef.current,
@@ -270,11 +308,11 @@ export function Whiteboard({
       <div className="flex-1 w-full min-h-0 relative bg-[#121212]">
         <ExcalidrawComponent
           initialData={
-            initialElements && initialElements.length > 0
-              ? {
-                  elements: initialElements as any,
-                  appState: (initialAppState as any) || undefined,
-                }
+            effectiveInitialElements && effectiveInitialElements.length > 0
+              ? ({
+                  elements: effectiveInitialElements,
+                  appState: effectiveInitialAppState || undefined,
+                } as unknown as ExcalidrawProps['initialData'])
               : undefined
           }
           excalidrawAPI={(api: unknown) => {
@@ -288,7 +326,7 @@ export function Whiteboard({
                 captureUpdate: 'NEVER' as unknown as undefined,
                 commitToHistory: false,
               });
-              setTimeout(() => {
+              safeTimeout(() => {
                 try {
                   typedApi.scrollToContent?.(elementsToLoad, { fitToViewport: true, viewportZoomFactor: 0.85 });
                   hasCenteredContentRef.current = true;

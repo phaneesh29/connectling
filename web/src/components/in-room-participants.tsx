@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import type { RoomParticipant } from '@/types/realtime';
 import { AudioWaveform } from '@/components/audio-waveform';
@@ -41,7 +41,7 @@ interface InRoomParticipantsProps {
   localFrequencyBands?: number[];
 }
 
-export function InRoomParticipants({
+export const InRoomParticipants = React.memo(function InRoomParticipants({
   isOpen,
   onClose,
   participants,
@@ -314,6 +314,8 @@ export function InRoomParticipants({
                           barCount={3}
                           volume={isMe ? localVolume : undefined}
                           frequencyBands={isMe ? localFrequencyBands : undefined}
+                          isLocal={isMe}
+                          peerId={isMe ? undefined : p.peerId}
                         />
                       </>
                     )}
@@ -350,4 +352,4 @@ export function InRoomParticipants({
       </div>
     </aside>
   );
-}
+});

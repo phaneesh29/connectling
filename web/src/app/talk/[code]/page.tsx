@@ -45,6 +45,14 @@ import { MediaDeviceMenu } from '@/components/media-device-menu';
 import { TalkStageSkeleton } from '@/components/skeleton';
 import { AudioWaveform, AudioRipple } from '@/components/audio-waveform';
 import { Whiteboard } from '@/components/whiteboard';
+import {
+  useWhiteboardStore,
+  useAudioStore,
+  useChatStore,
+  useReactionsStore,
+  useMediaStore,
+  useIsLocalSpeaking,
+} from '@/stores';
 import { useMediaDevices } from '@/hooks/use-media-devices';
 import { useLocalAudioLevel } from '@/hooks/use-local-audio-level';
 import { useWebRTC } from '@/hooks/use-webrtc';
@@ -52,9 +60,8 @@ import { RemoteAudio } from '@/components/webrtc-media';
 import { ReactionPicker } from '@/components/reactions/reaction-picker';
 import { FloatingReactions } from '@/components/reactions/floating-reactions';
 import { ReactionBadge } from '@/components/reactions/reaction-badge';
-import { useRoomReactions } from '@/hooks/use-room-reactions';
 import { ConnectionQualityPill, NetworkDisconnectAlert } from '@/components/connection-quality-pill';
-import type { ChatMessage, RoomParticipant, RoomSwitchedPayload, WhiteboardTogglePayload, WhiteboardScenePayload } from '@/types/realtime';
+import type { ChatMessage, RoomParticipant, RoomReaction, RoomSwitchedPayload, WhiteboardTogglePayload, WhiteboardScenePayload } from '@/types/realtime';
 
 interface StageTileGradient {
   containerStyle: React.CSSProperties;
@@ -157,8 +164,9 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [settings, setSettings] = useState<RoomSettingsData | null>(null);
   const [participant, setParticipant] = useState<ParticipantData | null>(null);
 
-  const [isMuted, setIsMuted] = useState(false);
-  const [handRaised, setHandRaised] = useState(false);
+  const isMicOn = useMediaStore((s) => s.isMicOn);
+  const isMuted = !isMicOn;
+  const handRaised = useMediaStore((s) => s.isHandRaised);
   const [copied, setCopied] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [ending, setEnding] = useState(false);
@@ -166,9 +174,21 @@ export default function TalkPage({ params }: TalkPageProps) {
   const roomEndedRef = useRef(false);
   useEffect(() => { roomEndedRef.current = isRoomEnded; }, [isRoomEnded]);
 
-  const [chatOpen, setChatOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const chatOpen = useChatStore((s) => s.isOpen);
+  const unreadChatCount = useChatStore((s) => s.unreadCount);
+  const isWhiteboardOpen = useWhiteboardStore((s) => s.isOpen);
+  const isLocalSpeaking = useIsLocalSpeaking();
+
+  const timeoutsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const safeTimeout = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(() => {
+      timeoutsRef.current.delete(id);
+      fn();
+    }, ms);
+    timeoutsRef.current.add(id);
+    return id;
+  }, []);
+
   const [roomToast, setRoomToast] = useState<{ text: string; type: 'join' | 'leave' } | null>(null);
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
   const [participantsOpen, setParticipantsOpen] = useState(false);
@@ -179,9 +199,6 @@ export default function TalkPage({ params }: TalkPageProps) {
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [isSwitchingMode, setIsSwitchingMode] = useState(false);
   const [switchedRoomNotice, setSwitchedRoomNotice] = useState<RoomSwitchedPayload | null>(null);
-  const [isWhiteboardOpen, setIsWhiteboardOpen] = useState(false);
-  const [whiteboardElements, setWhiteboardElements] = useState<readonly unknown[]>([]);
-  const [whiteboardAppState, setWhiteboardAppState] = useState<Record<string, unknown> | undefined>(undefined);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -196,7 +213,9 @@ export default function TalkPage({ params }: TalkPageProps) {
 
   const mediaDevices = useMediaDevices();
   const [audioMenuOpen, setAudioMenuOpen] = useState(false);
-  const { floatingReactions, tileReactions, handleIncomingReaction } = useRoomReactions();
+  const handleIncomingReaction = useCallback((reaction: RoomReaction) => {
+    useReactionsStore.getState().addReaction(reaction);
+  }, []);
 
   const isHost = Boolean(room && session?.user && room.hostId === session.user.id);
   const isHostRef = useRef(isHost);
@@ -277,7 +296,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           const isUserHost = res.data.room.hostId === currentUserIdRef.current;
           const userCanSpeak = isUserHost || res.data.participant?.role === 'speaker' || Boolean(res.data.settings?.micForAll);
           if (!userCanSpeak) {
-            setIsMuted(true);
+            useMediaStore.getState().setMicOn(false);
           }
         }
       } catch (err: unknown) {
@@ -317,7 +336,7 @@ export default function TalkPage({ params }: TalkPageProps) {
             const isUserHost = res.data.room.hostId === currentUserIdRef.current;
             const userCanSpeak = isUserHost || res.data.participant?.role === 'speaker' || Boolean(res.data.settings?.micForAll);
             if (!userCanSpeak) {
-              setIsMuted(true);
+              useMediaStore.getState().setMicOn(false);
             }
           }
         })
@@ -402,6 +421,7 @@ export default function TalkPage({ params }: TalkPageProps) {
   // Connect WebSocket and listen for in-room ephemeral messages
   useEffect(() => {
     if (!roomId) return;
+    const timeouts = timeoutsRef.current;
     const socket = getSocket();
 
     let joinedSocketId: string | undefined;
@@ -432,14 +452,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     socket.on('disconnect', handleDisconnect);
 
     const handleNewMessage = (msg: ChatMessage) => {
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === msg.id)) return prev;
-        return [...prev, msg];
-      });
-
-      if (!chatOpenRef.current && msg.userId !== currentUserIdRef.current) {
-        setUnreadChatCount((count) => count + 1);
-      }
+      useChatStore.getState().addMessage(msg);
     };
 
     const handleRoster = ({ roomCode: rosterRoomCode, participants: roster }: { roomCode: string; participants: RoomParticipant[] }) => {
@@ -456,7 +469,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
       playJoinChime();
       setRoomToast({ text: `${name} joined the stage`, type: 'join' });
-      setTimeout(() => {
+      safeTimeout(() => {
         setRoomToast((curr) => (curr?.text === `${name} joined the stage` ? null : curr));
       }, 3500);
     };
@@ -470,7 +483,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
       playLeaveChime();
       setRoomToast({ text: `${name} left the stage`, type: 'leave' });
-      setTimeout(() => {
+      safeTimeout(() => {
         setRoomToast((curr) => (curr?.text === `${name} left the stage` ? null : curr));
       }, 3500);
     };
@@ -489,13 +502,13 @@ export default function TalkPage({ params }: TalkPageProps) {
       );
 
       if (userId === currentUserIdRef.current) {
-        setHandRaised(isRaised);
+        useMediaStore.getState().setHandRaised(isRaised);
       }
 
       if (isRaised && userId !== currentUserIdRef.current) {
         playJoinChime();
         setRoomToast({ text: `${name} raised their hand`, type: 'join' });
-        setTimeout(() => {
+        safeTimeout(() => {
           setRoomToast((curr) => (curr?.text === `${name} raised their hand` ? null : curr));
         }, 4000);
       }
@@ -510,8 +523,8 @@ export default function TalkPage({ params }: TalkPageProps) {
 
       if (targetUserId === currentUserIdRef.current) {
         setGrantedSpeaker(true);
-        setHandRaised(false);
-        setIsMuted(false);
+        useMediaStore.getState().setHandRaised(false);
+        useMediaStore.getState().setMicOn(true);
         const socket = getSocket();
         socket.emit('room:media-toggle', {
           roomCode: code,
@@ -523,7 +536,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           text: 'Host granted you speaking access! Your mic is live.',
           type: 'join',
         });
-        setTimeout(() => {
+        safeTimeout(() => {
           setRoomToast((curr) =>
             curr?.text === 'Host granted you speaking access! Your mic is live.' ? null : curr
           );
@@ -538,7 +551,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
       if (targetUserId === currentUserIdRef.current) {
         setGrantedSpeaker(false);
-        setIsMuted(true);
+        useMediaStore.getState().setMicOn(false);
         const socket = getSocket();
         socket.emit('room:media-toggle', {
           roomCode: code,
@@ -546,7 +559,7 @@ export default function TalkPage({ params }: TalkPageProps) {
         });
         playLeaveChime();
         setRoomToast({ text: 'Host muted your microphone', type: 'leave' });
-        setTimeout(() => {
+        safeTimeout(() => {
           setRoomToast((curr) =>
             curr?.text === 'Host muted your microphone' ? null : curr
           );
@@ -557,7 +570,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     const handleSettingsUpdated = (updated: RoomSettingsData) => {
       setSettings(updated);
       setRoomToast({ text: 'Stage settings updated by host', type: 'join' });
-      setTimeout(() => {
+      safeTimeout(() => {
         setRoomToast((curr) => (curr?.text === 'Stage settings updated by host' ? null : curr));
       }, 3500);
 
@@ -574,7 +587,7 @@ export default function TalkPage({ params }: TalkPageProps) {
         !grantedSpeakerRef.current &&
         !isMutedRef.current
       ) {
-        setIsMuted(true);
+        useMediaStore.getState().setMicOn(false);
         const socket = getSocket();
         socket.emit('room:media-toggle', {
           roomCode: code,
@@ -584,7 +597,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       }
 
       if (isNotHost && updated.allowRaiseHand === false && handRaisedRef.current) {
-        setHandRaised(false);
+        useMediaStore.getState().setHandRaised(false);
         const socket = getSocket();
         socket.emit('room:raise-hand', {
           roomCode: code,
@@ -595,7 +608,7 @@ export default function TalkPage({ params }: TalkPageProps) {
 
     const handleUserMuted = ({ targetUserId }: { targetUserId: string; byHost: boolean }) => {
       if (targetUserId === currentUserIdRef.current) {
-        setIsMuted(true);
+        useMediaStore.getState().setMicOn(false);
         const socket = getSocket();
         socket.emit('room:media-toggle', {
           roomCode: code,
@@ -603,7 +616,7 @@ export default function TalkPage({ params }: TalkPageProps) {
         });
         playLeaveChime();
         setRoomToast({ text: 'You were muted by the host', type: 'leave' });
-        setTimeout(() => {
+        safeTimeout(() => {
           setRoomToast((curr) => (curr?.text === 'You were muted by the host' ? null : curr));
         }, 3500);
       }
@@ -655,7 +668,7 @@ export default function TalkPage({ params }: TalkPageProps) {
         },
       });
 
-      roomEndedTimer = setTimeout(() => {
+      roomEndedTimer = safeTimeout(() => {
         setConfirmModal(null);
         router.push('/');
       }, 3000);
@@ -669,7 +682,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       targetName: string;
     }) => {
       setRoomToast({ text: `${targetName} was removed from the stage`, type: 'leave' });
-      setTimeout(() => {
+      safeTimeout(() => {
         setRoomToast((curr) => (curr?.text?.includes('was removed from the stage') ? null : curr));
       }, 3500);
       setParticipants((prev) => prev.filter((p) => p.userId !== targetUserId));
@@ -690,13 +703,13 @@ export default function TalkPage({ params }: TalkPageProps) {
       } else {
         setRoomToast({ text: `${newHostName} is now the stage host`, type: 'join' });
       }
-      setTimeout(() => {
+      safeTimeout(() => {
         setRoomToast((curr) => (curr?.text?.includes('stage host') ? null : curr));
       }, 4000);
     };
 
-    const onReaction = (data: Parameters<typeof handleIncomingReaction>[0]) => {
-      handleIncomingReactionRef.current(data);
+    const onReaction = (data: RoomReaction) => {
+      useReactionsStore.getState().addReaction(data);
     };
 
     const handleUnmuteRequested = ({
@@ -718,14 +731,14 @@ export default function TalkPage({ params }: TalkPageProps) {
           variant: 'primary',
           onConfirm: () => {
             setConfirmModal(null);
-            setIsMuted(false);
+            useMediaStore.getState().setMicOn(true);
             const socket = getSocket();
             socket.emit('room:media-toggle', {
               roomCode: code,
               isMuted: false,
             });
             setRoomToast({ text: 'Microphone unmuted', type: 'join' });
-            setTimeout(() => {
+            safeTimeout(() => {
               setRoomToast((curr) => (curr?.text === 'Microphone unmuted' ? null : curr));
             }, 3000);
           },
@@ -760,25 +773,29 @@ export default function TalkPage({ params }: TalkPageProps) {
     socket.on('room:switched', handleRoomSwitched);
 
     const handleWhiteboardToggled = (payload: WhiteboardTogglePayload) => {
-      if (payload.roomCode?.trim().toLowerCase() !== code.trim().toLowerCase()) return;
-      setIsWhiteboardOpen(payload.isOpen);
-      if (payload.elements) setWhiteboardElements(payload.elements);
-      if (payload.appState) setWhiteboardAppState(payload.appState);
+      if (!payload?.roomCode || payload.roomCode.trim().toLowerCase() !== code.trim().toLowerCase()) return;
+      useWhiteboardStore.getState().syncState({
+        isOpen: payload.isOpen,
+        elements: payload.elements,
+        appState: payload.appState,
+      });
       if (payload.isOpen) {
         playJoinChime();
         setRoomToast({ text: 'Whiteboard opened', type: 'join' });
       } else {
         setRoomToast({ text: 'Whiteboard closed', type: 'leave' });
       }
-      setTimeout(() => {
+      safeTimeout(() => {
         setRoomToast((curr) => (curr?.text?.includes('Whiteboard') ? null : curr));
       }, 3500);
     };
     socket.on('whiteboard:toggled', handleWhiteboardToggled);
     const handleWhiteboardUpdated = (payload: WhiteboardScenePayload) => {
-      if (payload.roomCode?.trim().toLowerCase() !== code.trim().toLowerCase()) return;
-      if (payload.elements) setWhiteboardElements(payload.elements);
-      if (payload.appState) setWhiteboardAppState(payload.appState);
+      if (!payload?.roomCode || payload.roomCode.trim().toLowerCase() !== code.trim().toLowerCase()) return;
+      useWhiteboardStore.getState().syncState({
+        elements: payload.elements,
+        appState: payload.appState,
+      });
     };
     socket.on('whiteboard:updated', handleWhiteboardUpdated);
 
@@ -810,9 +827,16 @@ export default function TalkPage({ params }: TalkPageProps) {
       socket.off('room:reaction', onReaction);
       socket.off('room:ended', handleRoomEnded);
       if (roomEndedTimer) clearTimeout(roomEndedTimer);
+      timeouts.forEach((t) => clearTimeout(t));
+      timeouts.clear();
+      useWhiteboardStore.getState().reset();
+      useAudioStore.getState().reset();
+      useChatStore.getState().reset();
+      useReactionsStore.getState().reset();
+      useMediaStore.getState().reset();
       socket.emit('room:leave', { roomCode: code });
     };
-  }, [roomId, code, router]);
+  }, [roomId, code, router, safeTimeout]);
 
   const myRosterParticipant = participants.find((p) => p.peerId ? p.peerId === getRoomPeerId(code) : p.userId === currentUserId);
   const isSpeaker =
@@ -854,7 +878,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     };
   }, []);
 
-  const localAudio = useLocalAudioLevel({
+  useLocalAudioLevel({
     isEnabled: isLocalMicActive,
     deviceId: mediaDevices.selectedAudioInputId,
     stream: webrtc.localStream,
@@ -926,8 +950,8 @@ export default function TalkPage({ params }: TalkPageProps) {
 
   const handleToggleWhiteboard = useCallback(() => {
     if (!isHost) return;
-    const nextState = !isWhiteboardOpen;
-    setIsWhiteboardOpen(nextState);
+    const nextState = !useWhiteboardStore.getState().isOpen;
+    useWhiteboardStore.getState().setIsOpen(nextState);
     const socket = getSocket();
     if (socket.connected) {
       socket.emit('whiteboard:toggle', {
@@ -935,19 +959,19 @@ export default function TalkPage({ params }: TalkPageProps) {
         isOpen: nextState,
       });
     }
-  }, [isHost, isWhiteboardOpen, code]);
+  }, [isHost, code]);
 
   const handleToggleMic = () => {
     if (!isSpeaker) {
       setRoomToast({ text: 'Microphone is restricted by the host', type: 'leave' });
       return;
     }
-    const next = !isMuted;
-    setIsMuted(next);
+    const nextMuted = !isMuted;
+    useMediaStore.getState().setMicOn(!nextMuted);
     const socket = getSocket();
     socket.emit('room:media-toggle', {
       roomCode: code,
-      isMuted: next,
+      isMuted: nextMuted,
     });
   };
 
@@ -957,7 +981,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       return;
     }
     const next = !handRaised;
-    setHandRaised(next);
+    useMediaStore.getState().setHandRaised(next);
     const socket = getSocket();
     socket.emit('room:raise-hand', {
       roomCode: code,
@@ -967,7 +991,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       text: next ? 'Hand raised (showing presence)' : 'Hand lowered',
       type: next ? 'join' : 'leave',
     });
-    setTimeout(() => {
+    safeTimeout(() => {
       setRoomToast((curr) => (curr?.text?.startsWith('Hand') ? null : curr));
     }, 3000);
   };
@@ -983,7 +1007,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       text: `Granted speaking access to ${targetName}`,
       type: 'join',
     });
-    setTimeout(() => {
+    safeTimeout(() => {
       setRoomToast((curr) =>
         curr?.text?.startsWith('Granted speaking access') ? null : curr
       );
@@ -1001,7 +1025,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       text: `Muted ${targetName}`,
       type: 'leave',
     });
-    setTimeout(() => {
+    safeTimeout(() => {
       setRoomToast((curr) => (curr?.text?.startsWith('Muted ') ? null : curr));
     }, 3000);
   };
@@ -1017,7 +1041,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       text: `Muted ${targetName}`,
       type: 'leave',
     });
-    setTimeout(() => {
+    safeTimeout(() => {
       setRoomToast((curr) => (curr?.text?.startsWith('Muted ') ? null : curr));
     }, 3000);
   };
@@ -1033,7 +1057,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       text: `Asked ${targetName} to unmute`,
       type: 'join',
     });
-    setTimeout(() => {
+    safeTimeout(() => {
       setRoomToast((curr) => (curr?.text?.startsWith('Asked ') ? null : curr));
     }, 3000);
   };
@@ -1056,7 +1080,7 @@ export default function TalkPage({ params }: TalkPageProps) {
           text: `Removed ${targetName} from stage`,
           type: 'leave',
         });
-        setTimeout(() => {
+        safeTimeout(() => {
           setRoomToast((curr) => (curr?.text?.startsWith('Removed ') ? null : curr));
         }, 3000);
         setConfirmModal(null);
@@ -1079,7 +1103,7 @@ export default function TalkPage({ params }: TalkPageProps) {
         text: `Made ${newHostName} the stage host`,
         type: 'join',
       });
-      setTimeout(() => {
+      safeTimeout(() => {
         setRoomToast((curr) => (curr?.text?.startsWith('Made ') ? null : curr));
       }, 3000);
       return true;
@@ -1152,7 +1176,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       text: nextValue ? labels[key].on : labels[key].off,
       type: nextValue ? 'join' : 'leave',
     });
-    setTimeout(() => {
+    safeTimeout(() => {
       setRoomToast((curr) =>
         curr?.text === (nextValue ? labels[key].on : labels[key].off) ? null : curr
       );
@@ -1181,7 +1205,7 @@ export default function TalkPage({ params }: TalkPageProps) {
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    safeTimeout(() => setCopied(false), 2000);
   };
 
   const handleLeave = async () => {
@@ -1432,7 +1456,7 @@ export default function TalkPage({ params }: TalkPageProps) {
               onClick={() => {
                 setSettingsOpen(!settingsOpen);
                 setParticipantsOpen(false);
-                setChatOpen(false);
+                useChatStore.getState().setIsOpen(false);
               }}
               className={`relative flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all border cursor-pointer ${
                 isHost && pendingHandRaisesCount > 0
@@ -1495,7 +1519,7 @@ export default function TalkPage({ params }: TalkPageProps) {
             onClick={() => {
               setParticipantsOpen(!participantsOpen);
               if (!participantsOpen) {
-                setChatOpen(false);
+                useChatStore.getState().setIsOpen(false);
                 setSettingsOpen(false);
               }
             }}
@@ -1528,8 +1552,6 @@ export default function TalkPage({ params }: TalkPageProps) {
               roomCode={code}
               isHost={isHost}
               socket={getSocket()}
-              initialElements={whiteboardElements}
-              initialAppState={whiteboardAppState}
               onClose={handleToggleWhiteboard}
             />
           </div>
@@ -1555,9 +1577,8 @@ export default function TalkPage({ params }: TalkPageProps) {
             const isMicActive = isMe ? isLocalMicActive : !p.isMuted;
             const remoteAudio = webrtc.remoteAudioLevels[p.peerId ?? p.userId];
             const isSpeaking = isMe
-              ? isLocalMicActive && localAudio.isSpeaking
+              ? isLocalMicActive && isLocalSpeaking
               : !p.isMuted && Boolean(remoteAudio?.isSpeaking);
-            const liveVolume = isMe ? localAudio.volume : remoteAudio?.volume;
 
             return (
               <div
@@ -1640,13 +1661,15 @@ export default function TalkPage({ params }: TalkPageProps) {
                 <div className="relative z-10">
                   {/* Reaction Badge on Stage Tile */}
                   <ReactionBadge
-                    emoji={tileReactions[p.userId]?.emoji}
+                    userId={p.userId}
                     className="absolute -top-3 left-1/2 -translate-x-1/2"
                   />
 
                   <AudioRipple
                     isActive={isMicActive}
                     isSpeaking={isSpeaking}
+                    isLocal={isMe}
+                    peerId={isMe ? undefined : (p.peerId ?? p.userId)}
                     size="md"
                   />
                   <div
@@ -1694,7 +1717,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                       ) : (
                         <MicIcon
                           size={10}
-                          className={localAudio.isSpeaking ? 'text-[#11ff99]' : 'text-emerald-400/70'}
+                          className={isLocalSpeaking ? 'text-[#11ff99]' : 'text-emerald-400/70'}
                         />
                       )
                     ) : p.isMuted ? (
@@ -1724,8 +1747,8 @@ export default function TalkPage({ params }: TalkPageProps) {
                             isActive={isSpeaking}
                             size="xs"
                             barCount={3}
-                            volume={liveVolume}
-                            frequencyBands={isMe ? localAudio.frequencyBands : undefined}
+                            isLocal={isMe}
+                            peerId={isMe ? undefined : (p.peerId ?? p.userId)}
                           />
                           <span className="text-[9px] font-mono uppercase tracking-wider block font-semibold">
                             {isSpeaking ? 'Speaking' : 'Live'}
@@ -1743,8 +1766,8 @@ export default function TalkPage({ params }: TalkPageProps) {
                         isActive={isSpeaking}
                         size="xs"
                         barCount={3}
-                        volume={liveVolume}
-                        frequencyBands={isMe ? localAudio.frequencyBands : undefined}
+                        isLocal={isMe}
+                        peerId={isMe ? undefined : (p.peerId ?? p.userId)}
                       />
                       <span className="text-[10px] font-mono uppercase tracking-wider block font-semibold">
                         {isSpeaking ? 'Speaking' : 'Speaker'}
@@ -1939,7 +1962,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                   testingSpeaker={mediaDevices.testingSpeaker}
                   onTestMic={mediaDevices.testMic}
                   testingMicStatus={mediaDevices.testingMicStatus}
-                  micVolume={localAudio.volume || mediaDevices.micVolume}
+                  micVolume={mediaDevices.micVolume}
                 />
               </div>
             </div>
@@ -1960,7 +1983,7 @@ export default function TalkPage({ params }: TalkPageProps) {
                 testingSpeaker={mediaDevices.testingSpeaker}
                 onTestMic={mediaDevices.testMic}
                 testingMicStatus={mediaDevices.testingMicStatus}
-                micVolume={localAudio.volume || mediaDevices.micVolume}
+                micVolume={mediaDevices.micVolume}
               />
               <button
                 type="button"
@@ -2028,7 +2051,7 @@ export default function TalkPage({ params }: TalkPageProps) {
             type="button"
             onClick={() => {
               setParticipantsOpen(!participantsOpen);
-              if (!participantsOpen) setChatOpen(false);
+              if (!participantsOpen) useChatStore.getState().setIsOpen(false);
             }}
             className={`relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 ${
               participantsOpen
@@ -2048,10 +2071,10 @@ export default function TalkPage({ params }: TalkPageProps) {
           <button
             type="button"
             onClick={() => {
-              setChatOpen(!chatOpen);
-              if (!chatOpen) {
+              const next = !chatOpen;
+              useChatStore.getState().setIsOpen(next);
+              if (next) {
                 setParticipantsOpen(false);
-                setUnreadChatCount(0);
               }
             }}
             className={`relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 ${
@@ -2448,9 +2471,6 @@ export default function TalkPage({ params }: TalkPageProps) {
 
       {/* In-Call Ephemeral Chat */}
       <InRoomChat
-        isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
-        messages={messages}
         onSendMessage={handleSendMessage}
         currentUserId={session?.user?.id || ''}
         roomTitle={room?.title}
@@ -2477,8 +2497,6 @@ export default function TalkPage({ params }: TalkPageProps) {
         onUnmuteUser={isHost ? handleRequestUnmute : undefined}
         onKickUser={isHost ? handleKickUser : undefined}
         onTransferHost={isHost ? requestTransferHost : undefined}
-        localVolume={localAudio.volume}
-        localFrequencyBands={localAudio.frequencyBands}
       />
 
       {confirmModal && (
@@ -2532,7 +2550,7 @@ export default function TalkPage({ params }: TalkPageProps) {
       </div>
 
       {/* Floating Reactions Stream */}
-      <FloatingReactions reactions={floatingReactions} />
+      <FloatingReactions />
 
       {/* Report Issue & Feedback Modal */}
       <ReportModal

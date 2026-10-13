@@ -1,14 +1,15 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import type { ChatMessage } from '@/types/realtime';
+import { useChatStore } from '@/stores/chat-store';
 import { MessageSquareIcon, SendIcon, XIcon } from '@animateicons/react/lucide';
 
 interface InRoomChatProps {
-  isOpen: boolean;
-  onClose: () => void;
-  messages: ChatMessage[];
+  isOpen?: boolean;
+  onClose?: () => void;
+  messages?: ChatMessage[];
   onSendMessage: (text: string) => void;
   currentUserId: string;
   roomTitle?: string;
@@ -16,7 +17,7 @@ interface InRoomChatProps {
   isHost?: boolean;
 }
 
-export function InRoomChat({
+export const InRoomChat = React.memo(function InRoomChat({
   isOpen,
   onClose,
   messages,
@@ -26,6 +27,11 @@ export function InRoomChat({
   isChatAllowed = true,
   isHost = false,
 }: InRoomChatProps) {
+  const storeIsOpen = useChatStore((s) => s.isOpen);
+  const storeMessages = useChatStore((s) => s.messages);
+  const effectiveIsOpen = isOpen ?? storeIsOpen;
+  const effectiveMessages = messages ?? storeMessages;
+  const effectiveOnClose = onClose ?? (() => useChatStore.getState().setIsOpen(false));
   const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -35,11 +41,11 @@ export function InRoomChat({
   };
 
   useEffect(() => {
-    if (isOpen) {
+    if (effectiveIsOpen) {
       scrollToBottom();
       inputRef.current?.focus();
     }
-  }, [isOpen, messages]);
+  }, [effectiveIsOpen, effectiveMessages]);
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,7 +54,7 @@ export function InRoomChat({
     setInputText('');
   };
 
-  if (!isOpen) return null;
+  if (!effectiveIsOpen) return null;
 
   return (
     <aside className="fixed inset-y-0 right-0 z-50 w-full sm:w-88 md:w-96 bg-[#0a0a0e]/95 backdrop-blur-2xl border-l border-white/[0.12] shadow-2xl flex flex-col transition-all duration-300 animate-in slide-in-from-right">
@@ -67,7 +73,7 @@ export function InRoomChat({
         </div>
 
         <button
-          onClick={onClose}
+          onClick={effectiveOnClose}
           className="h-7 w-7 rounded-lg bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.08] flex items-center justify-center text-[#888e90] hover:text-[#fcfdff] transition-all"
           title="Close chat"
         >
@@ -77,7 +83,7 @@ export function InRoomChat({
 
       {/* Message Feed */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
-        {messages.length === 0 ? (
+        {effectiveMessages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2 opacity-60">
             <div className="h-10 w-10 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-[#888e90]">
               <MessageSquareIcon size={18} />
@@ -88,7 +94,7 @@ export function InRoomChat({
             </p>
           </div>
         ) : (
-          messages.map((msg) => {
+          effectiveMessages.map((msg) => {
             const isMe = msg.userId === currentUserId;
             const timeStr = new Date(msg.timestamp).toLocaleTimeString([], {
               hour: '2-digit',
@@ -182,4 +188,4 @@ export function InRoomChat({
       </form>
     </aside>
   );
-}
+});

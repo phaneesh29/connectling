@@ -2,9 +2,10 @@
 
 import React from 'react';
 import type { RoomReaction } from '@/types/realtime';
+import { useReactionsStore } from '@/stores/reactions-store';
 
 interface FloatingReactionsProps {
-  reactions: RoomReaction[];
+  reactions?: RoomReaction[];
 }
 
 const FLOAT_ANIMATION_CLASSES = [
@@ -14,8 +15,13 @@ const FLOAT_ANIMATION_CLASSES = [
   'animate-reaction-float-4',
 ];
 
-export function FloatingReactions({ reactions }: FloatingReactionsProps) {
-  if (!reactions || reactions.length === 0) return null;
+export const FloatingReactions = React.memo(function FloatingReactions({
+  reactions,
+}: FloatingReactionsProps) {
+  const storeReactions = useReactionsStore((s) => s.floatingReactions);
+  const items = reactions ?? storeReactions;
+
+  if (!items || items.length === 0) return null;
 
   return (
     <div
@@ -23,7 +29,7 @@ export function FloatingReactions({ reactions }: FloatingReactionsProps) {
       aria-hidden="true"
     >
       <div className="relative w-full h-full">
-        {reactions.map((r, index) => {
+        {items.map((r, index) => {
           // Deterministic horizontal jitter & trajectory variant based on reaction ID
           const seed =
             r.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) + index * 23;
@@ -50,4 +56,4 @@ export function FloatingReactions({ reactions }: FloatingReactionsProps) {
       </div>
     </div>
   );
-}
+});

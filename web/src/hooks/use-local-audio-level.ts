@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useAudioStore } from '@/stores/audio-store';
 
 export interface UseLocalAudioLevelOptions {
   isEnabled: boolean; // e.g. hasEntered && isMicOn
@@ -14,6 +15,8 @@ export interface LocalAudioLevelState {
   frequencyBands: number[]; // 5 frequency bands (0 - 100 each)
 }
 
+const SILENT_BANDS = [0, 0, 0, 0, 0];
+
 export function useLocalAudioLevel({
   isEnabled,
   deviceId,
@@ -21,12 +24,14 @@ export function useLocalAudioLevel({
 }: UseLocalAudioLevelOptions): LocalAudioLevelState {
   const [volume, setVolume] = useState(0);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [frequencyBands, setFrequencyBands] = useState<number[]>([0, 0, 0, 0, 0]);
+  const [frequencyBands, setFrequencyBands] = useState<number[]>(SILENT_BANDS);
 
   const streamRef = useRef<MediaStream | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const lastSpeakingTimeRef = useRef<number>(0);
+  const lastReportedVolRef = useRef<number>(0);
+  const lastReportedSpeakingRef = useRef<boolean>(false);
 
   const isAudioActive =
     isEnabled &&
@@ -35,6 +40,7 @@ export function useLocalAudioLevel({
 
   useEffect(() => {
     if (!isAudioActive) {
+      useAudioStore.getState().setLocalAudio(0, false, SILENT_BANDS);
       return;
     }
 
@@ -137,15 +143,34 @@ export function useLocalAudioLevel({
           const speakingNow = normalizedVol > 4;
           const now = Date.now();
 
+          let nextSpeaking = false;
           if (speakingNow) {
             lastSpeakingTimeRef.current = now;
-            setIsSpeaking(true);
-          } else if (now - lastSpeakingTimeRef.current > 350) {
-            setIsSpeaking(false);
+            nextSpeaking = true;
+          } else if (now - lastSpeakingTimeRef.current <= 350) {
+            nextSpeaking = true;
           }
 
-          setVolume(normalizedVol);
-          setFrequencyBands([b0, b1, b2, b3, b4]);
+          const bands = normalizedVol > 0 ? [b0, b1, b2, b3, b4] : SILENT_BANDS;
+
+          // Push into Zustand store directly (subscribers get isolated updates)
+          useAudioStore.getState().setLocalAudio(normalizedVol, nextSpeaking, bands);
+
+          // Only update local React state if there is meaningful change, avoiding 60 FPS re-render loops on silence
+          const prevVol = lastReportedVolRef.current;
+          const prevSpeaking = lastReportedSpeakingRef.current;
+          const shouldUpdateState =
+            nextSpeaking !== prevSpeaking ||
+            (normalizedVol === 0 && prevVol !== 0) ||
+            Math.abs(normalizedVol - prevVol) >= 3;
+
+          if (shouldUpdateState) {
+            lastReportedVolRef.current = normalizedVol;
+            lastReportedSpeakingRef.current = nextSpeaking;
+            setVolume(normalizedVol);
+            setIsSpeaking(nextSpeaking);
+            setFrequencyBands(bands);
+          }
 
           animFrameRef.current = requestAnimationFrame(processAudio);
         };
@@ -153,9 +178,10 @@ export function useLocalAudioLevel({
         animFrameRef.current = requestAnimationFrame(processAudio);
       } catch (err) {
         console.warn('Live audio analysis could not be started:', err);
+        useAudioStore.getState().setLocalAudio(0, false, SILENT_BANDS);
         setVolume(0);
         setIsSpeaking(false);
-        setFrequencyBands([0, 0, 0, 0, 0]);
+        setFrequencyBands(SILENT_BANDS);
       }
     };
 
@@ -181,15 +207,16 @@ export function useLocalAudioLevel({
         });
         streamRef.current = null;
       }
+      useAudioStore.getState().setLocalAudio(0, false, SILENT_BANDS);
       setVolume(0);
       setIsSpeaking(false);
-      setFrequencyBands([0, 0, 0, 0, 0]);
+      setFrequencyBands(SILENT_BANDS);
     };
   }, [isAudioActive, deviceId, externalStream]);
 
   return {
     volume: isAudioActive ? volume : 0,
     isSpeaking: isAudioActive ? isSpeaking : false,
-    frequencyBands: isAudioActive ? frequencyBands : [0, 0, 0, 0, 0],
+    frequencyBands: isAudioActive ? frequencyBands : SILENT_BANDS,
   };
 }

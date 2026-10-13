@@ -38,7 +38,12 @@ export interface LocalVideoProps {
   className?: string;
 }
 
-export function LocalVideo({ stream, isActive, isMirrored = false, className }: LocalVideoProps) {
+export const LocalVideo = React.memo(function LocalVideo({
+  stream,
+  isActive,
+  isMirrored = false,
+  className,
+}: LocalVideoProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
   useEffect(() => {
@@ -128,7 +133,7 @@ export function LocalVideo({ stream, isActive, isMirrored = false, className }: 
       } ${isActive && stream ? 'block' : 'hidden'} ${isMirrored ? '-scale-x-100' : ''}`}
     />
   );
-}
+});
 
 export interface RemoteVideoProps {
   stream?: MediaStream | null;
@@ -138,7 +143,7 @@ export interface RemoteVideoProps {
   className?: string;
 }
 
-export function RemoteVideo({
+export const RemoteVideo = React.memo(function RemoteVideo({
   stream,
   isVideoActive,
   isMirrored = false,
@@ -217,14 +222,14 @@ export function RemoteVideo({
       } ${isVideoActive ? 'block' : 'hidden'} ${isMirrored ? '-scale-x-100' : ''}`}
     />
   );
-}
+});
 
 export interface RemoteAudioProps {
   stream?: MediaStream | null;
   audioOutputId?: string;
 }
 
-export function RemoteAudio({ stream, audioOutputId }: RemoteAudioProps) {
+export const RemoteAudio = React.memo(function RemoteAudio({ stream, audioOutputId }: RemoteAudioProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -290,4 +295,4 @@ export function RemoteAudio({ stream, audioOutputId }: RemoteAudioProps) {
   }, [audioOutputId]);
 
   return <audio ref={audioRef} autoPlay playsInline className="absolute opacity-0 pointer-events-none w-0 h-0" />;
-}
+});

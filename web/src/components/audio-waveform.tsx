@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { useAudioStore } from '@/stores/audio-store';
 
 export interface AudioWaveformProps {
   isActive?: boolean;
@@ -10,6 +11,8 @@ export interface AudioWaveformProps {
   volume?: number; // 0 - 100
   frequencyBands?: number[]; // 5 frequency bands (0 - 100 each)
   className?: string;
+  isLocal?: boolean;
+  peerId?: string;
 }
 
 const colorMap = {
@@ -70,7 +73,7 @@ const barAnimationClasses = [
   'animate-wave-bar-5',
 ];
 
-export function AudioWaveform({
+export const AudioWaveform = React.memo(function AudioWaveform({
   isActive = true,
   size = 'sm',
   color = 'emerald',
@@ -78,11 +81,22 @@ export function AudioWaveform({
   volume,
   frequencyBands,
   className = '',
+  isLocal,
+  peerId,
 }: AudioWaveformProps) {
+  const storeLocalVolume = useAudioStore((s) => (isLocal ? s.localVolume : undefined));
+  const storeLocalBands = useAudioStore((s) => (isLocal ? s.localFrequencyBands : undefined));
+  const storePeerVolume = useAudioStore((s) =>
+    peerId ? s.peerAudioLevels[peerId]?.volume : undefined
+  );
+
+  const effectiveVolume = volume ?? storeLocalVolume ?? storePeerVolume;
+  const effectiveBands = frequencyBands ?? storeLocalBands;
+
   const conf = sizeConfig[size] || sizeConfig.sm;
   const count = barCount ?? conf.defaultBars;
   const activeColor = colorMap[color] || colorMap.emerald;
-  const hasLiveLevels = frequencyBands !== undefined || volume !== undefined;
+  const hasLiveLevels = effectiveBands !== undefined || effectiveVolume !== undefined;
 
   return (
     <div
@@ -95,9 +109,9 @@ export function AudioWaveform({
 
         if (hasLiveLevels && isActive) {
           const rawVal =
-            frequencyBands && frequencyBands.length > idx
-              ? frequencyBands[idx]
-              : volume ?? 0;
+            effectiveBands && effectiveBands.length > idx
+              ? effectiveBands[idx]
+              : effectiveVolume ?? 0;
           isVoiceDetected = rawVal > 4;
 
           if (isVoiceDetected) {
@@ -125,7 +139,7 @@ export function AudioWaveform({
       })}
     </div>
   );
-}
+});
 
 export interface AudioRippleProps {
   isActive?: boolean;
@@ -133,6 +147,8 @@ export interface AudioRippleProps {
   size?: 'sm' | 'md' | 'lg';
   color?: 'emerald' | 'orange' | 'amber';
   className?: string;
+  isLocal?: boolean;
+  peerId?: string;
 }
 
 const rippleSizes = {
@@ -147,14 +163,23 @@ const rippleBorders = {
   amber: 'border-[#ffc53d]/35',
 };
 
-export function AudioRipple({
+export const AudioRipple = React.memo(function AudioRipple({
   isActive = true,
-  isSpeaking = true,
+  isSpeaking,
   size = 'md',
   color = 'emerald',
   className = '',
+  isLocal,
+  peerId,
 }: AudioRippleProps) {
-  if (!isActive || !isSpeaking) return null;
+  const storeLocalSpeaking = useAudioStore((s) => (isLocal ? s.isLocalSpeaking : undefined));
+  const storePeerSpeaking = useAudioStore((s) =>
+    peerId ? Boolean(s.peerAudioLevels[peerId]?.isSpeaking) : undefined
+  );
+
+  const effectiveSpeaking = isSpeaking ?? storeLocalSpeaking ?? storePeerSpeaking ?? true;
+
+  if (!isActive || !effectiveSpeaking) return null;
 
   const baseSize = rippleSizes[size] || rippleSizes.md;
   const borderCol = rippleBorders[color] || rippleBorders.emerald;
@@ -169,7 +194,7 @@ export function AudioRipple({
       <div className={`absolute ${baseSize} rounded-full border ${borderCol} animate-audio-ripple-3`} />
     </div>
   );
-}
+});
 
 export interface AudioTileBadgeProps {
   isActive?: boolean;
@@ -179,9 +204,11 @@ export interface AudioTileBadgeProps {
   volume?: number;
   frequencyBands?: number[];
   className?: string;
+  isLocal?: boolean;
+  peerId?: string;
 }
 
-export function AudioTileBadge({
+export const AudioTileBadge = React.memo(function AudioTileBadge({
   isActive = true,
   label = 'LIVE',
   size = 'sm',
@@ -189,10 +216,18 @@ export function AudioTileBadge({
   volume,
   frequencyBands,
   className = '',
+  isLocal,
+  peerId,
 }: AudioTileBadgeProps) {
+  const storeLocalVolume = useAudioStore((s) => (isLocal ? s.localVolume : undefined));
+  const storePeerVolume = useAudioStore((s) =>
+    peerId ? s.peerAudioLevels[peerId]?.volume : undefined
+  );
+  const effectiveVolume = volume ?? storeLocalVolume ?? storePeerVolume;
+
   if (!isActive) return null;
 
-  const isSpeaking = volume === undefined ? true : volume > 4;
+  const isSpeaking = effectiveVolume === undefined ? true : effectiveVolume > 4;
 
   return (
     <div
@@ -208,6 +243,8 @@ export function AudioTileBadge({
         color={isSpeaking ? color : 'white'}
         volume={volume}
         frequencyBands={frequencyBands}
+        isLocal={isLocal}
+        peerId={peerId}
       />
       {label && (
         <span
@@ -220,4 +257,4 @@ export function AudioTileBadge({
       )}
     </div>
   );
-}
+});

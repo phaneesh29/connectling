@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getRoomPeerId, getSocket } from '@/lib/socket';
 import { createWebRTCMesh, type WebRTCMesh, type PeerConnectionStatus } from '@/lib/webrtc-mesh';
+import { useAudioStore } from '@/stores/audio-store';
 import type { RoomParticipant, WebRTCIncomingSignalPayload } from '@/types/realtime';
 
 export interface UseWebRTCOptions {
@@ -274,6 +275,7 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
     setLocalStream(null);
     setRemoteStreams(new Map());
     setRemoteAudioLevels({});
+    useAudioStore.getState().setPeerAudioLevels({});
     setPeerConnectionStatuses({});
     setIsReconnecting(false);
     setIsConnected(false);
@@ -466,6 +468,7 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
         if (volume > 7) entry.lastSpeaking = performance.now();
         levels[id] = { volume, isSpeaking: volume > 7 || performance.now() - entry.lastSpeaking < 350 };
       }
+      useAudioStore.getState().setPeerAudioLevels(levels);
       setRemoteAudioLevels(previous => {
         const ids = Object.keys(levels);
         return ids.length === Object.keys(previous).length && ids.every(id => previous[id]?.volume === levels[id].volume && previous[id]?.isSpeaking === levels[id].isSpeaking) ? previous : levels;
@@ -475,6 +478,7 @@ export function useWebRTC(options: UseWebRTCOptions): UseWebRTCReturn {
       clearInterval(timer);
       window.removeEventListener('click', unlock); window.removeEventListener('keydown', unlock);
       for (const entry of analysers.values()) { entry.source.disconnect(); entry.analyser.disconnect(); }
+      useAudioStore.getState().setPeerAudioLevels({});
       void context.close().catch(() => {});
     };
   }, [enabled, currentUserId, roomCode]);

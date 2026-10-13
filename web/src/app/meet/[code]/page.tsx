@@ -64,6 +64,14 @@ import { MeetPrejoinLobby } from '@/components/meet-prejoin-lobby';
 import { MeetPrejoinLobbySkeleton } from '@/components/skeleton';
 import { AudioWaveform, AudioRipple } from '@/components/audio-waveform';
 import { Whiteboard } from '@/components/whiteboard';
+import {
+  useWhiteboardStore,
+  useAudioStore,
+  useChatStore,
+  useReactionsStore,
+  useMediaStore,
+  useIsLocalSpeaking,
+} from '@/stores';
 import { useMediaDevices } from '@/hooks/use-media-devices';
 import { useLocalAudioLevel } from '@/hooks/use-local-audio-level';
 import { useWebRTC } from '@/hooks/use-webrtc';
@@ -71,9 +79,8 @@ import { LocalVideo, RemoteVideo, RemoteAudio } from '@/components/webrtc-media'
 import { ReactionPicker } from '@/components/reactions/reaction-picker';
 import { FloatingReactions } from '@/components/reactions/floating-reactions';
 import { ReactionBadge } from '@/components/reactions/reaction-badge';
-import { useRoomReactions } from '@/hooks/use-room-reactions';
 import { ConnectionQualityPill, NetworkDisconnectAlert } from '@/components/connection-quality-pill';
-import type { ChatMessage, RoomParticipant, RoomSwitchedPayload, WhiteboardTogglePayload, WhiteboardScenePayload } from '@/types/realtime';
+import type { ChatMessage, RoomParticipant, RoomReaction, RoomSwitchedPayload, WhiteboardTogglePayload, WhiteboardScenePayload } from '@/types/realtime';
 
 interface MeetPageProps {
   params: Promise<{ code: string }>;
@@ -96,11 +103,12 @@ export default function MeetPage({ params }: MeetPageProps) {
   const [, setParticipant] = useState<ParticipantData | null>(null);
   const [hasJoined, setHasJoined] = useState(false);
 
-  const [isMicOn, setIsMicOn] = useState(true);
-  const [isVideoOn, setIsVideoOn] = useState(true);
+  const isMicOn = useMediaStore((s) => s.isMicOn);
+  const isVideoOn = useMediaStore((s) => s.isVideoOn);
+  const isScreenSharing = useMediaStore((s) => s.isScreenSharing);
+  const handRaised = useMediaStore((s) => s.isHandRaised);
   const isMirrored = useSyncExternalStore(subscribeMirrorStorage, getMirrorSnapshot, getMirrorServerSnapshot);
   const [remoteMirrorOverrides, setRemoteMirrorOverrides] = useState<Record<string, boolean>>({});
-  const [isScreenSharing, setIsScreenSharing] = useState(false);
 
   const toggleMirror = useCallback(() => {
     try {
@@ -129,9 +137,21 @@ export default function MeetPage({ params }: MeetPageProps) {
   const roomEndedRef = useRef(false);
   useEffect(() => { roomEndedRef.current = isRoomEnded; }, [isRoomEnded]);
 
-  const [chatOpen, setChatOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const chatOpen = useChatStore((s) => s.isOpen);
+  const unreadChatCount = useChatStore((s) => s.unreadCount);
+  const isWhiteboardOpen = useWhiteboardStore((s) => s.isOpen);
+  const isLocalSpeaking = useIsLocalSpeaking();
+
+  const timeoutsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const safeTimeout = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(() => {
+      timeoutsRef.current.delete(id);
+      fn();
+    }, ms);
+    timeoutsRef.current.add(id);
+    return id;
+  }, []);
+
   const [roomToast, setRoomToast] = useState<{ text: string; type: 'join' | 'leave' } | null>(null);
   const [participants, setParticipants] = useState<RoomParticipant[]>([]);
   const [participantsOpen, setParticipantsOpen] = useState(false);
@@ -139,9 +159,6 @@ export default function MeetPage({ params }: MeetPageProps) {
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [isSwitchingMode, setIsSwitchingMode] = useState(false);
   const [switchedRoomNotice, setSwitchedRoomNotice] = useState<RoomSwitchedPayload | null>(null);
-  const [isWhiteboardOpen, setIsWhiteboardOpen] = useState(false);
-  const [whiteboardElements, setWhiteboardElements] = useState<readonly unknown[]>([]);
-  const [whiteboardAppState, setWhiteboardAppState] = useState<Record<string, unknown> | undefined>(undefined);
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -157,18 +174,11 @@ export default function MeetPage({ params }: MeetPageProps) {
   const mediaDevices = useMediaDevices();
   const [audioMenuOpen, setAudioMenuOpen] = useState(false);
   const [videoMenuOpen, setVideoMenuOpen] = useState(false);
-  const { floatingReactions, tileReactions, handleIncomingReaction } = useRoomReactions();
-  const handleIncomingReactionRef = useRef(handleIncomingReaction);
-  useEffect(() => {
-    handleIncomingReactionRef.current = handleIncomingReaction;
-  }, [handleIncomingReaction]);
-
   const chatOpenRef = useRef(chatOpen);
   const isMicOnRef = useRef(isMicOn);
   const isVideoOnRef = useRef(isVideoOn);
   const screenSharingRef = useRef(isScreenSharing);
   useEffect(() => { screenSharingRef.current = isScreenSharing; }, [isScreenSharing]);
-  const [handRaised, setHandRaised] = useState(false);
   const handRaisedRef = useRef(handRaised);
   const joinedCodeRef = useRef<string | null>(null);
   const knownParticipantsRef = useRef<Set<string>>(new Set());
@@ -394,6 +404,7 @@ export default function MeetPage({ params }: MeetPageProps) {
   // Connect WebSocket and listen for in-room ephemeral messages
   useEffect(() => {
     if (!roomId || !hasJoined) return;
+    const timeouts = timeoutsRef.current;
     const socket = getSocket();
     let joinedSocketId: string | undefined;
     const sendRoomJoin = () => {
@@ -426,14 +437,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     socket.on('disconnect', handleDisconnect);
 
     const handleNewMessage = (msg: ChatMessage) => {
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === msg.id)) return prev;
-        return [...prev, msg];
-      });
-
-      if (!chatOpenRef.current && msg.userId !== currentUserIdRef.current) {
-        setUnreadChatCount((count) => count + 1);
-      }
+      useChatStore.getState().addMessage(msg);
     };
 
     const handleRoster = ({ roomCode: rosterRoomCode, participants: roster }: { roomCode: string; participants: RoomParticipant[] }) => {
@@ -450,7 +454,7 @@ export default function MeetPage({ params }: MeetPageProps) {
 
       playJoinChime();
       setRoomToast({ text: `${name} joined the space`, type: 'join' });
-      setTimeout(() => {
+      safeTimeout(() => {
         setRoomToast((curr) => (curr?.text === `${name} joined the space` ? null : curr));
       }, 3500);
     };
@@ -464,7 +468,7 @@ export default function MeetPage({ params }: MeetPageProps) {
 
       playLeaveChime();
       setRoomToast({ text: `${name} left the space`, type: 'leave' });
-      setTimeout(() => {
+      safeTimeout(() => {
         setRoomToast((curr) => (curr?.text === `${name} left the space` ? null : curr));
       }, 3500);
     };
@@ -472,7 +476,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     const handleSettingsUpdated = (updated: RoomSettingsData) => {
       setSettings(updated);
       setRoomToast({ text: 'Space settings updated by host', type: 'join' });
-      setTimeout(() => {
+      safeTimeout(() => {
         setRoomToast((curr) => (curr?.text === 'Space settings updated by host' ? null : curr));
       }, 3500);
 
@@ -484,7 +488,7 @@ export default function MeetPage({ params }: MeetPageProps) {
 
       if (isNotHost) {
         if (updated.micForAll === false && isMicOnRef.current) {
-          setIsMicOn(false);
+          useMediaStore.getState().setMicOn(false);
           const socket = getSocket();
           socket.emit('room:media-toggle', {
             roomCode: code,
@@ -493,7 +497,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           });
         }
         if (updated.videoForAll === false && isVideoOnRef.current) {
-          setIsVideoOn(false);
+          useMediaStore.getState().setVideoOn(false);
           const socket = getSocket();
           socket.emit('room:media-toggle', {
             roomCode: code,
@@ -502,14 +506,14 @@ export default function MeetPage({ params }: MeetPageProps) {
           });
         }
         if (updated.screenShareForAll === false) {
-          setIsScreenSharing(false);
+          useMediaStore.getState().setScreenSharing(false);
         }
       }
     };
 
     const handleUserMuted = ({ targetUserId }: { targetUserId: string; byHost: boolean }) => {
       if (targetUserId === currentUserIdRef.current) {
-        setIsMicOn(false);
+        useMediaStore.getState().setMicOn(false);
         const socket = getSocket();
         socket.emit('room:media-toggle', {
           roomCode: code,
@@ -518,7 +522,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         });
         playLeaveChime();
         setRoomToast({ text: 'You were muted by the host', type: 'leave' });
-        setTimeout(() => {
+        safeTimeout(() => {
           setRoomToast((curr) => (curr?.text === 'You were muted by the host' ? null : curr));
         }, 3500);
       }
@@ -566,7 +570,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         },
       });
 
-      roomEndedTimer = setTimeout(() => {
+      roomEndedTimer = safeTimeout(() => {
         setConfirmModal(null);
         router.push('/');
       }, 3000);
@@ -580,7 +584,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       targetName: string;
     }) => {
       setRoomToast({ text: `${targetName} was removed from the space`, type: 'leave' });
-      setTimeout(() => {
+      safeTimeout(() => {
         setRoomToast((curr) => (curr?.text?.includes('was removed from the space') ? null : curr));
       }, 3500);
       setParticipants((prev) => prev.filter((p) => p.userId !== targetUserId));
@@ -601,7 +605,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       } else {
         setRoomToast({ text: `${newHostName} is now the space host`, type: 'join' });
       }
-      setTimeout(() => {
+      safeTimeout(() => {
         setRoomToast((curr) => (curr?.text?.includes('space host') ? null : curr));
       }, 4000);
     };
@@ -617,7 +621,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     }) => {
       if (isRaised) {
         setRoomToast({ text: `${name} raised their hand`, type: 'join' });
-        setTimeout(() => {
+        safeTimeout(() => {
           setRoomToast((curr) => (curr?.text?.includes('raised their hand') ? null : curr));
         }, 3500);
       }
@@ -626,8 +630,8 @@ export default function MeetPage({ params }: MeetPageProps) {
       );
     };
 
-    const onReaction = (data: Parameters<typeof handleIncomingReaction>[0]) => {
-      handleIncomingReactionRef.current(data);
+    const onReaction = (data: RoomReaction) => {
+      useReactionsStore.getState().addReaction(data);
     };
 
     const handleUnmuteRequested = ({
@@ -648,7 +652,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           variant: 'primary',
           onConfirm: () => {
             setConfirmModal(null);
-            setIsMicOn(true);
+            useMediaStore.getState().setMicOn(true);
             const socket = getSocket();
             socket.emit('room:media-toggle', {
               roomCode: code,
@@ -656,7 +660,7 @@ export default function MeetPage({ params }: MeetPageProps) {
               isVideoOn: isVideoOnRef.current,
             });
             setRoomToast({ text: 'Microphone unmuted', type: 'join' });
-            setTimeout(() => {
+            safeTimeout(() => {
               setRoomToast((curr) => (curr?.text === 'Microphone unmuted' ? null : curr));
             }, 3000);
           },
@@ -689,25 +693,29 @@ export default function MeetPage({ params }: MeetPageProps) {
     socket.on('room:switched', handleRoomSwitched);
 
     const handleWhiteboardToggled = (payload: WhiteboardTogglePayload) => {
-      if (payload.roomCode?.trim().toLowerCase() !== code.trim().toLowerCase()) return;
-      setIsWhiteboardOpen(payload.isOpen);
-      if (payload.elements) setWhiteboardElements(payload.elements);
-      if (payload.appState) setWhiteboardAppState(payload.appState);
+      if (!payload?.roomCode || payload.roomCode.trim().toLowerCase() !== code.trim().toLowerCase()) return;
+      useWhiteboardStore.getState().syncState({
+        isOpen: payload.isOpen,
+        elements: payload.elements,
+        appState: payload.appState,
+      });
       if (payload.isOpen) {
         playJoinChime();
         setRoomToast({ text: 'Whiteboard opened', type: 'join' });
       } else {
         setRoomToast({ text: 'Whiteboard closed', type: 'leave' });
       }
-      setTimeout(() => {
+      safeTimeout(() => {
         setRoomToast((curr) => (curr?.text?.includes('Whiteboard') ? null : curr));
       }, 3500);
     };
     socket.on('whiteboard:toggled', handleWhiteboardToggled);
     const handleWhiteboardUpdated = (payload: WhiteboardScenePayload) => {
-      if (payload.roomCode?.trim().toLowerCase() !== code.trim().toLowerCase()) return;
-      if (payload.elements) setWhiteboardElements(payload.elements);
-      if (payload.appState) setWhiteboardAppState(payload.appState);
+      if (!payload?.roomCode || payload.roomCode.trim().toLowerCase() !== code.trim().toLowerCase()) return;
+      useWhiteboardStore.getState().syncState({
+        elements: payload.elements,
+        appState: payload.appState,
+      });
     };
     socket.on('whiteboard:updated', handleWhiteboardUpdated);
 
@@ -737,9 +745,16 @@ export default function MeetPage({ params }: MeetPageProps) {
       socket.off('room:hand-raised', handleHandRaised);
       socket.off('room:ended', handleRoomEnded);
       if (roomEndedTimer) clearTimeout(roomEndedTimer);
+      timeouts.forEach((t) => clearTimeout(t));
+      timeouts.clear();
+      useWhiteboardStore.getState().reset();
+      useAudioStore.getState().reset();
+      useChatStore.getState().reset();
+      useReactionsStore.getState().reset();
+      useMediaStore.getState().reset();
       socket.emit('room:leave', { roomCode: code });
     };
-  }, [roomId, code, router, hasJoined]);
+  }, [roomId, roomCode, code, router, hasJoined, safeTimeout]);
 
   const isHost = Boolean(room && session?.user && room.hostId === session.user.id);
   const isMicAllowed = isHost || settings?.micForAll !== false;
@@ -762,7 +777,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     selectedAudioOutputId: mediaDevices.selectedAudioOutputId,
     selectedVideoInputId: mediaDevices.selectedVideoInputId,
     onScreenShareEnded: () => {
-      setIsScreenSharing(false);
+      useMediaStore.getState().setScreenSharing(false);
       setRoomToast({ text: 'Screen sharing ended', type: 'leave' });
     },
     onError: (msg) => {
@@ -781,7 +796,7 @@ export default function MeetPage({ params }: MeetPageProps) {
     };
   }, []);
 
-  const localAudio = useLocalAudioLevel({
+  useLocalAudioLevel({
     isEnabled: isInRoom && isMicOn && isMicAllowed,
     deviceId: mediaDevices.selectedAudioInputId,
     stream: webrtc.localStream,
@@ -809,7 +824,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       return;
     }
     const next = !handRaised;
-    setHandRaised(next);
+    useMediaStore.getState().setHandRaised(next);
     const socket = getSocket();
     if (socket.connected) {
       socket.emit('room:raise-hand', { roomCode: code, handRaised: next });
@@ -818,7 +833,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       text: next ? 'Hand raised (showing presence)' : 'Hand lowered',
       type: next ? 'join' : 'leave',
     });
-    setTimeout(() => {
+    safeTimeout(() => {
       setRoomToast((curr) => (curr?.text?.includes('Hand') ? null : curr));
     }, 2500);
   };
@@ -829,7 +844,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       return;
     }
     const next = !isMicOn;
-    setIsMicOn(next);
+    useMediaStore.getState().setMicOn(next);
     const socket = getSocket();
     socket.emit('room:media-toggle', {
       roomCode: code,
@@ -845,7 +860,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       return;
     }
     const next = !isVideoOn;
-    setIsVideoOn(next);
+    useMediaStore.getState().setVideoOn(next);
     const socket = getSocket();
     socket.emit('room:media-toggle', {
       roomCode: code,
@@ -873,7 +888,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         return;
       }
     }
-    setIsScreenSharing(!isScreenSharing);
+    useMediaStore.getState().setScreenSharing(!isScreenSharing);
   };
 
   // Broadcast screen sharing state changes to room roster
@@ -895,7 +910,7 @@ export default function MeetPage({ params }: MeetPageProps) {
   const handleCopyLink = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    safeTimeout(() => setCopied(false), 2000);
   };
 
   const handleSwitchToTalk = () => {
@@ -947,8 +962,8 @@ export default function MeetPage({ params }: MeetPageProps) {
 
   const handleToggleWhiteboard = useCallback(() => {
     if (!isHost) return;
-    const nextState = !isWhiteboardOpen;
-    setIsWhiteboardOpen(nextState);
+    const nextState = !useWhiteboardStore.getState().isOpen;
+    useWhiteboardStore.getState().setIsOpen(nextState);
     const socket = getSocket();
     if (socket.connected) {
       socket.emit('whiteboard:toggle', {
@@ -956,7 +971,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         isOpen: nextState,
       });
     }
-  }, [isHost, isWhiteboardOpen, code]);
+  }, [isHost, code]);
 
   const handleRemoteMute = (targetUserId: string, targetName: string) => {
     if (!isHost) return;
@@ -969,7 +984,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       text: `Muted ${targetName}`,
       type: 'leave',
     });
-    setTimeout(() => {
+    safeTimeout(() => {
       setRoomToast((curr) => (curr?.text?.startsWith('Muted ') ? null : curr));
     }, 3000);
   };
@@ -985,7 +1000,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       text: `Asked ${targetName} to unmute`,
       type: 'join',
     });
-    setTimeout(() => {
+    safeTimeout(() => {
       setRoomToast((curr) => (curr?.text?.startsWith('Asked ') ? null : curr));
     }, 3000);
   };
@@ -1008,7 +1023,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           text: `Removed ${targetName} from space`,
           type: 'leave',
         });
-        setTimeout(() => {
+        safeTimeout(() => {
           setRoomToast((curr) => (curr?.text?.startsWith('Removed ') ? null : curr));
         }, 3000);
         setConfirmModal(null);
@@ -1031,7 +1046,7 @@ export default function MeetPage({ params }: MeetPageProps) {
         text: `Made ${newHostName} the space host`,
         type: 'join',
       });
-      setTimeout(() => {
+      safeTimeout(() => {
         setRoomToast((curr) => (curr?.text?.startsWith('Made ') ? null : curr));
       }, 3000);
       return true;
@@ -1183,8 +1198,8 @@ export default function MeetPage({ params }: MeetPageProps) {
         sessionUser={session?.user}
         isMicOn={isMicOn}
         isVideoOn={isVideoOn}
-        onToggleMic={() => setIsMicOn((prev) => !prev)}
-        onToggleVideo={() => setIsVideoOn((prev) => !prev)}
+        onToggleMic={() => useMediaStore.getState().toggleMic()}
+        onToggleVideo={() => useMediaStore.getState().toggleVideo()}
         mediaDevices={mediaDevices}
         passcodeRequired={passcodeRequired}
         passcode={passcode}
@@ -1243,7 +1258,7 @@ export default function MeetPage({ params }: MeetPageProps) {
             ? 'rounded-xl aspect-video w-36 sm:w-44 lg:w-full min-h-[75px] sm:min-h-[90px] lg:min-h-[105px] shrink-0'
             : 'rounded-2xl min-h-[140px] sm:min-h-[220px] w-full h-full'
         } ${
-          isMicOn && localAudio.isSpeaking
+          isMicOn && isLocalSpeaking
             ? 'border border-[#11ff99]/50 ring-2 ring-[#11ff99]/40 shadow-[0_0_35px_rgba(17,255,153,0.18)]'
             : isMicOn
             ? 'border border-[#11ff99]/25 ring-1 ring-[#11ff99]/15'
@@ -1262,7 +1277,7 @@ export default function MeetPage({ params }: MeetPageProps) {
 
         {/* Reaction Badge on Local Tile */}
         <ReactionBadge
-          emoji={tileReactions[session?.user?.id || '']?.emoji}
+          userId={session?.user?.id}
           className="absolute top-2.5 right-2.5"
         />
 
@@ -1303,12 +1318,12 @@ export default function MeetPage({ params }: MeetPageProps) {
         ) : (
           <div className="relative flex flex-col items-center justify-center gap-2 z-10">
             <div className="relative">
-              <AudioRipple isActive={isMicOn} isSpeaking={localAudio.isSpeaking} size={isCompact ? 'sm' : 'md'} />
+              <AudioRipple isActive={isMicOn} isLocal={true} size={isCompact ? 'sm' : 'md'} />
               <div
                 className={`${
                   isCompact ? 'h-9 w-9 text-xs' : 'h-12 w-12 sm:h-14 sm:w-14'
                 } rounded-full bg-[#101012] border border-white/[0.08] text-[#888e90] flex items-center justify-center relative z-10 transition-all ${
-                  isMicOn && localAudio.isSpeaking ? 'ring-2 ring-emerald-400/90 text-emerald-300' : ''
+                  isMicOn && isLocalSpeaking ? 'ring-2 ring-emerald-400/90 text-emerald-300' : ''
                 }`}
               >
                 {session?.user.image ? (
@@ -1343,10 +1358,10 @@ export default function MeetPage({ params }: MeetPageProps) {
               <p className="text-[10px] font-mono text-[#11ff99] relative z-10 font-medium flex items-center gap-1">
                 <span
                   className={`h-1.5 w-1.5 rounded-full bg-[#11ff99] ${
-                    localAudio.isSpeaking ? 'animate-ping' : 'opacity-70'
+                    isLocalSpeaking ? 'animate-ping' : 'opacity-70'
                   }`}
                 />
-                <span>{localAudio.isSpeaking ? 'Speaking' : 'Mic active'}</span>
+                <span>{isLocalSpeaking ? 'Speaking' : 'Mic active'}</span>
               </p>
             ) : (
               <p className="text-[10px] font-mono text-[#888e90] relative z-10">Camera muted</p>
@@ -1359,7 +1374,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           className={`absolute bottom-2 left-2 sm:bottom-2.5 sm:left-2.5 bg-[#0a0a0c]/85 backdrop-blur-md ${
             isCompact ? 'px-1.5 py-0.5 sm:px-2 sm:py-1' : 'px-2 sm:px-3 py-1 sm:py-1.5'
           } rounded-full text-xs font-medium flex items-center gap-1 sm:gap-1.5 text-[#fcfdff] border transition-all duration-200 z-20 shadow-lg ${
-            isMicOn && localAudio.isSpeaking
+            isMicOn && isLocalSpeaking
               ? 'border-[#11ff99]/40 ring-1 ring-[#11ff99]/30'
               : 'border-white/[0.10]'
           }`}
@@ -1368,15 +1383,14 @@ export default function MeetPage({ params }: MeetPageProps) {
             <div className="flex items-center gap-1">
               <MicIcon
                 size={11}
-                className={localAudio.isSpeaking ? 'text-[#11ff99]' : 'text-emerald-400/70'}
+                className={isLocalSpeaking ? 'text-[#11ff99]' : 'text-emerald-400/70'}
               />
               {!isCompact && (
                 <AudioWaveform
                   isActive={isMicOn}
                   size="xs"
                   barCount={3}
-                  volume={localAudio.volume}
-                  frequencyBands={localAudio.frequencyBands}
+                  isLocal={true}
                 />
               )}
             </div>
@@ -1444,7 +1458,7 @@ export default function MeetPage({ params }: MeetPageProps) {
               )}
             </div>
           )}
-          <ReactionBadge emoji={tileReactions[p.userId]?.emoji} />
+          <ReactionBadge userId={p.userId} />
           <ConnectionQualityPill status={peerConnStatus} isCompact={isCompact} />
         </div>
 
@@ -1695,7 +1709,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           <button
             onClick={() => {
               setParticipantsOpen(!participantsOpen);
-              if (!participantsOpen) setChatOpen(false);
+              if (!participantsOpen) useChatStore.getState().setIsOpen(false);
             }}
             className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
               participantsOpen
@@ -1772,8 +1786,6 @@ export default function MeetPage({ params }: MeetPageProps) {
                 roomCode={code}
                 isHost={isHost}
                 socket={getSocket()}
-                initialElements={whiteboardElements}
-                initialAppState={whiteboardAppState}
                 onClose={handleToggleWhiteboard}
               />
             </div>
@@ -2018,7 +2030,7 @@ export default function MeetPage({ params }: MeetPageProps) {
                 testingSpeaker={mediaDevices.testingSpeaker}
                 onTestMic={mediaDevices.testMic}
                 testingMicStatus={mediaDevices.testingMicStatus}
-                micVolume={localAudio.volume || mediaDevices.micVolume}
+                micVolume={mediaDevices.micVolume}
               />
             </div>
           </div>
@@ -2162,7 +2174,7 @@ export default function MeetPage({ params }: MeetPageProps) {
           <button
             onClick={() => {
               setParticipantsOpen(!participantsOpen);
-              if (!participantsOpen) setChatOpen(false);
+              if (!participantsOpen) useChatStore.getState().setIsOpen(false);
             }}
             className={`relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 ${
               participantsOpen
@@ -2181,10 +2193,10 @@ export default function MeetPage({ params }: MeetPageProps) {
 
           <button
             onClick={() => {
-              setChatOpen(!chatOpen);
-              if (!chatOpen) {
+              const next = !chatOpen;
+              useChatStore.getState().setIsOpen(next);
+              if (next) {
                 setParticipantsOpen(false);
-                setUnreadChatCount(0);
               }
             }}
             className={`relative h-9 w-9 sm:h-10 sm:w-10 rounded-xl flex items-center justify-center transition-all cursor-pointer shrink-0 ${
@@ -2510,9 +2522,6 @@ export default function MeetPage({ params }: MeetPageProps) {
 
       {/* In-Call Ephemeral Chat */}
       <InRoomChat
-        isOpen={chatOpen}
-        onClose={() => setChatOpen(false)}
-        messages={messages}
         onSendMessage={handleSendMessage}
         currentUserId={session?.user?.id || ''}
         roomTitle={room?.title}
@@ -2537,8 +2546,6 @@ export default function MeetPage({ params }: MeetPageProps) {
         onUnmuteUser={isHost ? handleRequestUnmute : undefined}
         onKickUser={isHost ? handleKickUser : undefined}
         onTransferHost={isHost ? requestTransferHost : undefined}
-        localVolume={localAudio.volume}
-        localFrequencyBands={localAudio.frequencyBands}
       />
 
       {/* Transfer Host & Leave Modal */}
@@ -2609,7 +2616,7 @@ export default function MeetPage({ params }: MeetPageProps) {
       </div>
 
       {/* Floating Reactions Stream */}
-      <FloatingReactions reactions={floatingReactions} />
+      <FloatingReactions />
 
       {/* Report Issue & Feedback Modal */}
       <ReportModal
