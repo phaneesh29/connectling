@@ -124,11 +124,67 @@ const TALK_FORMATS = [
   'Radio',
 ];
 
+const WEBINAR_CURATED = [
+  'Masterclass: Next.js 15 Full-Stack Architecture',
+  'Product Keynote: The Future of Real-Time Collaboration',
+  'Building Planetary-Scale Real-Time Web Apps',
+  'Deep Dive: High-Throughput WebSockets & WebRTC',
+  'The State of Autonomous AI Agents in Production',
+  'Interactive Workshop: Vector Whiteboard Engineering',
+  'Scaling from 0 to 1M Users: Lessons from the Trenches',
+  'Designing High-Density Developer Experiences',
+  'Live Coding: Low-Latency Video Broadcast Engines',
+  'TypeScript Performance Tuning: Zero-Overhead Patterns',
+  'Distributed Systems: Resilient Microservices & Ingest',
+  'Global Community Townhall & Interactive Live Demos',
+  'Full-Stack Observability: Tracing & Metrics at Scale',
+  'Modern Database Architectures: From Edge to Cloud',
+  'Interactive AMA: Building High-Impact Tech Products',
+];
+
+const WEBINAR_PREFIXES = [
+  'Masterclass:',
+  'Keynote:',
+  'Deep Dive:',
+  'Live Workshop:',
+  'Architecture Breakdown:',
+  'Crash Course:',
+  'Summit Session:',
+  'Interactive Lab:',
+];
+
+const WEBINAR_TOPICS = [
+  'Distributed Systems',
+  'Real-Time WebSockets',
+  'Agentic AI Systems',
+  'Next-Gen Frontend',
+  'Cloud-Native Infra',
+  'Modern TypeScript',
+  'Scalable Edge Ingest',
+  'High-Concurrency Microservices',
+];
+
+const WEBINAR_FOCUS = [
+  'at Planetary Scale',
+  'in Production',
+  'from First Principles',
+  'Best Practices & Pitfalls',
+  '& Architectural Review',
+  'for Modern Engineering Teams',
+];
+
 function pickRandom<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
 }
 
-function generateSingleName(type: 'meet' | 'audio'): string {
+function generateSingleName(type: 'meet' | 'audio' | 'webinar'): string {
+  if (type === 'webinar') {
+    if (Math.random() < 0.6) {
+      return pickRandom(WEBINAR_CURATED);
+    }
+    return `${pickRandom(WEBINAR_PREFIXES)} ${pickRandom(WEBINAR_TOPICS)} ${pickRandom(WEBINAR_FOCUS)}`;
+  }
+
   const useCurated = Math.random() < 0.55;
 
   if (type === 'meet') {
@@ -146,11 +202,11 @@ function generateSingleName(type: 'meet' | 'audio'): string {
 }
 
 /**
- * Generate a random title for a space (meeting or audio stage).
+ * Generate a random title for a space or webinar.
  * Avoids returning the exact currentTitle to ensure clicking gives a new suggestion each time.
  */
 export function generateRandomRoomTitle(
-  type: 'meet' | 'audio',
+  type: 'meet' | 'audio' | 'webinar',
   currentTitle?: string
 ): string {
   let candidate = generateSingleName(type);
@@ -162,4 +218,11 @@ export function generateRandomRoomTitle(
   }
 
   return candidate;
+}
+
+/**
+ * Convenience helper specifically for webinar titles.
+ */
+export function generateRandomWebinarTitle(currentTitle?: string): string {
+  return generateRandomRoomTitle('webinar', currentTitle);
 }

@@ -28,7 +28,9 @@ import {
   Power,
   ArrowLeft,
   X,
+  Dices,
 } from 'lucide-react';
+import { generateRandomWebinarTitle } from '@/lib/room-names';
 
 interface PageProps {
   params: Promise<{ code: string }>;
@@ -412,9 +414,20 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
 
             <form onSubmit={handleSaveSettings} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-1">
-                  Title
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-semibold text-zinc-300 uppercase">
+                    Title
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setEditTitle(generateRandomWebinarTitle(editTitle))}
+                    className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-medium text-[#FF9933] hover:text-[#ffaa4d] bg-[#FF9933]/10 hover:bg-[#FF9933]/20 border border-[#FF9933]/25 transition-all cursor-pointer select-none active:scale-95"
+                    title="Generate random webinar title"
+                  >
+                    <Dices size={12} className="shrink-0" />
+                    <span>Random title</span>
+                  </button>
+                </div>
                 <input
                   type="text"
                   required

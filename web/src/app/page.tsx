@@ -339,8 +339,10 @@ export default function DashboardPage() {
               {activeMode === 'webinar' && (
                 <Link
                   href="/webinar/guide"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 rounded bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] hover:border-[#FF9933]/30 text-[10px] text-[#FF9933] font-medium transition-all"
-                  title="Webinar Broadcaster Guide"
+                  title="Webinar Broadcaster Guide (opens in new tab)"
                 >
                   <Info size={11} />
                   <span>Setup Guide</span>
@@ -368,8 +370,10 @@ export default function DashboardPage() {
                 {activeMode === 'webinar' && (
                   <Link
                     href="/webinar/guide"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="h-6 w-6 rounded-lg bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.08] hover:border-[#FF9933]/30 text-[#888e90] hover:text-[#FF9933] inline-flex items-center justify-center transition-all"
-                    title="Webinar Broadcaster Guide"
+                    title="Webinar Broadcaster Guide (opens in new tab)"
                     aria-label="Webinar Broadcaster Guide"
                   >
                     <Info size={13} />
@@ -608,8 +612,10 @@ export default function DashboardPage() {
                   </h2>
                   <Link
                     href="/webinar/guide"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="h-5 w-5 rounded-md bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.08] hover:border-[#FF9933]/30 text-[#888e90] hover:text-[#FF9933] inline-flex items-center justify-center transition-all"
-                    title="Webinar Broadcaster Guide"
+                    title="Webinar Broadcaster Guide (opens in new tab)"
                     aria-label="Webinar Broadcaster Guide"
                   >
                     <Info size={11} />

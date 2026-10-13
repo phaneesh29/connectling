@@ -4,7 +4,8 @@ import { useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { webinarsApi } from '@/lib/webinars-api';
-import { Radio, X, Sparkles, AlertCircle, Info } from 'lucide-react';
+import { generateRandomWebinarTitle } from '@/lib/room-names';
+import { Radio, X, Sparkles, AlertCircle, Info, Dices } from 'lucide-react';
 
 const emptySubscribe = () => () => {};
 
@@ -68,6 +69,12 @@ export function CreateWebinarModal({ isOpen, onClose, onSuccess }: CreateWebinar
   const [allowReactions, setAllowReactions] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleGenerateTitle = () => {
+    const nextTitle = generateRandomWebinarTitle(title);
+    setTitle(nextTitle);
+    if (error) setError(null);
+  };
 
   if (!isOpen || !mounted) return null;
 
@@ -170,9 +177,20 @@ export function CreateWebinarModal({ isOpen, onClose, onSuccess }: CreateWebinar
 
           {/* Title */}
           <div>
-            <label className="block text-xs font-medium text-[#fcfdff]/80 mb-1.5">
-              Webinar Title <span className="text-[#ff2047]">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-medium text-[#fcfdff]/80">
+                Webinar Title <span className="text-[#ff2047]">*</span>
+              </label>
+              <button
+                type="button"
+                onClick={handleGenerateTitle}
+                className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-medium text-[#FF9933] hover:text-[#ffaa4d] bg-[#FF9933]/10 hover:bg-[#FF9933]/20 border border-[#FF9933]/25 transition-all cursor-pointer select-none active:scale-95"
+                title="Generate random webinar title"
+              >
+                <Dices size={12} className="shrink-0" />
+                <span>Random title</span>
+              </button>
+            </div>
             <input
               type="text"
               required
