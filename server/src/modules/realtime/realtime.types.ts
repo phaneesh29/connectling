@@ -39,6 +39,16 @@ export interface ClientToServerEvents {
   'chat:message': (payload: { roomCode: string; text: string }) => void;
   'room:reaction': (payload: { roomCode: string; emoji: string }) => void;
   'webrtc:signal': (payload: WebRTCSignalPayload) => void;
+  'webinar:join': (payload: { webinarCode: string }) => void;
+  'webinar:leave': (payload: { webinarCode: string }) => void;
+  'webinar:chat': (payload: { webinarCode: string; text: string }) => void;
+  'webinar:reaction': (payload: { webinarCode: string; emoji: string }) => void;
+  'webinar:whiteboard:toggle': (payload: { webinarCode: string; isOpen: boolean }) => void;
+  'webinar:whiteboard:update': (payload: { webinarCode: string; elements: readonly unknown[]; appState?: Record<string, unknown> }) => void;
+  'webinar:whiteboard:sync': (payload: { webinarCode: string }) => void;
+  'webinar:qa:ask': (payload: { webinarCode: string; text: string }) => void;
+  'webinar:qa:upvote': (payload: { webinarCode: string; questionId: string }) => void;
+  'webinar:qa:answer': (payload: { webinarCode: string; questionId: string }) => void;
 }
 
 export interface WebRTCSignalData {
@@ -109,6 +119,18 @@ export interface WhiteboardTogglePayload {
   appState?: Record<string, unknown>;
 }
 
+export interface WebinarQuestion {
+  id: string;
+  userId: string;
+  userName: string;
+  userImage?: string | null;
+  text: string;
+  upvotes: number;
+  upvotedBy: string[];
+  isAnswered: boolean;
+  timestamp: number;
+}
+
 export interface ServerToClientEvents {
   'chat:new-message': (payload: ChatMessage) => void;
   'room:roster': (payload: { roomCode: string; participants: RoomParticipant[] }) => void;
@@ -131,6 +153,16 @@ export interface ServerToClientEvents {
   'room:reaction': (payload: RoomReaction) => void;
   'webrtc:signal': (payload: WebRTCIncomingSignalPayload) => void;
   'error:message': (payload: { message: string }) => void;
+  'webinar:status:changed': (payload: { status: 'scheduled' | 'live' | 'ended'; startedAt?: Date | null; endedAt?: Date | null }) => void;
+  'webinar:updated': (payload: { title?: string; description?: string | null; youtubeVideoId?: string | null; allowChat?: boolean; allowQa?: boolean; allowWhiteboard?: boolean; allowReactions?: boolean }) => void;
+  'webinar:stats': (payload: { viewerCount: number }) => void;
+  'webinar:chat:new': (payload: ChatMessage) => void;
+  'webinar:reaction:fly': (payload: RoomReaction) => void;
+  'webinar:whiteboard:toggled': (payload: { webinarCode: string; isOpen: boolean; elements?: readonly unknown[]; appState?: Record<string, unknown> }) => void;
+  'webinar:whiteboard:updated': (payload: { webinarCode: string; elements: readonly unknown[]; appState?: Record<string, unknown> }) => void;
+  'webinar:qa:list': (payload: { questions: WebinarQuestion[] }) => void;
+  'webinar:qa:new': (payload: WebinarQuestion) => void;
+  'webinar:qa:updated': (payload: WebinarQuestion) => void;
 }
 
 export interface InterServerEvents {}

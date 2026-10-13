@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useSession } from '@/lib/auth-client';
 import { roomsApi, type AvailableRoomItem } from '@/lib/rooms-api';
+import { webinarsApi } from '@/lib/webinars-api';
+import type { WebinarData } from '@/stores/webinar-store';
 import { CreateRoomModal } from '@/components/create-room-modal';
+import { CreateWebinarModal } from '@/components/create-webinar-modal';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { ReportModal } from '@/components/report-modal';
 import { DashboardSkeleton, HostedSpaceCardSkeleton } from '@/components/skeleton';
@@ -20,6 +23,16 @@ import {
   CheckIcon,
   Trash2Icon,
 } from '@animateicons/react/lucide';
+import {
+  Calendar,
+  Clock,
+  Play,
+  Video,
+  MessageSquare,
+  HelpCircle,
+  PenTool,
+  Smile,
+} from 'lucide-react';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -28,6 +41,11 @@ export default function DashboardPage() {
   const [activeMode, setActiveMode] = useState<'meet' | 'audio' | 'webinar'>('meet');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'meet' | 'audio'>('meet');
+  const [webinarModalOpen, setWebinarModalOpen] = useState(false);
+  const [webinarTab, setWebinarTab] = useState<'upcoming' | 'mine'>('upcoming');
+  const [upcomingWebinars, setUpcomingWebinars] = useState<WebinarData[]>([]);
+  const [myWebinars, setMyWebinars] = useState<WebinarData[]>([]);
+  const [loadingWebinars, setLoadingWebinars] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
   const [codeInput, setCodeInput] = useState('');
   const [joining, setJoining] = useState(false);
@@ -36,7 +54,17 @@ export default function DashboardPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [deletingCode, setDeletingCode] = useState<string | null>(null);
   const [deleteConfirmRoom, setDeleteConfirmRoom] = useState<string | null>(null);
-  const [webinarNotified, setWebinarNotified] = useState(false);
+
+  // Sync mode from query string on mount if provided (e.g. /?mode=webinar)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const mode = params.get('mode');
+      if (mode === 'webinar' || mode === 'meet' || mode === 'audio') {
+        setActiveMode(mode);
+      }
+    }
+  }, []);
 
   const fetchMyRooms = useCallback(async () => {
     if (!session) return;
@@ -53,28 +81,48 @@ export default function DashboardPage() {
     }
   }, [session]);
 
-  useEffect(() => {
-    let ignore = false;
-    if (session) {
-      roomsApi
-        .listMyRooms()
-        .then((res) => {
-          if (!ignore && res.data) {
-            setMyRooms(res.data);
-          }
-        })
-        .catch(() => {
-          if (!ignore) setMyRooms([]);
-        });
+  const fetchWebinars = useCallback(async () => {
+    setLoadingWebinars(true);
+    try {
+      const upRes = await webinarsApi.listUpcomingWebinars();
+      if (upRes.data) {
+        setUpcomingWebinars(upRes.data);
+      }
+      if (session) {
+        const myRes = await webinarsApi.listMyWebinars();
+        if (myRes.data) {
+          setMyWebinars(myRes.data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load webinars:', err);
+    } finally {
+      setLoadingWebinars(false);
     }
-    return () => {
-      ignore = true;
-    };
   }, [session]);
+
+  useEffect(() => {
+    if (session) {
+      fetchMyRooms();
+    }
+  }, [session, fetchMyRooms]);
+
+  useEffect(() => {
+    if (activeMode === 'webinar') {
+      fetchWebinars();
+    }
+  }, [activeMode, fetchWebinars]);
 
   const handleCopy = (codeToCopy: string) => {
     navigator.clipboard.writeText(codeToCopy);
     setCopiedCode(codeToCopy);
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const handleCopyWebinarLink = (code: string) => {
+    const url = `${window.location.origin}/webinar/watch/${code}`;
+    navigator.clipboard.writeText(url);
+    setCopiedCode(code);
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
@@ -119,11 +167,19 @@ export default function DashboardPage() {
     const code = cleanRoomCode(raw);
     if (!code) return;
 
-    let target = activeMode === 'meet' ? `/meet/${code}` : `/talk/${code}`;
+    let target =
+      activeMode === 'meet'
+        ? `/meet/${code}`
+        : activeMode === 'audio'
+        ? `/talk/${code}`
+        : `/webinar/watch/${code}`;
+
     if (raw.includes('/talk/')) {
       target = `/talk/${code}`;
     } else if (raw.includes('/meet/')) {
       target = `/meet/${code}`;
+    } else if (raw.includes('/webinar/')) {
+      target = `/webinar/watch/${code}`;
     }
 
     if (!session) {
@@ -133,19 +189,21 @@ export default function DashboardPage() {
 
     setJoining(true);
 
-    try {
-      const probePromise = roomsApi.getRoom(code);
-      const timeoutPromise = new Promise<{ data?: { type?: string } }>((resolve) =>
-        setTimeout(() => resolve({}), 300)
-      );
-      const res = await Promise.race([probePromise, timeoutPromise]);
-      if (res.data?.type === 'audio') {
-        target = `/talk/${code}`;
-      } else if (res.data?.type === 'meet') {
-        target = `/meet/${code}`;
+    if (activeMode !== 'webinar' && !raw.includes('/webinar/')) {
+      try {
+        const probePromise = roomsApi.getRoom(code);
+        const timeoutPromise = new Promise<{ data?: { type?: string } }>((resolve) =>
+          setTimeout(() => resolve({}), 300)
+        );
+        const res = await Promise.race([probePromise, timeoutPromise]);
+        if (res.data?.type === 'audio') {
+          target = `/talk/${code}`;
+        } else if (res.data?.type === 'meet') {
+          target = `/meet/${code}`;
+        }
+      } catch {
+        // Fallback to detected target
       }
-    } catch {
-      // Fallback to detected target
     }
 
     router.push(target);
@@ -163,6 +221,8 @@ export default function DashboardPage() {
   if (sessionPending) {
     return <DashboardSkeleton />;
   }
+
+  const displayedWebinars = webinarTab === 'upcoming' ? upcomingWebinars : myWebinars;
 
   return (
     <div
@@ -255,12 +315,12 @@ export default function DashboardPage() {
                 ? 'High-density encrypted video conferences with crystal-clear screen sharing, grid autofocus, and single-click invites up to 4 participants.'
                 : activeMode === 'audio'
                 ? 'Moderated Clubhouse-style audio lounges and casual team voice stages with open mic modes up to 10 participants.'
-                : 'Host keynote presentations, interactive product demos, and community stages designed for live participation.'}
+                : 'Broadcast keynote presentations, interactive product launches, and community stages designed for live participation.'}
             </p>
           </div>
         </section>
 
-        {/* Action Panel: Launch & Join Space */}
+        {/* Action Panel: Launch & Join Space/Webinar */}
         <section className="relative glow-card rounded-2xl border border-white/[0.12] bg-[#0a0a0c] overflow-hidden p-4 sm:p-8 space-y-5 sm:space-y-6">
           <div className="absolute top-0 right-0 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-25 -mr-20 -mt-20 bg-gradient-brand-br" />
 
@@ -270,7 +330,7 @@ export default function DashboardPage() {
               <span className="h-2.5 w-2.5 rounded-full bg-[#ffc53d]/80 shrink-0" />
               <span className="h-2.5 w-2.5 rounded-full bg-[#11ff99]/80 shrink-0" />
               <span className="font-mono text-[11px] text-[#888e90] ml-1 sm:ml-2 truncate max-w-[130px] xs:max-w-[200px] sm:max-w-none">
-                connectling.com/{activeMode === 'meet' ? 'meet' : activeMode === 'audio' ? 'talk' : 'webinars'}/[code]
+                connectling.com/{activeMode === 'meet' ? 'meet' : activeMode === 'audio' ? 'talk' : 'webinar/watch'}/[code]
               </span>
             </div>
 
@@ -279,7 +339,7 @@ export default function DashboardPage() {
                 {activeMode === 'meet' ? '4 Seats' : activeMode === 'audio' ? '10 Seats' : '100+ Seats'}
               </span>
               <span className="font-mono text-[10px] text-[#888e90] px-2 sm:px-2.5 py-0.5 rounded bg-[#101012] border border-white/[0.06]">
-                {activeMode === 'webinar' ? 'Coming Soon' : '24h Ephemeral'}
+                {activeMode === 'webinar' ? 'Live CDN' : '24h Ephemeral'}
               </span>
             </div>
           </div>
@@ -298,11 +358,25 @@ export default function DashboardPage() {
                   ? 'Launch an encrypted session with screen sharing and custom permissions.'
                   : activeMode === 'audio'
                   ? 'Start a drop-in voice stage with open mic or audience hand-raising moderation.'
-                  : 'Broadcast to large audiences with interactive stages and live participation.'}
+                  : 'Broadcast to large audiences with interactive chat, real-time Q&A, and live whiteboards.'}
               </p>
             </div>
 
-            {activeMode !== 'webinar' && (
+            {activeMode === 'webinar' ? (
+              <button
+                onClick={() => {
+                  if (!session) {
+                    router.push('/login?callbackURL=/?mode=webinar');
+                    return;
+                  }
+                  setWebinarModalOpen(true);
+                }}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl sm:rounded-lg transition-all active:scale-[0.98] shadow-brand-glow shrink-0 cursor-pointer"
+              >
+                <SparklesIcon size={13} />
+                <span>Host a Webinar</span>
+              </button>
+            ) : (
               <button
                 onClick={() => openCreateModal(activeMode)}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 sm:py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl sm:rounded-lg transition-all active:scale-[0.98] shadow-brand-glow shrink-0 cursor-pointer"
@@ -317,111 +391,47 @@ export default function DashboardPage() {
             )}
           </div>
 
+          {/* Join Code / URL Form */}
           <div className="pt-3 sm:pt-4 border-t border-white/[0.06] relative z-10">
-            {activeMode === 'webinar' ? (
-              <div className="py-4 sm:py-5 flex items-center justify-center relative">
-                <div className="relative group inline-flex items-center justify-center">
-                  {/* Ambient Outer Saffron/Amber Aura Glow */}
-                  <div className="absolute -inset-2 rounded-full bg-gradient-to-r from-[#FF9933]/30 via-[#F4C430]/20 to-[#FF8C00]/30 blur-lg sm:blur-xl opacity-50 group-hover:opacity-90 transition-opacity duration-500 pointer-events-none" />
-
-                  {/* Fluid Liquid Saffron/Gold Border */}
-                  <div className="relative p-[1.5px] rounded-full bg-gradient-to-r from-[#FF9933] via-[#F4C430] to-[#FF8C00] animate-border-flow shadow-[0_0_16px_rgba(255,153,51,0.2)] group-hover:shadow-[0_0_30px_rgba(255,153,51,0.4)] transition-shadow duration-500">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setWebinarNotified(true);
-                        setTimeout(() => setWebinarNotified(false), 3200);
-                      }}
-                      className="relative inline-flex items-center gap-3 sm:gap-4.5 px-5 sm:px-7 py-2.5 sm:py-3.5 rounded-full bg-gradient-to-b from-[#131318]/95 via-[#0c0c10]/95 to-[#07070a]/98 backdrop-blur-2xl cursor-pointer active:scale-[0.98] transition-all duration-300 overflow-hidden select-none"
-                    >
-                      {/* Subtle Top-Rim Highlight Reflection */}
-                      <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-to-r from-transparent via-white/25 to-transparent pointer-events-none" />
-
-                      {/* Diagonal Glass Sheen Sweep on Hover */}
-                      <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 bg-gradient-to-r from-transparent via-white/[0.12] to-transparent pointer-events-none" />
-
-                      {webinarNotified ? (
-                        <div className="flex items-center gap-2 py-0.5">
-                          <SparklesIcon size={15} className="text-[#11ff99]" />
-                          <span className="font-serif italic text-base sm:text-lg text-transparent bg-clip-text bg-gradient-to-r from-[#11ff99] to-[#80ffc2]">
-                            Stage in craft • You&apos;re on early radar
-                          </span>
-                        </div>
-                      ) : (
-                        <>
-                          {/* Studio Live Equalizer Capsule (No Dot) */}
-                          <div className="flex items-center px-2 py-1 rounded-full bg-black/40 border border-white/[0.08] shadow-[inset_0_1px_1px_rgba(0,0,0,0.6)] shrink-0">
-                            <div className="flex items-end gap-[2.5px] h-4 sm:h-4.5 px-0.5">
-                              <span className="w-[2px] sm:w-[2.5px] rounded-full bg-[#FF9933] animate-eq-1" />
-                              <span className="w-[2px] sm:w-[2.5px] rounded-full bg-[#F4C430] animate-eq-2" />
-                              <span className="w-[2px] sm:w-[2.5px] rounded-full bg-[#FF8C00] animate-eq-3" />
-                              <span className="w-[2px] sm:w-[2.5px] rounded-full bg-[#FF9933] animate-eq-4" />
-                              <span className="w-[2px] sm:w-[2.5px] rounded-full bg-[#F4C430] animate-eq-5" />
-                            </div>
-                          </div>
-
-                          {/* Signature Typography ("Coming Soon") */}
-                          <div className="flex items-baseline gap-1.5 sm:gap-2">
-                            <span className="font-serif-headline text-lg sm:text-2xl text-[#fcfdff] font-light tracking-tight group-hover:text-white transition-colors">
-                              Coming
-                            </span>
-                            <span className="font-serif italic text-lg sm:text-2xl font-normal text-gradient-brand drop-shadow-[0_0_16px_rgba(255,153,51,0.5)]">
-                              Soon
-                            </span>
-                          </div>
-
-                          {/* Broadcast Stage Chip */}
-                          <div className="hidden xs:flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full bg-white/[0.04] border border-white/[0.08] group-hover:border-[#FF9933]/40 group-hover:bg-[#FF9933]/15 transition-all shrink-0">
-                            <RadioIcon size={11} className="text-[#FF9933] animate-pulse" />
-                            <span className="font-mono text-[9px] sm:text-[10px] tracking-widest uppercase text-[#888e90] group-hover:text-white transition-colors">
-                              Stage
-                            </span>
-                          </div>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
+            <form onSubmit={handleJoin} className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3">
+              <div className="relative flex-1 w-full">
+                <input
+                  type="text"
+                  placeholder={
+                    activeMode === 'meet'
+                      ? 'Enter meeting code (e.g. 7au-qn5t-p8e) or URL'
+                      : activeMode === 'audio'
+                      ? 'Enter audio room code (e.g. tlk-92fa-10b) or URL'
+                      : 'Enter webinar code (e.g. wbn-7x2k-99a) or watch URL'
+                  }
+                  value={codeInput}
+                  onChange={(e) => setCodeInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl sm:rounded-lg border border-white/[0.10] bg-[#06060a] text-[#fcfdff] placeholder-[#464a4d] text-base sm:text-xs font-mono focus:outline-none focus:border-white/40 transition-all"
+                />
               </div>
-            ) : (
-              <form onSubmit={handleJoin} className="flex flex-col sm:flex-row items-center gap-2.5 sm:gap-3">
-                <div className="relative flex-1 w-full">
-                  <input
-                    type="text"
-                    placeholder={
-                      activeMode === 'meet'
-                        ? 'Enter meeting code (e.g. 7au-qn5t-p8e) or URL'
-                        : 'Enter audio room code (e.g. tlk-92fa-10b) or URL'
-                    }
-                    value={codeInput}
-                    onChange={(e) => setCodeInput(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl sm:rounded-lg border border-white/[0.10] bg-[#06060a] text-[#fcfdff] placeholder-[#464a4d] text-base sm:text-xs font-mono focus:outline-none focus:border-white/40 transition-all"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={!codeInput.trim() || joining}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#101012] hover:bg-[#18181c] border border-white/[0.12] hover:border-white/25 text-[#fcfdff] font-medium text-xs rounded-xl sm:rounded-lg transition-all disabled:opacity-40 shrink-0 cursor-pointer"
-                >
-                  {joining ? (
-                    <>
-                      <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
-                      <span>Connecting...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Join Space</span>
-                      <ArrowRightIcon size={13} />
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
+              <button
+                type="submit"
+                disabled={!codeInput.trim() || joining}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#101012] hover:bg-[#18181c] border border-white/[0.12] hover:border-white/25 text-[#fcfdff] font-medium text-xs rounded-xl sm:rounded-lg transition-all disabled:opacity-40 shrink-0 cursor-pointer"
+              >
+                {joining ? (
+                  <>
+                    <div className="animate-spin h-3.5 w-3.5 border border-white/30 border-t-white rounded-full" />
+                    <span>Connecting...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{activeMode === 'webinar' ? 'Watch Stream' : 'Join Space'}</span>
+                    <ArrowRightIcon size={13} />
+                  </>
+                )}
+              </button>
+            </form>
           </div>
         </section>
 
-        {/* Your Hosted Spaces Section */}
-        {session && (
+        {/* Dynamic Section: Spaces OR Webinars */}
+        {session && activeMode !== 'webinar' && (
           <section className="space-y-4 pt-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -438,7 +448,7 @@ export default function DashboardPage() {
               <button
                 onClick={() => void fetchMyRooms()}
                 disabled={loadingRooms}
-                className="text-xs font-mono text-[#888e90] hover:text-[#fcfdff] transition-all disabled:opacity-50"
+                className="text-xs font-mono text-[#888e90] hover:text-[#fcfdff] transition-all disabled:opacity-50 cursor-pointer"
               >
                 {loadingRooms ? 'Refreshing...' : 'Refresh'}
               </button>
@@ -564,6 +574,204 @@ export default function DashboardPage() {
           </section>
         )}
 
+        {/* Webinars Section on / Route */}
+        {session && activeMode === 'webinar' && (
+          <section className="space-y-4 pt-1">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <h2 className="text-sm sm:text-base font-medium text-[#fcfdff]">
+                  Webinar Broadcasts
+                </h2>
+                {/* Segmented Filter Pills */}
+                <div className="inline-flex p-0.5 bg-[#101012] border border-white/[0.08] rounded-xl text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setWebinarTab('upcoming')}
+                    className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                      webinarTab === 'upcoming'
+                        ? 'bg-[#1e1e24] text-[#fcfdff] border border-white/[0.12] shadow-sm'
+                        : 'text-[#888e90] hover:text-[#fcfdff]'
+                    }`}
+                  >
+                    Upcoming ({upcomingWebinars.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWebinarTab('mine')}
+                    className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                      webinarTab === 'mine'
+                        ? 'bg-[#1e1e24] text-[#fcfdff] border border-white/[0.12] shadow-sm'
+                        : 'text-[#888e90] hover:text-[#fcfdff]'
+                    }`}
+                  >
+                    My Webinars ({myWebinars.length})
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => void fetchWebinars()}
+                  disabled={loadingWebinars}
+                  className="text-xs font-mono text-[#888e90] hover:text-[#fcfdff] transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {loadingWebinars ? 'Refreshing...' : 'Refresh'}
+                </button>
+              </div>
+            </div>
+
+            {loadingWebinars && displayedWebinars.length === 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <HostedSpaceCardSkeleton />
+                <HostedSpaceCardSkeleton />
+                <HostedSpaceCardSkeleton />
+              </div>
+            ) : displayedWebinars.length === 0 ? (
+              <div className="p-8 sm:p-10 rounded-2xl border border-dashed border-white/[0.08] bg-[#0a0a0c]/60 flex flex-col items-center justify-center text-center space-y-3">
+                <RadioIcon size={28} className="text-[#888e90] opacity-60" />
+                <div className="space-y-1">
+                  <p className="text-sm text-[#fcfdff] font-medium">
+                    {webinarTab === 'upcoming'
+                      ? 'No upcoming broadcasts scheduled'
+                      : "You haven't created any webinars yet"}
+                  </p>
+                  <p className="text-xs text-[#888e90] max-w-sm">
+                    {webinarTab === 'upcoming'
+                      ? 'Create your own webinar stage now to stream live with real-time chat, whiteboards, and interactive Q&A.'
+                      : 'Launch a high-definition webinar with OBS RTMP integration and zero attendee latency.'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setWebinarModalOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-xs font-medium text-white transition-all cursor-pointer"
+                >
+                  <SparklesIcon size={12} />
+                  <span>Host a Webinar Now</span>
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {displayedWebinars.map((web) => {
+                  const isLive = web.status === 'live';
+                  const isEnded = web.status === 'ended';
+                  const isHost = session?.user?.id === web.hostId;
+
+                  return (
+                    <div
+                      key={web.id}
+                      className="p-4 sm:p-5 rounded-2xl border border-white/[0.10] bg-[#0a0a0c] hover:border-white/20 transition-all flex flex-col justify-between space-y-3.5 relative group"
+                    >
+                      <div className="space-y-2">
+                        {/* Status Header */}
+                        <div className="flex items-center justify-between gap-2">
+                          {isLive ? (
+                            <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase bg-red-500/15 border border-red-500/30 text-red-400">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                              LIVE NOW
+                            </span>
+                          ) : isEnded ? (
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wider uppercase bg-zinc-800 text-zinc-400">
+                              ENDED
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wider uppercase bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                              <Clock className="w-3 h-3" /> SCHEDULED
+                            </span>
+                          )}
+
+                          <button
+                            onClick={() => handleCopyWebinarLink(web.code)}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.08] text-[10px] font-mono text-[#888e90] hover:text-[#fcfdff] transition-all cursor-pointer"
+                            title="Copy webinar link"
+                          >
+                            <span>#{web.code}</span>
+                            {copiedCode === web.code ? (
+                              <CheckIcon size={10} className="text-[#11ff99]" />
+                            ) : (
+                              <CopyIcon size={10} />
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Title & Description */}
+                        <div>
+                          <h3 className="text-sm font-semibold text-[#fcfdff] truncate group-hover:text-[#FF9933] transition-colors">
+                            {web.title}
+                          </h3>
+                          <p className="text-[11px] text-[#888e90] line-clamp-2 mt-0.5 leading-relaxed">
+                            {web.description || 'No description provided.'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3 pt-2 border-t border-white/[0.06]">
+                        {/* Enabled Feature Icons & Scheduled Date */}
+                        <div className="flex items-center justify-between text-zinc-400 text-xs">
+                          <div className="flex items-center gap-2">
+                            {web.allowChat && (
+                              <span title="Chat Enabled">
+                                <MessageSquare className="w-3.5 h-3.5" />
+                              </span>
+                            )}
+                            {web.allowQa && (
+                              <span title="Q&A Enabled">
+                                <HelpCircle className="w-3.5 h-3.5" />
+                              </span>
+                            )}
+                            {web.allowWhiteboard && (
+                              <span title="Whiteboard Enabled">
+                                <PenTool className="w-3.5 h-3.5" />
+                              </span>
+                            )}
+                            {web.allowReactions && (
+                              <span title="Reactions Enabled">
+                                <Smile className="w-3.5 h-3.5" />
+                              </span>
+                            )}
+                          </div>
+
+                          {web.scheduledAt && (
+                            <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {new Date(web.scheduledAt).toLocaleDateString([], {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-2">
+                          {isHost ? (
+                            <Link
+                              href={`/webinar/host/${web.code}`}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs transition-all active:scale-[0.98] shadow-sm"
+                            >
+                              <Video className="w-3.5 h-3.5" />
+                              <span>Enter Studio</span>
+                            </Link>
+                          ) : (
+                            <Link
+                              href={`/webinar/watch/${web.code}`}
+                              className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-white font-medium text-xs transition-all active:scale-[0.98]"
+                            >
+                              <Play className="w-3.5 h-3.5 fill-current" />
+                              <span>Watch Stream</span>
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Unauthenticated Bottom CTA Banner */}
         {!session && (
           <section className="relative overflow-hidden p-6 sm:p-8 rounded-2xl border border-white/[0.12] bg-[#0a0a0c] text-center space-y-4 glow-card">
@@ -573,7 +781,7 @@ export default function DashboardPage() {
                 Private Real-Time Conversations. Zero Surveillance.
               </h2>
               <p className="text-xs text-[#888e90] leading-relaxed">
-                Launch an instant encrypted video conference or drop-in voice stage in seconds. No desktop apps to install, no recordings, and 100% free.
+                Launch an instant encrypted video conference, drop-in voice stage, or interactive live webinar in seconds. No desktop apps to install, no recordings, and 100% free.
               </p>
             </div>
             <div className="relative z-10 pt-2">
@@ -627,6 +835,13 @@ export default function DashboardPage() {
           setModalOpen(false);
           void fetchMyRooms();
         }}
+      />
+
+      <CreateWebinarModal
+        key={`webinar-${webinarModalOpen}`}
+        isOpen={webinarModalOpen}
+        onClose={() => setWebinarModalOpen(false)}
+        onSuccess={() => void fetchWebinars()}
       />
 
       <ConfirmDialog

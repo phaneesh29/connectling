@@ -10,10 +10,13 @@ import type {
   InterServerEvents,
   SocketData,
   RoomParticipant,
+  ChatMessage,
+  RoomReaction,
+  WebinarQuestion,
 } from './realtime.types.js';
 import { buildChatMessage } from './realtime.utils.js';
 import { db } from '../../db/index.js';
-import { room } from '../../db/room-schema.js';
+import { room, webinar } from '../../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { normalizeRoomCode } from '../rooms/room.utils.js';
 import { ROOM_CAPACITY } from '../rooms/rooms.constants.js';
@@ -44,6 +47,16 @@ interface RoomWhiteboardState {
   hostId?: string;
 }
 const roomWhiteboards = new Map<string, RoomWhiteboardState>();
+
+const webinarViewers = new Map<string, Set<string>>();
+interface WebinarWhiteboardState {
+  isOpen: boolean;
+  elements: readonly unknown[];
+  appState?: Record<string, unknown>;
+  hostId: string;
+}
+const webinarWhiteboards = new Map<string, WebinarWhiteboardState>();
+const webinarQuestions = new Map<string, WebinarQuestion[]>();
 
 export const clearRoomWhiteboard = (roomCode: string): void => {
   const normalized = normalizeRoomCode(roomCode);
@@ -820,7 +833,246 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
       void serializeRoom(normalized, () => handleLeave(normalized));
     });
 
+    // ==========================================
+    // WEBINAR REALTIME HANDLERS
+    // ==========================================
+
+    socket.on('webinar:join', async ({ webinarCode }) => {
+      if (typeof webinarCode !== 'string') return;
+      const normalized = normalizeRoomCode(webinarCode);
+      const roomChannel = `webinar:${normalized}`;
+      await socket.join(roomChannel);
+
+      let viewers = webinarViewers.get(normalized);
+      if (!viewers) {
+        viewers = new Set<string>();
+        webinarViewers.set(normalized, viewers);
+      }
+      viewers.add(socket.id);
+
+      // Broadcast updated viewer count to the room
+      io.to(roomChannel).emit('webinar:stats', { viewerCount: viewers.size });
+
+      // If whiteboard is active, sync immediately to newly joined socket
+      const wb = webinarWhiteboards.get(normalized);
+      if (wb && wb.isOpen) {
+        socket.emit('webinar:whiteboard:toggled', {
+          webinarCode: normalized,
+          isOpen: wb.isOpen,
+          elements: wb.elements,
+          appState: wb.appState,
+        });
+      }
+
+      // If Q&A exists, sync to newly joined socket
+      const qList = webinarQuestions.get(normalized);
+      if (qList && qList.length > 0) {
+        socket.emit('webinar:qa:list', { questions: qList });
+      }
+    });
+
+    socket.on('webinar:leave', async ({ webinarCode }) => {
+      if (typeof webinarCode !== 'string') return;
+      const normalized = normalizeRoomCode(webinarCode);
+      const roomChannel = `webinar:${normalized}`;
+      await socket.leave(roomChannel);
+
+      const viewers = webinarViewers.get(normalized);
+      if (viewers) {
+        viewers.delete(socket.id);
+        if (viewers.size === 0) {
+          webinarViewers.delete(normalized);
+        }
+        io.to(roomChannel).emit('webinar:stats', { viewerCount: viewers.size });
+      }
+    });
+
+    socket.on('webinar:chat', ({ webinarCode, text }) => {
+      if (typeof webinarCode !== 'string' || typeof text !== 'string') return;
+      const trimmed = text.trim();
+      if (!trimmed || trimmed.length > 500) return;
+      const normalized = normalizeRoomCode(webinarCode);
+      const roomChannel = `webinar:${normalized}`;
+
+      const message: ChatMessage = {
+        id: crypto.randomUUID(),
+        userId: user.id,
+        name: user.name,
+        image: user.image,
+        text: trimmed,
+        timestamp: Date.now(),
+      };
+
+      io.to(roomChannel).emit('webinar:chat:new', message);
+    });
+
+    socket.on('webinar:reaction', ({ webinarCode, emoji }) => {
+      if (typeof webinarCode !== 'string' || typeof emoji !== 'string') return;
+      const normalized = normalizeRoomCode(webinarCode);
+      const roomChannel = `webinar:${normalized}`;
+
+      const reaction: RoomReaction = {
+        id: crypto.randomUUID(),
+        userId: user.id,
+        name: user.name,
+        emoji,
+        timestamp: Date.now(),
+      };
+
+      io.to(roomChannel).emit('webinar:reaction:fly', reaction);
+    });
+
+    socket.on('webinar:whiteboard:toggle', async ({ webinarCode, isOpen }) => {
+      if (typeof webinarCode !== 'string' || typeof isOpen !== 'boolean') return;
+      const normalized = normalizeRoomCode(webinarCode);
+      const roomChannel = `webinar:${normalized}`;
+
+      let cachedWb = webinarWhiteboards.get(normalized);
+      if (!cachedWb) {
+        const web = await db.query.webinar.findFirst({
+          where: eq(webinar.code, normalized),
+        });
+        if (!web || web.hostId !== user.id) {
+          socket.emit('error:message', { message: 'Only the webinar host can toggle the whiteboard.' });
+          return;
+        }
+        cachedWb = { isOpen, elements: [], hostId: web.hostId };
+        webinarWhiteboards.set(normalized, cachedWb);
+      } else if (cachedWb.hostId !== user.id) {
+        socket.emit('error:message', { message: 'Only the webinar host can toggle the whiteboard.' });
+        return;
+      }
+
+      cachedWb.isOpen = isOpen;
+      io.to(roomChannel).emit('webinar:whiteboard:toggled', {
+        webinarCode: normalized,
+        isOpen,
+        elements: cachedWb.elements,
+        appState: cachedWb.appState,
+      });
+    });
+
+    socket.on('webinar:whiteboard:update', async ({ webinarCode, elements, appState }) => {
+      if (typeof webinarCode !== 'string' || !Array.isArray(elements)) return;
+      const normalized = normalizeRoomCode(webinarCode);
+      const roomChannel = `webinar:${normalized}`;
+
+      let cachedWb = webinarWhiteboards.get(normalized);
+      if (!cachedWb) {
+        const web = await db.query.webinar.findFirst({
+          where: eq(webinar.code, normalized),
+        });
+        if (!web || web.hostId !== user.id) return;
+        cachedWb = { isOpen: true, elements, appState, hostId: web.hostId };
+        webinarWhiteboards.set(normalized, cachedWb);
+      } else if (cachedWb.hostId !== user.id) {
+        return; // Reject whiteboard modifications from viewers!
+      }
+
+      cachedWb.elements = elements;
+      if (appState) cachedWb.appState = appState;
+
+      socket.to(roomChannel).emit('webinar:whiteboard:updated', {
+        webinarCode: normalized,
+        elements,
+        appState,
+      });
+    });
+
+    socket.on('webinar:whiteboard:sync', ({ webinarCode }) => {
+      if (typeof webinarCode !== 'string') return;
+      const normalized = normalizeRoomCode(webinarCode);
+      const wb = webinarWhiteboards.get(normalized);
+      if (wb && wb.isOpen) {
+        socket.emit('webinar:whiteboard:updated', {
+          webinarCode: normalized,
+          elements: wb.elements,
+          appState: wb.appState,
+        });
+      }
+    });
+
+    socket.on('webinar:qa:ask', ({ webinarCode, text }) => {
+      if (typeof webinarCode !== 'string' || typeof text !== 'string') return;
+      const trimmed = text.trim();
+      if (!trimmed || trimmed.length > 300) return;
+      const normalized = normalizeRoomCode(webinarCode);
+      const roomChannel = `webinar:${normalized}`;
+
+      const newQuestion: WebinarQuestion = {
+        id: crypto.randomUUID(),
+        userId: user.id,
+        userName: user.name,
+        userImage: user.image,
+        text: trimmed,
+        upvotes: 0,
+        upvotedBy: [],
+        isAnswered: false,
+        timestamp: Date.now(),
+      };
+
+      let list = webinarQuestions.get(normalized);
+      if (!list) {
+        list = [];
+        webinarQuestions.set(normalized, list);
+      }
+      list.push(newQuestion);
+
+      io.to(roomChannel).emit('webinar:qa:new', newQuestion);
+    });
+
+    socket.on('webinar:qa:upvote', ({ webinarCode, questionId }) => {
+      if (typeof webinarCode !== 'string' || typeof questionId !== 'string') return;
+      const normalized = normalizeRoomCode(webinarCode);
+      const list = webinarQuestions.get(normalized);
+      if (!list) return;
+
+      const q = list.find((item) => item.id === questionId);
+      if (!q) return;
+
+      const userIndex = q.upvotedBy.indexOf(user.id);
+      if (userIndex > -1) {
+        q.upvotedBy.splice(userIndex, 1);
+        q.upvotes = Math.max(0, q.upvotes - 1);
+      } else {
+        q.upvotedBy.push(user.id);
+        q.upvotes += 1;
+      }
+
+      io.to(`webinar:${normalized}`).emit('webinar:qa:updated', q);
+    });
+
+    socket.on('webinar:qa:answer', async ({ webinarCode, questionId }) => {
+      if (typeof webinarCode !== 'string' || typeof questionId !== 'string') return;
+      const normalized = normalizeRoomCode(webinarCode);
+
+      const web = await db.query.webinar.findFirst({
+        where: eq(webinar.code, normalized),
+      });
+      if (!web || web.hostId !== user.id) {
+        socket.emit('error:message', { message: 'Only the host can mark questions as answered.' });
+        return;
+      }
+
+      const list = webinarQuestions.get(normalized);
+      if (!list) return;
+      const q = list.find((item) => item.id === questionId);
+      if (!q) return;
+
+      q.isAnswered = true;
+      io.to(`webinar:${normalized}`).emit('webinar:qa:updated', q);
+    });
+
     socket.on('disconnecting', () => {
+      // Clean up webinar viewer stats
+      for (const [code, viewers] of webinarViewers.entries()) {
+        if (viewers.has(socket.id)) {
+          viewers.delete(socket.id);
+          io.to(`webinar:${code}`).emit('webinar:stats', { viewerCount: viewers.size });
+          if (viewers.size === 0) webinarViewers.delete(code);
+        }
+      }
+
       const roomCode = socket.data.currentRoomCode;
       const peerId = socket.data.peerId;
       socket.data.currentRoomCode = undefined;

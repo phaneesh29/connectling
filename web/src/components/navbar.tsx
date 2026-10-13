@@ -17,8 +17,13 @@ export function Navbar() {
   const [imgError, setImgError] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
 
-  // Hidden inside meeting and audio room viewports
-  if (pathname.startsWith('/meet/') || pathname.startsWith('/talk/')) {
+  // Hidden inside meeting, audio, and webinar broadcast/watch viewports
+  if (
+    pathname.startsWith('/meet/') ||
+    pathname.startsWith('/talk/') ||
+    pathname.startsWith('/webinar/host/') ||
+    pathname.startsWith('/webinar/watch/')
+  ) {
     return null;
   }
 
