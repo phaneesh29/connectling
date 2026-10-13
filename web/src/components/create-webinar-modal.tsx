@@ -200,9 +200,6 @@ export function CreateWebinarModal({ isOpen, onClose, onSuccess }: CreateWebinar
               onChange={(e) => setYoutubeVideoId(e.target.value)}
               className="w-full px-3.5 py-2 rounded-lg border border-white/[0.10] bg-[#06060a] text-[#fcfdff] placeholder-[#464a4d] focus:outline-none focus:border-[#FF9933]/60 transition-all text-base sm:text-xs font-mono"
             />
-            <p className="text-[11px] text-[#888e90] mt-1.5 leading-relaxed">
-              💡 Broadcast using OBS to YouTube Live (set to <strong className="text-zinc-300">Unlisted + Ultra-low latency</strong>). You can also configure or change this anytime inside the host studio!
-            </p>
           </div>
 
           {/* Scheduled Date/Time */}
