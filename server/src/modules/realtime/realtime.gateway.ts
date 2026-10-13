@@ -340,6 +340,15 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
         if (!socket.connected || connection?.socketId !== socket.id || connection.userId !== user.id) return;
         const participants = await getActiveRoomParticipants(normalized);
         socket.emit('room:roster', { roomCode: normalized, participants });
+        const wb = roomWhiteboards.get(normalized);
+        if (wb?.isOpen) {
+          socket.emit('whiteboard:toggled', {
+            roomCode: normalized,
+            isOpen: true,
+            elements: wb.elements,
+            appState: wb.appState,
+          });
+        }
       });
     });
 
@@ -615,6 +624,11 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
           newHostName,
         });
 
+        const wbState = roomWhiteboards.get(normalized);
+        if (wbState) {
+          wbState.hostId = newHostUserId;
+        }
+
         const participants = await getActiveRoomParticipants(normalized);
         io.in(roomChannel).emit('room:roster', { roomCode: normalized, participants });
 
@@ -702,7 +716,15 @@ export const initRealtimeGateway = (httpServer: HttpServer): RealtimeServer => {
           hostId = foundRoom.hostId;
         }
 
-        if (hostId !== user.id) return;
+        if (hostId !== user.id) {
+          const freshRoom = await db.query.room.findFirst({
+            where: eq(room.code, normalized),
+            columns: { id: true, hostId: true },
+          });
+          if (!freshRoom || freshRoom.hostId !== user.id) return;
+          hostId = freshRoom.hostId;
+          if (state) state.hostId = hostId;
+        }
 
         if (!state) {
           state = { isOpen: true, elements: [], hostId };

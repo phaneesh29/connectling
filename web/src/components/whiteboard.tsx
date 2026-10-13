@@ -4,13 +4,14 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import '@excalidraw/excalidraw/index.css';
 import type { Socket } from 'socket.io-client';
-import type { ClientToServerEvents, ServerToClientEvents, WhiteboardScenePayload } from '@/types/realtime';
+import type { ClientToServerEvents, ServerToClientEvents, WhiteboardScenePayload, WhiteboardTogglePayload } from '@/types/realtime';
 import type { AppState, ExcalidrawProps } from '@excalidraw/excalidraw/types';
 
 interface ExcalidrawAPI {
   updateScene: (scene: {
     elements?: readonly unknown[];
     appState?: Partial<AppState>;
+    captureUpdate?: unknown;
     commitToHistory?: boolean;
   }) => void;
   scrollToContent?: (
@@ -54,6 +55,7 @@ export function Whiteboard({
   socket,
   initialElements = [],
   initialAppState,
+  onClose,
   className = '',
 }: WhiteboardProps) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawAPI | null>(null);
@@ -72,6 +74,20 @@ export function Whiteboard({
   const hasCenteredContentRef = useRef(false);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isReceivingRemoteUpdateRef = useRef(false);
+
+  // Sync initial props into refs when parent updates them
+  useEffect(() => {
+    if (initialElements && initialElements.length > 0) {
+      latestElementsRef.current = initialElements;
+      pendingElementsRef.current = initialElements;
+    }
+  }, [initialElements]);
+
+  useEffect(() => {
+    if (initialAppState) {
+      pendingAppStateRef.current = initialAppState;
+    }
+  }, [initialAppState]);
 
   // Request latest whiteboard state on mount from server
   useEffect(() => {
@@ -94,7 +110,7 @@ export function Whiteboard({
 
     const handleWhiteboardUpdated = (payload: WhiteboardScenePayload) => {
       if (isHostRef.current) return; // Host does not overwrite own active drawing
-      if (payload.roomCode !== roomCode.trim().toLowerCase()) return;
+      if (payload.roomCode?.trim().toLowerCase() !== roomCode.trim().toLowerCase()) return;
 
       if (payload.elements) {
         pendingElementsRef.current = payload.elements;
@@ -115,6 +131,7 @@ export function Whiteboard({
                       : undefined,
                 }
               : undefined,
+            captureUpdate: 'NEVER' as unknown as undefined,
             commitToHistory: false,
           });
 
@@ -135,17 +152,70 @@ export function Whiteboard({
       }
     };
 
+    const handleWhiteboardToggled = (payload: WhiteboardTogglePayload) => {
+      if (payload.roomCode?.trim().toLowerCase() !== roomCode.trim().toLowerCase()) return;
+      if (!payload.isOpen) {
+        onClose?.();
+        return;
+      }
+      if (isHostRef.current) return;
+
+      if (payload.elements) {
+        pendingElementsRef.current = payload.elements;
+        latestElementsRef.current = payload.elements;
+        if (payload.appState) pendingAppStateRef.current = payload.appState;
+
+        if (excalidrawAPI) {
+          isReceivingRemoteUpdateRef.current = true;
+          try {
+            excalidrawAPI.updateScene({
+              elements: payload.elements,
+              appState: payload.appState
+                ? {
+                    viewBackgroundColor:
+                      typeof payload.appState.viewBackgroundColor === 'string'
+                        ? payload.appState.viewBackgroundColor
+                        : undefined,
+                  }
+                : undefined,
+              captureUpdate: 'NEVER' as unknown as undefined,
+              commitToHistory: false,
+            });
+            if (!hasCenteredContentRef.current && payload.elements.length > 0 && excalidrawAPI.scrollToContent) {
+              hasCenteredContentRef.current = true;
+              setTimeout(() => {
+                try {
+                  excalidrawAPI.scrollToContent?.(payload.elements, { fitToViewport: true, viewportZoomFactor: 0.85 });
+                } catch { /* ignore */ }
+              }, 100);
+            }
+          } finally {
+            setTimeout(() => {
+              isReceivingRemoteUpdateRef.current = false;
+            }, 50);
+          }
+        }
+      }
+    };
+
     socket.on('whiteboard:updated', handleWhiteboardUpdated);
+    socket.on('whiteboard:toggled', handleWhiteboardToggled);
     return () => {
       socket.off('whiteboard:updated', handleWhiteboardUpdated);
+      socket.off('whiteboard:toggled', handleWhiteboardToggled);
     };
-  }, [socket, roomCode, excalidrawAPI]);
+  }, [socket, roomCode, excalidrawAPI, onClose]);
 
   useEffect(() => {
     if (!excalidrawAPI || isHostRef.current) return;
     const elementsToLoad = pendingElementsRef.current || (initialElements && initialElements.length > 0 ? initialElements : null);
     if (elementsToLoad && elementsToLoad.length > 0) {
-      excalidrawAPI.updateScene({ elements: elementsToLoad, appState: initialAppState as Partial<AppState> | undefined });
+      excalidrawAPI.updateScene({
+        elements: elementsToLoad,
+        appState: initialAppState as Partial<AppState> | undefined,
+        captureUpdate: 'NEVER' as unknown as undefined,
+        commitToHistory: false,
+      });
       if (!hasCenteredContentRef.current && excalidrawAPI.scrollToContent) {
         hasCenteredContentRef.current = true;
         setTimeout(() => {
@@ -199,12 +269,25 @@ export function Whiteboard({
       {/* Excalidraw Canvas Container */}
       <div className="flex-1 w-full min-h-0 relative bg-[#121212]">
         <ExcalidrawComponent
+          initialData={
+            initialElements && initialElements.length > 0
+              ? {
+                  elements: initialElements as any,
+                  appState: (initialAppState as any) || undefined,
+                }
+              : undefined
+          }
           excalidrawAPI={(api: unknown) => {
             const typedApi = api as ExcalidrawAPI;
             setExcalidrawAPI(typedApi);
             const elementsToLoad = pendingElementsRef.current || (initialElements && initialElements.length > 0 ? initialElements : null);
             if (elementsToLoad && elementsToLoad.length > 0) {
-              typedApi.updateScene({ elements: elementsToLoad, appState: (pendingAppStateRef.current || initialAppState) as Partial<AppState> | undefined });
+              typedApi.updateScene({
+                elements: elementsToLoad,
+                appState: (pendingAppStateRef.current || initialAppState) as Partial<AppState> | undefined,
+                captureUpdate: 'NEVER' as unknown as undefined,
+                commitToHistory: false,
+              });
               setTimeout(() => {
                 try {
                   typedApi.scrollToContent?.(elementsToLoad, { fitToViewport: true, viewportZoomFactor: 0.85 });

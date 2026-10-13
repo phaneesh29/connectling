@@ -760,7 +760,7 @@ export default function TalkPage({ params }: TalkPageProps) {
     socket.on('room:switched', handleRoomSwitched);
 
     const handleWhiteboardToggled = (payload: WhiteboardTogglePayload) => {
-      if (payload.roomCode !== code.trim().toLowerCase()) return;
+      if (payload.roomCode?.trim().toLowerCase() !== code.trim().toLowerCase()) return;
       setIsWhiteboardOpen(payload.isOpen);
       if (payload.elements) setWhiteboardElements(payload.elements);
       if (payload.appState) setWhiteboardAppState(payload.appState);
@@ -774,8 +774,9 @@ export default function TalkPage({ params }: TalkPageProps) {
         setRoomToast((curr) => (curr?.text?.includes('Whiteboard') ? null : curr));
       }, 3500);
     };
+    socket.on('whiteboard:toggled', handleWhiteboardToggled);
     const handleWhiteboardUpdated = (payload: WhiteboardScenePayload) => {
-      if (payload.roomCode !== code.trim().toLowerCase()) return;
+      if (payload.roomCode?.trim().toLowerCase() !== code.trim().toLowerCase()) return;
       if (payload.elements) setWhiteboardElements(payload.elements);
       if (payload.appState) setWhiteboardAppState(payload.appState);
     };
