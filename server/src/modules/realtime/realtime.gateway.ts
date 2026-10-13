@@ -92,6 +92,7 @@ export const removeParticipant = (roomCode: string, userId: string): void => {
     }
     if (participantsMap.size === 0) {
       roomParticipants.delete(normalized);
+      roomWhiteboards.delete(normalized);
     }
   }
 };
@@ -162,7 +163,10 @@ export const getActiveRoomUserIds = async (roomCode: string): Promise<Set<string
 const removePeerParticipant = (roomCode: string, peerId: string) => {
   const participants = roomParticipants.get(roomCode);
   participants?.delete(peerId);
-  if (participants?.size === 0) roomParticipants.delete(roomCode);
+  if (participants?.size === 0) {
+    roomParticipants.delete(roomCode);
+    roomWhiteboards.delete(roomCode);
+  }
 };
 
 const announcePeerLeft = async (io: RealtimeServer, roomCode: string, peerId: string, userId: string, name: string) => {
