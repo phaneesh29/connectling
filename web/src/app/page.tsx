@@ -32,6 +32,7 @@ import {
   HelpCircle,
   PenTool,
   Smile,
+  Info,
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -335,6 +336,16 @@ export default function DashboardPage() {
             </div>
 
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              {activeMode === 'webinar' && (
+                <Link
+                  href="/webinar/guide"
+                  className="inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 rounded bg-white/[0.06] hover:bg-white/[0.12] border border-white/[0.08] hover:border-[#FF9933]/30 text-[10px] text-[#FF9933] font-medium transition-all"
+                  title="Webinar Broadcaster Guide"
+                >
+                  <Info size={11} />
+                  <span>Setup Guide</span>
+                </Link>
+              )}
               <span className="font-mono text-[10px] text-[#888e90] px-2 sm:px-2.5 py-0.5 rounded bg-[#101012] border border-white/[0.06]">
                 {activeMode === 'meet' ? '4 Seats' : activeMode === 'audio' ? '10 Seats' : '100+ Seats'}
               </span>
@@ -346,13 +357,25 @@ export default function DashboardPage() {
 
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 pt-1 relative z-10">
             <div className="space-y-1">
-              <h2 className="text-base sm:text-lg font-medium text-[#fcfdff]">
-                {activeMode === 'meet'
-                  ? 'Instant Video Meeting'
-                  : activeMode === 'audio'
-                  ? 'Instant Voice Stage'
-                  : 'Live Webinar Stage'}
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base sm:text-lg font-medium text-[#fcfdff]">
+                  {activeMode === 'meet'
+                    ? 'Instant Video Meeting'
+                    : activeMode === 'audio'
+                    ? 'Instant Voice Stage'
+                    : 'Live Webinar Stage'}
+                </h2>
+                {activeMode === 'webinar' && (
+                  <Link
+                    href="/webinar/guide"
+                    className="h-6 w-6 rounded-lg bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.08] hover:border-[#FF9933]/30 text-[#888e90] hover:text-[#FF9933] inline-flex items-center justify-center transition-all"
+                    title="Webinar Broadcaster Guide"
+                    aria-label="Webinar Broadcaster Guide"
+                  >
+                    <Info size={13} />
+                  </Link>
+                )}
+              </div>
               <p className="text-xs text-[#888e90] leading-relaxed">
                 {activeMode === 'meet'
                   ? 'Launch an encrypted session with screen sharing and custom permissions.'
@@ -579,9 +602,19 @@ export default function DashboardPage() {
           <section className="space-y-4 pt-1">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <h2 className="text-sm sm:text-base font-medium text-[#fcfdff]">
-                  Webinar Broadcasts
-                </h2>
+                <div className="flex items-center gap-1.5">
+                  <h2 className="text-sm sm:text-base font-medium text-[#fcfdff]">
+                    Webinar Broadcasts
+                  </h2>
+                  <Link
+                    href="/webinar/guide"
+                    className="h-5 w-5 rounded-md bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.08] hover:border-[#FF9933]/30 text-[#888e90] hover:text-[#FF9933] inline-flex items-center justify-center transition-all"
+                    title="Webinar Broadcaster Guide"
+                    aria-label="Webinar Broadcaster Guide"
+                  >
+                    <Info size={11} />
+                  </Link>
+                </div>
                 {/* Segmented Filter Pills */}
                 <div className="inline-flex p-0.5 bg-[#101012] border border-white/[0.08] rounded-xl text-xs">
                   <button

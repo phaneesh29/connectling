@@ -4,7 +4,7 @@ import { useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { webinarsApi } from '@/lib/webinars-api';
-import { Radio, X, Sparkles, AlertCircle } from 'lucide-react';
+import { Radio, X, Sparkles, AlertCircle, Info } from 'lucide-react';
 
 const emptySubscribe = () => () => {};
 
@@ -127,11 +127,23 @@ export function CreateWebinarModal({ isOpen, onClose, onSuccess }: CreateWebinar
               <Radio className="w-4 h-4 animate-pulse" />
             </div>
             <div className="min-w-0">
-              <h2 className="font-serif-headline text-base font-normal text-[#fcfdff] tracking-tight truncate">
-                Host a Live Webinar
-              </h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-serif-headline text-base font-normal text-[#fcfdff] tracking-tight truncate">
+                  Host a Live Webinar
+                </h2>
+                <a
+                  href="/webinar/guide"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-white/[0.05] hover:bg-white/[0.10] border border-white/[0.08] text-[10px] text-[#FF9933] font-medium transition-all"
+                  title="View Broadcaster Guide (opens in new tab)"
+                >
+                  <Info className="w-3 h-3" />
+                  <span>Guide</span>
+                </a>
+              </div>
               <p className="text-[11px] text-[#888e90] truncate">
-                Broadcast via OBS with real-time chat, Q&A, and whiteboard
+                Broadcast via OBS with real-time chat, Q&amp;A, and whiteboard
               </p>
             </div>
           </div>
