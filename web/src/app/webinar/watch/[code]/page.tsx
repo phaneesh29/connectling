@@ -23,6 +23,7 @@ import {
   Clock,
   ArrowLeft,
   CheckCircle,
+  X,
 } from 'lucide-react';
 
 interface PageProps {
@@ -116,7 +117,7 @@ export default function WebinarWatchPage({ params }: PageProps) {
       <div className="min-h-screen bg-[#070709] flex flex-col items-center justify-center text-white gap-3">
         <div className="w-10 h-10 rounded-full border-3 border-[#FF9933] border-t-transparent animate-spin" />
         <span className="text-xs font-mono tracking-wider text-zinc-400 uppercase">
-          Tuning into Webinar Broadcast...
+          Tuning into Broadcast...
         </span>
       </div>
     );
@@ -124,14 +125,14 @@ export default function WebinarWatchPage({ params }: PageProps) {
 
   if (!webinar) {
     return (
-      <div className="min-h-screen bg-[#070709] flex flex-col items-center justify-center p-6 text-center text-white">
-        <h2 className="text-xl font-bold mb-2">Webinar Not Found</h2>
-        <p className="text-sm text-zinc-400 mb-6">
+      <div className="min-h-screen bg-[#06060a] flex flex-col items-center justify-center p-6 text-center text-[#fcfdff]">
+        <h2 className="font-serif-headline text-xl font-normal mb-2 text-[#fcfdff]">Webinar Broadcast Not Found</h2>
+        <p className="text-xs text-[#888e90] mb-6">
           This webinar does not exist or may have been removed.
         </p>
         <Link
           href="/?mode=webinar"
-          className="px-4 py-2 rounded-xl bg-white/[0.08] text-xs font-semibold hover:bg-white/[0.14]"
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer"
         >
           Browse Other Webinars
         </Link>
@@ -143,56 +144,86 @@ export default function WebinarWatchPage({ params }: PageProps) {
   const isEnded = webinar.status === 'ended';
 
   return (
-    <div className="flex flex-col h-screen bg-[#070709] text-white overflow-hidden select-none">
+    <div className="flex flex-col h-screen bg-[#06060a] text-[#fcfdff] overflow-hidden select-none">
       {/* Top Header Bar */}
-      <header className="h-14 bg-[#0a0a0f] border-b border-white/[0.08] px-4 sm:px-6 flex items-center justify-between gap-4 shrink-0 z-40">
-        <div className="flex items-center gap-3 min-w-0">
+      <header className="h-14 border-b border-white/[0.06] px-3 sm:px-6 flex items-center justify-between gap-4 bg-black/60 backdrop-blur-xl shrink-0 z-40">
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <Link
             href="/?mode=webinar"
-            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+            className="p-1.5 rounded-lg text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.08] transition-colors cursor-pointer"
             title="Leave Broadcast"
           >
             <ArrowLeft className="w-4 h-4" />
           </Link>
 
-          <div className="flex items-center gap-2.5 min-w-0">
-            <h1 className="text-sm font-bold text-white truncate max-w-[200px] sm:max-w-xs md:max-w-md">
-              {webinar.title}
-            </h1>
+          <span
+            className={`h-2 w-2 rounded-full shrink-0 transition-colors ${
+              isLive
+                ? 'bg-[#ff2047] shadow-[0_0_8px_#ff2047] animate-pulse'
+                : isEnded
+                ? 'bg-[#464a4d]'
+                : 'bg-amber-400 shadow-[0_0_8px_#f59e0b]'
+            }`}
+            title={isLive ? 'Live Broadcast' : isEnded ? 'Broadcast Concluded' : 'Upcoming Standby'}
+          />
 
-            {isLive ? (
-              <span className="flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-red-500/15 border border-red-500/30 text-red-400 animate-pulse shrink-0">
-                <span className="w-2 h-2 rounded-full bg-red-500" />
-                LIVE
-              </span>
-            ) : isEnded ? (
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase bg-zinc-800 text-zinc-400 shrink-0">
-                CONCLUDED
-              </span>
-            ) : (
-              <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase bg-amber-500/10 text-amber-300 border border-amber-500/20 shrink-0">
-                UPCOMING
-              </span>
-            )}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="font-serif-headline text-xs sm:text-sm font-normal text-[#fcfdff] truncate max-w-[130px] xs:max-w-[200px] sm:max-w-md tracking-tight">
+                {webinar.title}
+              </h1>
+
+              {isLive ? (
+                <span className="flex items-center gap-1 px-1.5 py-0.2 rounded text-[9px] font-mono font-bold uppercase tracking-wider bg-red-500/15 border border-red-500/30 text-red-400 animate-pulse shrink-0">
+                  LIVE
+                </span>
+              ) : isEnded ? (
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-semibold uppercase bg-white/[0.06] text-[#888e90] shrink-0">
+                  CONCLUDED
+                </span>
+              ) : (
+                <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-semibold uppercase bg-amber-500/10 text-amber-300 border border-amber-500/25 shrink-0">
+                  UPCOMING
+                </span>
+              )}
+            </div>
+
+            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate flex items-center gap-1.5">
+              <span>ID: {webinar.code}</span>
+              <span aria-hidden="true">·</span>
+              <span className="text-[#FF9933]">Viewer Space</span>
+            </p>
           </div>
         </div>
 
         {/* Right Info: Live Viewer count + Sidebar Toggle */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <div
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-xs font-mono text-zinc-300"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] border border-white/[0.08] text-xs font-mono text-[#fcfdff]"
             title="Active attendees tuned in"
           >
             <Users className="w-3.5 h-3.5 text-[#FF9933]" />
             <span>{viewerCount}</span>
           </div>
 
+          {/* Chat & Q&A Sidebar Toggle */}
           <button
+            type="button"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white transition-all cursor-pointer"
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
+              isSidebarOpen
+                ? 'bg-[#FF9933]/15 text-[#FF9933] border-[#FF9933]/40 shadow-sm'
+                : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
+            }`}
             title={isSidebarOpen ? 'Hide Chat & Q&A' : 'Show Chat & Q&A'}
           >
-            <MessageSquare className="w-4 h-4" />
+            <MessageSquare className="w-3.5 h-3.5 text-[#FF9933]" />
+            <span className="hidden sm:inline font-mono text-[11px]">{isSidebarOpen ? 'Hide Chat' : 'Chat & Q&A'}</span>
+            {questions.length > 0 && !isSidebarOpen && (
+              <span className="h-4 min-w-4 px-1 rounded-full bg-[#FF9933] text-black font-mono text-[9px] font-bold flex items-center justify-center animate-pulse">
+                {questions.length}
+              </span>
+            )}
           </button>
         </div>
       </header>
@@ -200,27 +231,27 @@ export default function WebinarWatchPage({ params }: PageProps) {
       {/* Main Container */}
       <div className="flex-1 flex overflow-hidden">
         {/* Main Stage Viewport */}
-        <div className="flex-1 flex flex-col p-3 sm:p-6 bg-[#070709] overflow-y-auto">
-          <div className="relative flex-1 min-h-[380px] rounded-2xl bg-black border border-white/[0.1] overflow-hidden shadow-2xl flex items-center justify-center">
+        <div className="flex-1 flex flex-col p-3 sm:p-5 bg-[#06060a] overflow-y-auto">
+          <div className="relative flex-1 min-h-[380px] rounded-2xl bg-[#0a0a0c] border border-white/[0.08] overflow-hidden shadow-2xl flex items-center justify-center">
             {/* STATE 1: Scheduled / Waiting */}
             {!isLive && !isEnded && (
               <div className="flex flex-col items-center justify-center p-8 text-center max-w-md">
-                <div className="w-16 h-16 rounded-3xl bg-[#FF9933]/10 border border-[#FF9933]/25 flex items-center justify-center text-[#FF9933] mb-6 shadow-[0_0_30px_rgba(255,153,51,0.2)]">
-                  <Clock className="w-8 h-8 animate-pulse" />
+                <div className="w-16 h-16 rounded-2xl bg-[#FF9933]/10 border border-[#FF9933]/25 flex items-center justify-center text-[#FF9933] mb-5 shadow-[0_0_24px_rgba(255,153,51,0.2)]">
+                  <Clock className="w-7 h-7 animate-pulse" />
                 </div>
 
-                <h2 className="text-xl font-extrabold text-white mb-2">{webinar.title}</h2>
-                <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
+                <h2 className="font-serif-headline text-xl sm:text-2xl font-normal text-[#fcfdff] mb-2">{webinar.title}</h2>
+                <p className="text-xs text-[#888e90] mb-5 leading-relaxed">
                   {webinar.description || 'The broadcast has not started yet. Grab a drink and get ready!'}
                 </p>
 
                 {countdown && (
-                  <div className="px-5 py-2.5 rounded-2xl bg-white/[0.05] border border-white/[0.1] text-lg font-mono font-bold text-[#FF9933] shadow-inner mb-4">
+                  <div className="px-5 py-2.5 rounded-xl bg-[#101012] border border-white/[0.1] text-lg font-mono font-bold text-[#FF9933] shadow-inner mb-4">
                     {countdown}
                   </div>
                 )}
 
-                <span className="text-[11px] font-mono tracking-wider uppercase text-zinc-500">
+                <span className="text-[11px] font-mono tracking-wider uppercase text-[#888e90]">
                   Waiting for host to go live • Stand By
                 </span>
               </div>
@@ -229,16 +260,16 @@ export default function WebinarWatchPage({ params }: PageProps) {
             {/* STATE 2: Ended */}
             {isEnded && (
               <div className="flex flex-col items-center justify-center p-8 text-center max-w-md">
-                <div className="w-16 h-16 rounded-3xl bg-white/[0.05] border border-white/[0.1] flex items-center justify-center text-zinc-400 mb-6">
-                  <CheckCircle className="w-8 h-8 text-emerald-400" />
+                <div className="w-16 h-16 rounded-2xl bg-[#101012] border border-white/[0.08] flex items-center justify-center text-[#11ff99] mb-5 shadow-inner">
+                  <CheckCircle className="w-7 h-7 text-[#11ff99]" />
                 </div>
-                <h2 className="text-xl font-bold text-white mb-2">Webinar Concluded</h2>
-                <p className="text-xs text-zinc-400 mb-6">
+                <h2 className="font-serif-headline text-xl font-normal text-[#fcfdff] mb-2">Webinar Concluded</h2>
+                <p className="text-xs text-[#888e90] mb-6">
                   Thank you for attending {webinar.title}. The live broadcast has wrapped up.
                 </p>
                 <Link
-                  href="/webinar"
-                  className="px-5 py-2.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-xs font-semibold text-white transition-all"
+                  href="/?mode=webinar"
+                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer"
                 >
                   Explore More Events
                 </Link>
@@ -287,19 +318,38 @@ export default function WebinarWatchPage({ params }: PageProps) {
 
             {/* Floating Reactions Layer */}
             <FloatingReactions />
+
+            {/* Floating Reopen Chat & Q&A button when sidebar is closed */}
+            {!isSidebarOpen && (
+              <button
+                type="button"
+                onClick={() => setIsSidebarOpen(true)}
+                className="absolute bottom-4 right-4 z-30 inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl bg-[#101012]/95 hover:bg-[#18181c] backdrop-blur-xl border border-white/[0.12] text-xs font-medium text-[#fcfdff] shadow-xl hover:border-[#FF9933]/40 transition-all cursor-pointer group"
+                title="Open Chat & Q&A Sidebar"
+              >
+                <MessageSquare className="w-4 h-4 text-[#FF9933] group-hover:scale-110 transition-transform" />
+                <span className="font-mono text-[11px]">Chat &amp; Q&amp;A</span>
+                {questions.length > 0 && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/30">
+                    {questions.length}
+                  </span>
+                )}
+              </button>
+            )}
           </div>
 
           {/* Quick Emoji Reaction Bar (Bottom of Stage) */}
           {webinar.allowReactions && (
-            <div className="flex items-center justify-center gap-2 sm:gap-3 py-3 mt-2 shrink-0">
-              <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-wider mr-2 hidden sm:inline">
-                React:
+            <div className="flex items-center justify-center gap-1.5 sm:gap-2.5 py-3 mt-2 shrink-0">
+              <span className="text-[11px] font-mono text-[#888e90] uppercase tracking-wider mr-2 hidden sm:inline">
+                Reactions:
               </span>
               {QUICK_REACTIONS.map((emoji) => (
                 <button
                   key={emoji}
+                  type="button"
                   onClick={() => sendReaction(emoji)}
-                  className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.1] active:scale-125 border border-white/[0.06] hover:border-white/[0.15] text-lg sm:text-xl transition-all cursor-pointer filter drop-shadow-md"
+                  className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-[#101012] hover:bg-[#18181c] active:scale-125 border border-white/[0.08] hover:border-white/[0.16] text-lg sm:text-xl flex items-center justify-center transition-all cursor-pointer shadow-sm hover:shadow-[0_0_12px_rgba(255,153,51,0.15)]"
                   title={`Send ${emoji}`}
                 >
                   {emoji}
@@ -311,38 +361,53 @@ export default function WebinarWatchPage({ params }: PageProps) {
 
         {/* Right Sidebar: Chat & Q&A */}
         {isSidebarOpen && (
-          <aside className="w-80 md:w-96 border-l border-white/[0.08] bg-[#0a0a0f] flex flex-col shrink-0">
-            {/* Tabs Header */}
-            <div className="flex border-b border-white/[0.08]">
+          <aside className="w-80 md:w-96 border-l border-white/[0.06] bg-[#0a0a0c] flex flex-col shrink-0 animate-in slide-in-from-right duration-200">
+            {/* Tabs Header with Close (X) button */}
+            <div className="flex items-center justify-between border-b border-white/[0.06] bg-black/40 backdrop-blur-md px-2">
+              <div className="flex flex-1">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('chat')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-mono border-b-2 transition-all cursor-pointer ${
+                    activeTab === 'chat'
+                      ? 'border-[#FF9933] text-[#fcfdff] font-semibold bg-white/[0.02]'
+                      : 'border-transparent text-[#888e90] hover:text-[#fcfdff] font-medium'
+                  }`}
+                >
+                  <MessageSquare className="w-3.5 h-3.5 text-[#FF9933]" />
+                  Live Chat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('qa')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-mono border-b-2 transition-all cursor-pointer ${
+                    activeTab === 'qa'
+                      ? 'border-[#FF9933] text-[#fcfdff] font-semibold bg-white/[0.02]'
+                      : 'border-transparent text-[#888e90] hover:text-[#fcfdff] font-medium'
+                  }`}
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-[#FF9933]" />
+                  Q&A ({questions.length})
+                </button>
+              </div>
+
+              {/* Close Sidebar (X) button */}
               <button
-                onClick={() => setActiveTab('chat')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
-                  activeTab === 'chat'
-                    ? 'border-[#FF9933] text-white bg-white/[0.02]'
-                    : 'border-transparent text-zinc-400 hover:text-white'
-                }`}
+                type="button"
+                onClick={() => setIsSidebarOpen(false)}
+                className="p-1.5 rounded-lg text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.08] transition-all ml-1 cursor-pointer"
+                title="Close Chat & Q&A Sidebar"
               >
-                <MessageSquare className="w-3.5 h-3.5" />
-                Live Chat
-              </button>
-              <button
-                onClick={() => setActiveTab('qa')}
-                className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
-                  activeTab === 'qa'
-                    ? 'border-[#FF9933] text-white bg-white/[0.02]'
-                    : 'border-transparent text-zinc-400 hover:text-white'
-                }`}
-              >
-                <HelpCircle className="w-3.5 h-3.5" />
-                Q&A ({questions.length})
+                <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Tab Body */}
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden bg-[#06060a]">
               {activeTab === 'chat' ? (
                 <InRoomChat
                   isOpen={true}
+                  embedded={true}
                   onSendMessage={sendChatMessage}
                   currentUserId={session?.user?.id || 'anonymous'}
                   roomTitle={webinar.title}

@@ -15,6 +15,7 @@ interface InRoomChatProps {
   roomTitle?: string;
   isChatAllowed?: boolean;
   isHost?: boolean;
+  embedded?: boolean;
 }
 
 export const InRoomChat = React.memo(function InRoomChat({
@@ -26,6 +27,7 @@ export const InRoomChat = React.memo(function InRoomChat({
   roomTitle,
   isChatAllowed = true,
   isHost = false,
+  embedded = false,
 }: InRoomChatProps) {
   const storeIsOpen = useChatStore((s) => s.isOpen);
   const storeMessages = useChatStore((s) => s.messages);
@@ -54,33 +56,11 @@ export const InRoomChat = React.memo(function InRoomChat({
     setInputText('');
   };
 
-  if (!effectiveIsOpen) return null;
+  if (embedded && isOpen !== undefined && !isOpen) return null;
+  if (!embedded && !effectiveIsOpen) return null;
 
-  return (
-    <aside className="fixed inset-y-0 right-0 z-50 w-full sm:w-88 md:w-96 bg-[#0a0a0e]/95 backdrop-blur-2xl border-l border-white/[0.12] shadow-2xl flex flex-col transition-all duration-300 animate-in slide-in-from-right">
-      {/* Top Header */}
-      <div className="h-14 px-4 border-b border-white/[0.08] flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-2.5">
-          <div className="h-7 w-7 rounded-lg bg-white/[0.06] border border-white/[0.10] flex items-center justify-center text-[#fcfdff]">
-            <MessageSquareIcon size={14} />
-          </div>
-          <div>
-            <h3 className="text-xs font-medium text-[#fcfdff]">In-Call Messages</h3>
-            <p className="text-[10px] text-[#888e90] font-mono truncate max-w-[170px]">
-              {roomTitle || 'Active Space'}
-            </p>
-          </div>
-        </div>
-
-        <button
-          onClick={effectiveOnClose}
-          className="h-7 w-7 rounded-lg bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.08] flex items-center justify-center text-[#888e90] hover:text-[#fcfdff] transition-all"
-          title="Close chat"
-        >
-          <XIcon size={14} />
-        </button>
-      </div>
-
+  const chatBody = (
+    <>
       {/* Message Feed */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3.5 no-scrollbar">
         {effectiveMessages.length === 0 ? (
@@ -186,6 +166,43 @@ export const InRoomChat = React.memo(function InRoomChat({
           <SendIcon size={13} />
         </button>
       </form>
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <div className="w-full h-full flex flex-col bg-transparent overflow-hidden">
+        {chatBody}
+      </div>
+    );
+  }
+
+  return (
+    <aside className="fixed inset-y-0 right-0 z-50 w-full sm:w-88 md:w-96 bg-[#0a0a0e]/95 backdrop-blur-2xl border-l border-white/[0.12] shadow-2xl flex flex-col transition-all duration-300 animate-in slide-in-from-right">
+      {/* Top Header */}
+      <div className="h-14 px-4 border-b border-white/[0.08] flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2.5">
+          <div className="h-7 w-7 rounded-lg bg-white/[0.06] border border-white/[0.10] flex items-center justify-center text-[#fcfdff]">
+            <MessageSquareIcon size={14} />
+          </div>
+          <div>
+            <h3 className="text-xs font-medium text-[#fcfdff]">In-Call Messages</h3>
+            <p className="text-[10px] text-[#888e90] font-mono truncate max-w-[170px]">
+              {roomTitle || 'Active Space'}
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={effectiveOnClose}
+          className="h-7 w-7 rounded-lg bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.08] flex items-center justify-center text-[#888e90] hover:text-[#fcfdff] transition-all"
+          title="Close chat"
+        >
+          <XIcon size={14} />
+        </button>
+      </div>
+
+      {chatBody}
     </aside>
   );
 });

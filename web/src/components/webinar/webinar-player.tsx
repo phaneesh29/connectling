@@ -12,6 +12,7 @@ import {
   Radio,
   RefreshCw,
   AlertCircle,
+  Sliders,
 } from 'lucide-react';
 
 interface WebinarPlayerProps {
@@ -19,6 +20,7 @@ interface WebinarPlayerProps {
   title?: string;
   isHost?: boolean;
   onEnded?: () => void;
+  onConfigureStream?: () => void;
   className?: string;
 }
 
@@ -72,6 +74,7 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
   title,
   isHost = false,
   onEnded,
+  onConfigureStream,
   className = '',
 }: WebinarPlayerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -313,19 +316,29 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
   if (!videoId) {
     return (
       <div
-        className={`relative w-full aspect-video bg-[#070709] border border-white/[0.08] rounded-2xl overflow-hidden flex flex-col items-center justify-center p-6 text-center ${className}`}
+        className={`relative w-full aspect-video bg-[#0a0a0c] border border-white/[0.08] rounded-2xl overflow-hidden flex flex-col items-center justify-center p-6 text-center ${className}`}
       >
-        <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mb-4 text-[#FF9933] shadow-inner">
-          <Radio className="w-8 h-8 animate-pulse" />
+        <div className="w-14 h-14 rounded-2xl bg-[#FF9933]/10 border border-[#FF9933]/25 flex items-center justify-center mb-4 text-[#FF9933] shadow-[0_0_20px_rgba(255,153,51,0.15)]">
+          <Radio className="w-7 h-7 animate-pulse" />
         </div>
-        <h3 className="text-lg font-semibold text-white mb-2">
+        <h3 className="font-serif-headline text-lg font-normal text-[#fcfdff] mb-2">
           {isHost ? 'Stream Configuration Needed' : 'Broadcast Standing By'}
         </h3>
-        <p className="text-sm text-zinc-400 max-w-md mb-4">
+        <p className="text-xs text-[#888e90] max-w-md mb-5 leading-relaxed">
           {isHost
-            ? 'Connect your YouTube broadcast ID or RTMP stream key in the settings panel to preview your live stream.'
+            ? 'Connect your YouTube broadcast ID or live stream link to preview your stream and broadcast live to attendees.'
             : 'The host has not connected the live stream source yet. Stand by, the event will begin shortly.'}
         </p>
+        {isHost && onConfigureStream && (
+          <button
+            type="button"
+            onClick={onConfigureStream}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs shadow-brand-glow transition-all active:scale-[0.98] cursor-pointer"
+          >
+            <Sliders className="w-4 h-4" />
+            <span>Connect YouTube Live Stream</span>
+          </button>
+        )}
       </div>
     );
   }
@@ -365,9 +378,9 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
 
       {/* Buffering / Loading Indicator */}
       {isLoading && !hasError && (
-        <div className="absolute inset-0 z-30 pointer-events-none flex flex-col items-center justify-center bg-black/40 backdrop-blur-xs">
-          <div className="w-12 h-12 rounded-full border-3 border-[#FF9933] border-t-transparent animate-spin mb-3 shadow-[0_0_20px_rgba(255,153,51,0.5)]" />
-          <span className="text-xs font-mono tracking-wider text-zinc-300 uppercase">
+        <div className="absolute inset-0 z-30 pointer-events-none flex flex-col items-center justify-center bg-black/50 backdrop-blur-xs">
+          <div className="w-10 h-10 rounded-full border-2 border-[#FF9933] border-t-transparent animate-spin mb-3 shadow-[0_0_20px_rgba(255,153,51,0.5)]" />
+          <span className="text-xs font-mono tracking-wider text-[#888e90] uppercase">
             Buffering Stream...
           </span>
         </div>
@@ -375,13 +388,14 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
 
       {/* Error State */}
       {hasError && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#070709]/95 p-6 text-center">
-          <AlertCircle className="w-12 h-12 text-rose-500 mb-3" />
-          <h4 className="text-base font-semibold text-white mb-1">Stream Unavailable</h4>
-          <p className="text-xs text-zinc-400 max-w-sm mb-4">
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#06060a]/95 p-6 text-center">
+          <AlertCircle className="w-10 h-10 text-rose-500 mb-3" />
+          <h4 className="font-serif-headline text-base font-normal text-[#fcfdff] mb-1">Stream Unavailable</h4>
+          <p className="text-xs text-[#888e90] max-w-sm mb-4">
             The YouTube broadcast may be private, ended, or offline. Check that the stream is set to Unlisted or Public.
           </p>
           <button
+            type="button"
             onClick={() => {
               setHasError(false);
               setIsLoading(true);
@@ -389,9 +403,10 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
                 playerRef.current.playVideo();
               }
             }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.12] text-xs font-medium text-white transition-all"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] border border-white/[0.08] transition-all cursor-pointer"
           >
-            <RefreshCw className="w-3.5 h-3.5" /> Retry Stream
+            <RefreshCw className="w-3.5 h-3.5 text-[#FF9933]" />
+            <span>Retry Stream</span>
           </button>
         </div>
       )}
@@ -405,12 +420,13 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
           isControlsVisible || !isPlaying ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none'
         }`}
       >
-        <div className="flex items-center justify-between gap-3 bg-[#0a0a0e]/80 backdrop-blur-md px-4 py-2.5 rounded-xl border border-white/[0.1]">
+        <div className="flex items-center justify-between gap-3 bg-[#0a0a0c]/85 backdrop-blur-xl px-4 py-2.5 rounded-xl border border-white/[0.12] shadow-2xl">
           {/* Left Controls: Play/Pause, Live Edge Button, Title */}
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={togglePlay}
-              className="p-1.5 rounded-lg text-white hover:text-[#FF9933] hover:bg-white/[0.08] transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.08] transition-colors cursor-pointer"
               title={isPlaying ? 'Pause (Space/k)' : 'Play (Space/k)'}
             >
               {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
@@ -418,11 +434,12 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
 
             {/* Vidstack-style Live Edge Button */}
             <button
+              type="button"
               onClick={snapToLiveEdge}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold tracking-wider transition-all cursor-pointer ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-mono font-semibold tracking-wider transition-all cursor-pointer ${
                 isLiveEdge
-                  ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                  : 'bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700'
+                  ? 'bg-red-500/15 text-red-400 border border-red-500/30'
+                  : 'bg-white/[0.04] text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.08]'
               }`}
               title="Snap to Live broadcast"
             >
@@ -433,8 +450,9 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
             {/* Volume Control */}
             <div className="flex items-center gap-1.5 group/volume">
               <button
+                type="button"
                 onClick={toggleMute}
-                className="p-1.5 rounded-lg text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+                className="p-1.5 rounded-lg text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.08] transition-colors cursor-pointer"
                 title={isMuted ? 'Unmute (m)' : 'Mute (m)'}
               >
                 {isMuted || volume === 0 ? (
@@ -451,13 +469,13 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
                 max="100"
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="w-16 sm:w-20 h-1.5 rounded-lg appearance-none bg-zinc-700 accent-[#FF9933] cursor-pointer"
+                className="w-16 sm:w-20 h-1.5 rounded-lg appearance-none bg-white/[0.1] accent-[#FF9933] cursor-pointer"
                 title="Volume"
               />
             </div>
 
             {title && (
-              <span className="hidden md:inline-block text-xs font-medium text-zinc-300 truncate max-w-xs ml-2 border-l border-white/[0.1] pl-3">
+              <span className="hidden md:inline-block text-xs font-medium text-[#888e90] truncate max-w-xs ml-2 border-l border-white/[0.08] pl-3">
                 {title}
               </span>
             )}
@@ -466,8 +484,9 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
           {/* Right Controls: Fullscreen */}
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={toggleFullscreen}
-              className="p-1.5 rounded-lg text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.08] transition-colors cursor-pointer"
               title={isFullscreen ? 'Exit Fullscreen (f)' : 'Fullscreen (f)'}
             >
               {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
