@@ -56,15 +56,32 @@ export default function DashboardPage() {
   const [deletingCode, setDeletingCode] = useState<string | null>(null);
   const [deleteConfirmRoom, setDeleteConfirmRoom] = useState<string | null>(null);
 
-  // Sync mode from query string on mount if provided (e.g. /?mode=webinar)
-  useEffect(() => {
+  // Handle mode change with 2-way URL query synchronization
+  const handleModeChange = useCallback((mode: 'meet' | 'audio' | 'webinar') => {
+    setActiveMode(mode);
+    setCodeInput('');
     if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('mode', mode);
+      window.history.replaceState(null, '', url.pathname + url.search);
+    }
+  }, []);
+
+  // Sync mode from query string on mount and popstate (browser back/forward)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const syncModeFromUrl = () => {
       const params = new URLSearchParams(window.location.search);
       const mode = params.get('mode');
       if (mode === 'webinar' || mode === 'meet' || mode === 'audio') {
         setActiveMode(mode);
       }
-    }
+    };
+
+    syncModeFromUrl();
+    window.addEventListener('popstate', syncModeFromUrl);
+    return () => window.removeEventListener('popstate', syncModeFromUrl);
   }, []);
 
   const fetchMyRooms = useCallback(async () => {
@@ -244,10 +261,7 @@ export default function DashboardPage() {
             <div className="inline-flex p-1 bg-[#101012] border border-white/[0.08] rounded-full shadow-inner max-w-full overflow-x-auto">
               <button
                 type="button"
-                onClick={() => {
-                  setActiveMode('meet');
-                  setCodeInput('');
-                }}
+                onClick={() => handleModeChange('meet')}
                 className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 cursor-pointer ${
                   activeMode === 'meet'
                     ? 'bg-[#1e1e24] text-[#fcfdff] border border-white/[0.14] shadow-sm'
@@ -260,10 +274,7 @@ export default function DashboardPage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  setActiveMode('audio');
-                  setCodeInput('');
-                }}
+                onClick={() => handleModeChange('audio')}
                 className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 cursor-pointer ${
                   activeMode === 'audio'
                     ? 'bg-[#1e1e24] text-[#fcfdff] border border-white/[0.14] shadow-sm'
@@ -276,10 +287,7 @@ export default function DashboardPage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  setActiveMode('webinar');
-                  setCodeInput('');
-                }}
+                onClick={() => handleModeChange('webinar')}
                 className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 cursor-pointer ${
                   activeMode === 'webinar'
                     ? 'bg-[#1e1e24] text-[#fcfdff] border border-white/[0.14] shadow-sm'

@@ -14,6 +14,21 @@ const nextConfig: NextConfig = {
         destination: '/faqs',
         permanent: true,
       },
+      {
+        source: '/webinar',
+        destination: '/?mode=webinar',
+        permanent: false,
+      },
+      {
+        source: '/talk',
+        destination: '/?mode=audio',
+        permanent: false,
+      },
+      {
+        source: '/meet',
+        destination: '/?mode=meet',
+        permanent: false,
+      },
     ];
   },
   async rewrites() {
