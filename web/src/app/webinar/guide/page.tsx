@@ -151,21 +151,33 @@ export default function WebinarGuidePage() {
 
             {/* Step 2 */}
             <div className="glow-card p-5 sm:p-6 rounded-2xl border border-white/[0.10] bg-[#0a0a0c] space-y-4 relative overflow-hidden">
-              <div className="flex items-center gap-3">
-                <span className="h-8 w-8 rounded-xl bg-[#FF9933]/15 border border-[#FF9933]/30 text-[#FF9933] font-mono text-xs flex items-center justify-center font-bold shrink-0">
-                  02
-                </span>
-                <div>
-                  <h3 className="text-base font-semibold text-[#fcfdff]">
-                    Create an Unlisted Broadcast Feed
-                  </h3>
-                  <p className="text-xs text-[#888e90]">Configure your private RTMP stream endpoint</p>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="h-8 w-8 rounded-xl bg-[#FF9933]/15 border border-[#FF9933]/30 text-[#FF9933] font-mono text-xs flex items-center justify-center font-bold shrink-0">
+                    02
+                  </span>
+                  <div>
+                    <h3 className="text-base font-semibold text-[#fcfdff]">
+                      Create an Unlisted Broadcast Feed
+                    </h3>
+                    <p className="text-xs text-[#888e90]">Configure your private RTMP stream endpoint</p>
+                  </div>
                 </div>
+
+                <a
+                  href="https://studio.youtube.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-xs text-[#fcfdff] border border-white/[0.08] transition-all shrink-0 cursor-pointer"
+                >
+                  <span>Open YouTube Studio</span>
+                  <ExternalLink className="w-3 h-3 text-[#888e90]" />
+                </a>
               </div>
 
               <div className="space-y-3 text-xs text-[#888e90] leading-relaxed">
                 <p>
-                  Open YouTube Studio (<span className="text-[#fcfdff] font-mono">studio.youtube.com</span>) and click <strong className="text-[#fcfdff]">Go Live</strong> (Stream tab):
+                  In YouTube Studio (<span className="text-[#fcfdff] font-mono">studio.youtube.com</span>), click the top-right <strong className="text-[#fcfdff]">Create (+)</strong> button and select <strong className="text-[#fcfdff]">Go live</strong>:
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
@@ -199,16 +211,26 @@ export default function WebinarGuidePage() {
 
             {/* Step 3 */}
             <div className="glow-card p-5 sm:p-6 rounded-2xl border border-white/[0.10] bg-[#0a0a0c] space-y-4 relative overflow-hidden">
-              <div className="flex items-center gap-3">
-                <span className="h-8 w-8 rounded-xl bg-[#FF9933]/15 border border-[#FF9933]/30 text-[#FF9933] font-mono text-xs flex items-center justify-center font-bold shrink-0">
-                  03
-                </span>
-                <div>
-                  <h3 className="text-base font-semibold text-[#fcfdff]">
-                    Connect Stream URL to Connectling
-                  </h3>
-                  <p className="text-xs text-[#888e90]">Link the feed to your webinar</p>
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="h-8 w-8 rounded-xl bg-[#FF9933]/15 border border-[#FF9933]/30 text-[#FF9933] font-mono text-xs flex items-center justify-center font-bold shrink-0">
+                    03
+                  </span>
+                  <div>
+                    <h3 className="text-base font-semibold text-[#fcfdff]">
+                      Connect Stream URL to Connectling
+                    </h3>
+                    <p className="text-xs text-[#888e90]">Link the feed to your webinar</p>
+                  </div>
                 </div>
+
+                <Link
+                  href="/?mode=webinar"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-xs text-[#fcfdff] border border-white/[0.08] transition-all shrink-0 cursor-pointer"
+                >
+                  <span>Dashboard</span>
+                  <Sparkles className="w-3 h-3 text-[#FF9933]" />
+                </Link>
               </div>
 
               <div className="space-y-3 text-xs text-[#888e90] leading-relaxed">
