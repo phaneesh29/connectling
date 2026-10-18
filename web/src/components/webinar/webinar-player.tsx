@@ -129,12 +129,6 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
         <div className="absolute inset-0 bg-[radial-gradient(#ffffff0a_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none opacity-40" />
         <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#FF9933]/30 to-transparent pointer-events-none" />
 
-        {/* Live Broadcast Status Pill */}
-        <div className="relative z-10 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#101016]/90 border border-white/[0.10] text-[10px] font-mono tracking-wider text-[#888e90] uppercase mb-4 shadow-sm backdrop-blur-md">
-          <span className="h-1.5 w-1.5 rounded-full bg-[#FF9933] animate-pulse shadow-[0_0_8px_#FF9933]" />
-          <span className="text-[#fcfdff] font-medium">{isHost ? 'Studio Standby' : 'Awaiting Host'}</span>
-        </div>
-
         {/* Concentric Radar Rings & Glowing Icon */}
         <div className="relative z-10 mb-4 flex items-center justify-center">
           <div className="absolute w-24 h-24 rounded-full border border-[#FF9933]/15 animate-ping opacity-30 pointer-events-none" />
