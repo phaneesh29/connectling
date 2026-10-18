@@ -36,8 +36,6 @@ export default function DashboardPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'meet' | 'audio'>('meet');
   const [webinarModalOpen, setWebinarModalOpen] = useState(false);
-  const [webinarTab, setWebinarTab] = useState<'upcoming' | 'mine'>('upcoming');
-  const [upcomingWebinars, setUpcomingWebinars] = useState<WebinarData[]>([]);
   const [myWebinars, setMyWebinars] = useState<WebinarData[]>([]);
   const [loadingWebinars, setLoadingWebinars] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
@@ -94,20 +92,16 @@ export default function DashboardPage() {
   }, [session]);
 
   const fetchWebinars = useCallback(async () => {
+    if (!session) return;
     setLoadingWebinars(true);
     try {
-      const upRes = await webinarsApi.listUpcomingWebinars();
-      if (upRes.data) {
-        setUpcomingWebinars(upRes.data);
-      }
-      if (session) {
-        const myRes = await webinarsApi.listMyWebinars();
-        if (myRes.data) {
-          setMyWebinars(myRes.data);
-        }
+      const myRes = await webinarsApi.listMyWebinars();
+      if (myRes.data) {
+        setMyWebinars(myRes.data);
       }
     } catch (err) {
       console.error('Failed to load webinars:', err);
+      setMyWebinars([]);
     } finally {
       setLoadingWebinars(false);
     }
@@ -248,8 +242,6 @@ export default function DashboardPage() {
   if (sessionPending) {
     return <DashboardSkeleton />;
   }
-
-  const displayedWebinars = webinarTab === 'upcoming' ? upcomingWebinars : myWebinars;
 
   return (
     <div
@@ -621,11 +613,11 @@ export default function DashboardPage() {
         {/* Webinars Section on / Route */}
         {session && activeMode === 'webinar' && (
           <section className="space-y-4 pt-1">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
                 <div className="flex items-center gap-1.5">
                   <h2 className="text-sm sm:text-base font-medium text-[#fcfdff]">
-                    Webinar Broadcasts
+                    Your Hosted Webinars
                   </h2>
                   <Link
                     href="/webinar/guide"
@@ -638,62 +630,36 @@ export default function DashboardPage() {
                     <Info size={11} />
                   </Link>
                 </div>
-                {/* Segmented Filter Pills */}
-                <div className="inline-flex p-0.5 bg-[#101012] border border-white/[0.08] rounded-xl text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setWebinarTab('upcoming')}
-                    className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                      webinarTab === 'upcoming'
-                        ? 'bg-[#1e1e24] text-[#fcfdff] border border-white/[0.12] shadow-sm'
-                        : 'text-[#888e90] hover:text-[#fcfdff]'
-                    }`}
-                  >
-                    Upcoming ({upcomingWebinars.length})
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWebinarTab('mine')}
-                    className={`px-3 py-1 rounded-lg font-medium transition-all cursor-pointer ${
-                      webinarTab === 'mine'
-                        ? 'bg-[#1e1e24] text-[#fcfdff] border border-white/[0.12] shadow-sm'
-                        : 'text-[#888e90] hover:text-[#fcfdff]'
-                    }`}
-                  >
-                    My Webinars ({myWebinars.length})
-                  </button>
-                </div>
+                {myWebinars.length > 0 && (
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/[0.08] border border-white/[0.10] text-[#fcfdff]">
+                    {myWebinars.length} Total
+                  </span>
+                )}
               </div>
 
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => void fetchWebinars()}
-                  disabled={loadingWebinars}
-                  className="text-xs font-mono text-[#888e90] hover:text-[#fcfdff] transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  {loadingWebinars ? 'Refreshing...' : 'Refresh'}
-                </button>
-              </div>
+              <button
+                onClick={() => void fetchWebinars()}
+                disabled={loadingWebinars}
+                className="text-xs font-mono text-[#888e90] hover:text-[#fcfdff] transition-all disabled:opacity-50 cursor-pointer"
+              >
+                {loadingWebinars ? 'Refreshing...' : 'Refresh'}
+              </button>
             </div>
 
-            {loadingWebinars && displayedWebinars.length === 0 ? (
+            {loadingWebinars && myWebinars.length === 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <HostedSpaceCardSkeleton />
                 <HostedSpaceCardSkeleton />
               </div>
-            ) : displayedWebinars.length === 0 ? (
+            ) : myWebinars.length === 0 ? (
               <div className="p-8 sm:p-10 rounded-2xl border border-dashed border-white/[0.08] bg-[#0a0a0c]/60 flex flex-col items-center justify-center text-center space-y-3">
                 <RadioIcon size={28} className="text-[#888e90] opacity-60" />
                 <div className="space-y-1">
                   <p className="text-sm text-[#fcfdff] font-medium">
-                    {webinarTab === 'upcoming'
-                      ? 'No upcoming broadcasts scheduled'
-                      : "You haven't created any webinars yet"}
+                    You haven&apos;t created any webinars yet
                   </p>
                   <p className="text-xs text-[#888e90] max-w-sm">
-                    {webinarTab === 'upcoming'
-                      ? 'Create your own webinar stage now to stream live with real-time chat, whiteboards, and interactive Q&A.'
-                      : 'Launch a high-definition webinar with OBS RTMP integration and zero attendee latency.'}
+                    Webinars you launch are private. Attendees can only join if you share your watch link or room code with them.
                   </p>
                 </div>
                 <button
@@ -706,10 +672,10 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {displayedWebinars.map((web) => {
+                {myWebinars.map((web) => {
                   const isLive = web.status === 'live';
                   const isEnded = web.status === 'ended';
-                  const isHost = session?.user?.id === web.hostId;
+                  const isHost = true;
 
                   return (
                     <div

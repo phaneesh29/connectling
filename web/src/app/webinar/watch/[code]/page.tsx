@@ -55,9 +55,9 @@ export default function WebinarWatchPage({ params }: PageProps) {
 
   useEffect(() => {
     if (!isSessionPending && !session?.user) {
-      router.replace('/login');
+      router.replace(`/login?callbackURL=${encodeURIComponent(`/webinar/watch/${code}`)}`);
     }
-  }, [session?.user, isSessionPending, router]);
+  }, [session?.user, isSessionPending, router, code]);
 
   // Real-time socket connection
   const {
