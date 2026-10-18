@@ -235,17 +235,6 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
             <ArrowLeft className="w-4 h-4" />
           </Link>
 
-          <span
-            className={`h-2 w-2 rounded-full shrink-0 transition-colors ${
-              isLive
-                ? 'bg-[#ff2047] shadow-[0_0_8px_#ff2047] animate-pulse'
-                : isEnded
-                ? 'bg-[#464a4d]'
-                : 'bg-amber-400 shadow-[0_0_8px_#f59e0b]'
-            }`}
-            title={isLive ? 'Live Broadcast' : isEnded ? 'Broadcast Ended' : 'Standby'}
-          />
-
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <h1 className="font-serif-headline text-xs sm:text-sm font-normal text-[#fcfdff] truncate max-w-[130px] xs:max-w-[200px] sm:max-w-md tracking-tight">
@@ -409,16 +398,13 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
                 <span className="font-mono text-[11px]">
                   {webinar.youtubeVideoId ? 'Change Stream Link' : 'Connect Stream Link'}
                 </span>
-                {webinar.youtubeVideoId ? (
+                {webinar.youtubeVideoId && (
                   <span className="w-1.5 h-1.5 rounded-full bg-[#11ff99]" title="Stream link connected" />
-                ) : (
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#FF9933] animate-ping" title="Configuration needed" />
                 )}
               </button>
             </div>
 
             <div className="text-[11px] font-mono text-[#888e90] flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#FF9933]" />
               <span>Host Broadcast Stage</span>
             </div>
           </div>
