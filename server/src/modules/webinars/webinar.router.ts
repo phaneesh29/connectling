@@ -14,6 +14,7 @@ import {
   updateWebinarStatusHandler,
   listMyWebinarsHandler,
   listUpcomingWebinarsHandler,
+  deleteWebinarHandler,
 } from './webinar.controller.js';
 
 export const webinarRouter = Router();
@@ -53,4 +54,11 @@ webinarRouter.patch(
   '/:code/status',
   validateRequest({ params: webinarCodeParamSchema, body: updateWebinarStatusSchema }),
   updateWebinarStatusHandler
+);
+
+// Delete webinar (host only)
+webinarRouter.delete(
+  '/:code',
+  validateRequest({ params: webinarCodeParamSchema }),
+  deleteWebinarHandler
 );

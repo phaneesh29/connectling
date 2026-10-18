@@ -55,6 +55,7 @@ export default function DashboardPage() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [deletingCode, setDeletingCode] = useState<string | null>(null);
   const [deleteConfirmRoom, setDeleteConfirmRoom] = useState<string | null>(null);
+  const [deleteConfirmWebinar, setDeleteConfirmWebinar] = useState<string | null>(null);
 
   // Handle mode change with 2-way URL query synchronization
   const handleModeChange = useCallback((mode: 'meet' | 'audio' | 'webinar') => {
@@ -155,6 +156,21 @@ export default function DashboardPage() {
       setDeleteConfirmRoom(null);
     } catch (err) {
       console.error('Failed to end space:', err);
+    } finally {
+      setDeletingCode(null);
+    }
+  };
+
+  const handleConfirmDeleteWebinar = async () => {
+    if (!deleteConfirmWebinar) return;
+    const codeToDelete = deleteConfirmWebinar;
+    setDeletingCode(codeToDelete);
+    try {
+      await webinarsApi.deleteWebinar(codeToDelete);
+      await fetchWebinars();
+      setDeleteConfirmWebinar(null);
+    } catch (err) {
+      console.error('Failed to delete webinar:', err);
     } finally {
       setDeletingCode(null);
     }
@@ -793,13 +809,31 @@ export default function DashboardPage() {
                         {/* Action Buttons */}
                         <div className="flex items-center gap-2">
                           {isHost ? (
-                            <Link
-                              href={`/webinar/host/${web.code}`}
-                              className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs transition-all active:scale-[0.98] shadow-sm"
-                            >
-                              <Video className="w-3.5 h-3.5" />
-                              <span>Enter Studio</span>
-                            </Link>
+                            <>
+                              <button
+                                onClick={() => setDeleteConfirmWebinar(web.code)}
+                                disabled={deletingCode === web.code}
+                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-red-500/10 border border-white/[0.08] hover:border-red-500/30 text-[#888e90] hover:text-[#ff2047] font-medium text-xs transition-all disabled:opacity-50 cursor-pointer"
+                                title="Delete webinar"
+                              >
+                                {deletingCode === web.code ? (
+                                  <div className="animate-spin h-3 w-3 border border-red-400/30 border-t-red-400 rounded-full" />
+                                ) : (
+                                  <>
+                                    <Trash2Icon size={12} />
+                                    <span className="text-[11px]">Delete</span>
+                                  </>
+                                )}
+                              </button>
+
+                              <Link
+                                href={`/webinar/host/${web.code}`}
+                                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs transition-all active:scale-[0.98] shadow-sm"
+                              >
+                                <Video className="w-3.5 h-3.5" />
+                                <span>Enter Studio</span>
+                              </Link>
+                            </>
                           ) : (
                             <Link
                               href={`/webinar/watch/${web.code}`}
@@ -900,6 +934,17 @@ export default function DashboardPage() {
         isLoading={Boolean(deletingCode)}
         onConfirm={handleConfirmDelete}
         onCancel={() => setDeleteConfirmRoom(null)}
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(deleteConfirmWebinar)}
+        title="Delete Webinar?"
+        description="Are you sure you want to delete this webinar? Attendees will no longer be able to access the broadcast."
+        confirmText="Delete Webinar"
+        variant="danger"
+        isLoading={Boolean(deletingCode)}
+        onConfirm={handleConfirmDeleteWebinar}
+        onCancel={() => setDeleteConfirmWebinar(null)}
       />
 
       <ReportModal

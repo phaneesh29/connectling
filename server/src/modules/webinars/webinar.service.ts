@@ -176,4 +176,23 @@ export const webinarService = {
       limit: 20,
     });
   },
+
+  deleteWebinar: async (hostId: string, code: string) => {
+    const normalized = normalizeRoomCode(code);
+    const existing = await db.query.webinar.findFirst({
+      where: eq(webinar.code, normalized),
+    });
+
+    if (!existing) {
+      throw new NotFoundError('Webinar not found');
+    }
+
+    if (existing.hostId !== hostId) {
+      throw new ForbiddenError('Only the host can delete this webinar');
+    }
+
+    await db.delete(webinar).where(eq(webinar.id, existing.id));
+
+    return { success: true, code: normalized };
+  },
 };

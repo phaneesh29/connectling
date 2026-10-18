@@ -32,6 +32,7 @@ import {
   Sliders,
   Tv,
   ExternalLink,
+  Trash2,
 } from 'lucide-react';
 import { generateRandomWebinarTitle } from '@/lib/room-names';
 
@@ -59,6 +60,8 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [confirmGoLiveOpen, setConfirmGoLiveOpen] = useState(false);
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Settings form state
   const [editTitle, setEditTitle] = useState('');
@@ -143,6 +146,18 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
       }
     } catch (err) {
       console.error('Failed to end broadcast:', err);
+    }
+  };
+
+  const handleDeleteWebinar = async () => {
+    setIsDeleting(true);
+    try {
+      await webinarsApi.deleteWebinar(code);
+      setConfirmDeleteOpen(false);
+      router.replace('/?mode=webinar');
+    } catch (err) {
+      console.error('Failed to delete webinar:', err);
+      setIsDeleting(false);
     }
   };
 
@@ -341,6 +356,18 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
             >
               <Power className="w-3.5 h-3.5 stroke-[2.5]" />
               <span>End Webinar</span>
+            </button>
+          )}
+
+          {isEnded && (
+            <button
+              type="button"
+              onClick={() => setConfirmDeleteOpen(true)}
+              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-[#f87171] hover:text-[#fca5a5] border border-red-500/30 hover:border-red-500/50 font-medium text-xs transition-all cursor-pointer"
+              title="Delete Webinar Permanently"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete Webinar</span>
             </button>
           )}
         </div>
@@ -632,20 +659,34 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/[0.08]">
+              <div className="flex items-center justify-between gap-2.5 pt-3 border-t border-white/[0.08]">
                 <button
                   type="button"
-                  onClick={() => setIsSettingsOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-medium text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06] transition-colors cursor-pointer"
+                  onClick={() => {
+                    setIsSettingsOpen(false);
+                    setConfirmDeleteOpen(true);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/25 transition-all cursor-pointer"
+                  title="Delete Webinar"
                 >
-                  Cancel
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Webinar</span>
                 </button>
-                <button
-                  type="submit"
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer"
-                >
-                  Save Changes
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsSettingsOpen(false)}
+                    className="px-4 py-2 rounded-xl text-xs font-medium text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06] transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer"
+                  >
+                    Save Changes
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -672,6 +713,18 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
         description="Are you sure you want to end this webinar? All attendees will be disconnected from the live broadcast."
         confirmText="End Webinar"
         variant="danger"
+      />
+
+      {/* Confirmation: Delete Webinar */}
+      <ConfirmDialog
+        isOpen={confirmDeleteOpen}
+        onCancel={() => setConfirmDeleteOpen(false)}
+        onConfirm={handleDeleteWebinar}
+        title="Delete Webinar Permanently?"
+        description="Are you sure you want to delete this webinar? Attendees will be disconnected and this studio will be closed permanently."
+        confirmText="Delete Webinar"
+        variant="danger"
+        isLoading={isDeleting}
       />
     </div>
   );

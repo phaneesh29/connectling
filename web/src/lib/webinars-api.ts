@@ -94,4 +94,10 @@ export const webinarsApi = {
       method: 'GET',
     });
   },
+
+  deleteWebinar: (code: string) => {
+    return request<{ success: boolean; code?: string }>(`/api/v1/webinars/${encodeURIComponent(code)}`, {
+      method: 'DELETE',
+    });
+  },
 };

@@ -62,6 +62,13 @@ export const clearRoomWhiteboard = (roomCode: string): void => {
   const normalized = normalizeRoomCode(roomCode);
   roomWhiteboards.delete(normalized);
 };
+
+export const clearWebinarState = (webinarCode: string): void => {
+  const normalized = normalizeRoomCode(webinarCode);
+  webinarWhiteboards.delete(normalized);
+  webinarQuestions.delete(normalized);
+  webinarViewers.delete(normalized);
+};
 const roomTasks = new Map<string, Promise<void>>();
 const serializeRoom = (roomCode: string, operation: () => Promise<void>) => {
   const task = (roomTasks.get(roomCode) ?? Promise.resolve()).then(operation).catch(err => {

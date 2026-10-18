@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { webinarService } from './webinar.service.js';
-import { getRealtimeServer } from '../realtime/realtime.gateway.js';
+import { getRealtimeServer, clearWebinarState } from '../realtime/realtime.gateway.js';
+import { normalizeRoomCode } from '../rooms/room.utils.js';
 import type {
   CreateWebinarInput,
   UpdateWebinarInput,
@@ -88,6 +89,31 @@ export const listMyWebinarsHandler = async (req: Request, res: Response): Promis
 
 export const listUpcomingWebinarsHandler = async (_req: Request, res: Response): Promise<void> => {
   const result = await webinarService.listUpcomingWebinars();
+
+  res.status(200).json({
+    success: true,
+    data: result,
+  });
+};
+
+export const deleteWebinarHandler = async (req: Request, res: Response): Promise<void> => {
+  const userId = req.user!.id;
+  const { code } = req.params as WebinarCodeParam;
+  const result = await webinarService.deleteWebinar(userId, code);
+
+  try {
+    const io = getRealtimeServer();
+    const normalized = normalizeRoomCode(code);
+    clearWebinarState(normalized);
+    if (io) {
+      io.to(`webinar:${normalized}`).emit('webinar:status:changed', {
+        status: 'ended',
+        endedAt: new Date(),
+      });
+    }
+  } catch {
+    // Ignore realtime broadcast errors on teardown
+  }
 
   res.status(200).json({
     success: true,
