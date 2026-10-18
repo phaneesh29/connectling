@@ -50,15 +50,54 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
     const adapter = new YouTubeAdapter();
     adapterRef.current = adapter;
 
-    // Viewing-only configuration: no controls, autoplay on, playsinline
+    // Viewing-only configuration: no controls, autoplay on, playsinline, CC disabled
     adapter.controls = false;
     adapter.autoplay = true;
     adapter.playsInline = true;
     adapter.defaultMuted = false;
-    adapter.src = videoId;
+    adapter.source = {
+      src: videoId,
+      engine: {
+        youtube: {
+          cc_load_policy: 0 as any,
+          cc_lang_pref: '',
+        },
+      },
+    };
+
+    const disableCaptions = () => {
+      try {
+        if (adapter.textTracks) {
+          for (const track of adapter.textTracks) {
+            track.mode = 'disabled';
+          }
+        }
+      } catch {
+        // Ignore
+      }
+
+      try {
+        const engine = adapter.engine as {
+          unloadModule?: (module: string) => void;
+          setOption?: (module: string, option: string, value: unknown) => void;
+        } | null;
+
+        if (engine) {
+          if (typeof engine.unloadModule === 'function') {
+            engine.unloadModule('captions');
+          }
+          if (typeof engine.setOption === 'function') {
+            engine.setOption('captions', 'track', {});
+          }
+        }
+      } catch {
+        // Ignore
+      }
+    };
 
     const handlePlaying = () => {
       setIsLoading(false);
+      disableCaptions();
     };
 
     const handleEnded = () => {
@@ -75,14 +114,28 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
     };
 
     adapter.addEventListener('playing', handlePlaying);
+    adapter.addEventListener('loadedmetadata', disableCaptions);
+    adapter.addEventListener('loadcomplete', disableCaptions);
     adapter.addEventListener('ended', handleEnded);
     adapter.addEventListener('error', handleError);
     adapter.addEventListener('volumechange', handleVolumeChange);
+
+    try {
+      adapter.textTracks.addEventListener('addtrack', (e: any) => {
+        if (e.track) e.track.mode = 'disabled';
+        disableCaptions();
+      });
+      adapter.textTracks.addEventListener('change', disableCaptions);
+    } catch {
+      // Ignore
+    }
 
     adapter.attach(iframe);
 
     return () => {
       adapter.removeEventListener('playing', handlePlaying);
+      adapter.removeEventListener('loadedmetadata', disableCaptions);
+      adapter.removeEventListener('loadcomplete', disableCaptions);
       adapter.removeEventListener('ended', handleEnded);
       adapter.removeEventListener('error', handleError);
       adapter.removeEventListener('volumechange', handleVolumeChange);
