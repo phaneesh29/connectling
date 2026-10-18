@@ -64,6 +64,78 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
     };
   }, []);
 
+  // Disable keyboard shortcuts for playing/pausing/seeking (Space, k, j, l, arrows)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement;
+      const tag = activeEl ? activeEl.tagName.toLowerCase() : '';
+      const isInput =
+        tag === 'input' ||
+        tag === 'textarea' ||
+        activeEl?.getAttribute('contenteditable') === 'true' ||
+        (activeEl as HTMLElement)?.isContentEditable;
+
+      // Never block keyboard actions when typing in chat, Q&A, or search
+      if (isInput) return;
+
+      const keysToBlock = [' ', 'Space', 'k', 'K', 'j', 'J', 'l', 'L', 'ArrowLeft', 'ArrowRight'];
+      if (keysToBlock.includes(e.key) || keysToBlock.includes(e.code)) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Enforce broadcast playback: never let the stream pause
+        if (adapterRef.current && adapterRef.current.paused) {
+          try {
+            adapterRef.current.play();
+          } catch {
+            // Ignore
+          }
+        }
+      }
+    };
+
+    const handleBlur = () => {
+      // If focus ever slips into the iframe, immediately blur it back to the window
+      if (document.activeElement === iframeRef.current) {
+        iframeRef.current?.blur();
+        window.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown, { capture: true });
+    window.addEventListener('blur', handleBlur);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, { capture: true });
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
+  // If the browser backgrounded or paused the tab, resume with masked scale when tab becomes visible
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && adapterRef.current) {
+        if (adapterRef.current.paused) {
+          setIsScaled(true);
+          try {
+            adapterRef.current.play();
+          } catch {
+            // Ignore
+          }
+          if (resetScaleTimerRef.current) clearTimeout(resetScaleTimerRef.current);
+          resetScaleTimerRef.current = setTimeout(() => {
+            setIsScaled(false);
+          }, 4000);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
   useEffect(() => {
     if (revealTimerRef.current) {
       clearTimeout(revealTimerRef.current);
@@ -164,16 +236,18 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
         revealTimerRef.current = setTimeout(() => {
           setIsRevealed(true);
         }, 1300);
-
-        // After YouTube's initial ~1-2s title banner & watermark have auto-faded away,
-        // smoothly reset the zoom/scale back to full uncropped 100% widescreen after 4s.
-        if (resetScaleTimerRef.current) clearTimeout(resetScaleTimerRef.current);
-        resetScaleTimerRef.current = setTimeout(() => {
-          setIsScaled(false);
-        }, 4000);
       } else {
         setIsRevealed(true);
       }
+
+      // Whenever YouTube starts OR resumes from pause, it flashes its intro title/watermark overlay.
+      // We immediately zoom to scale-[1.28] so the branding is pushed off-screen,
+      // and reset back to 100% widescreen after 4s once YouTube's overlay has auto-faded away.
+      setIsScaled(true);
+      if (resetScaleTimerRef.current) clearTimeout(resetScaleTimerRef.current);
+      resetScaleTimerRef.current = setTimeout(() => {
+        setIsScaled(false);
+      }, 4000);
     };
 
     const handleWaiting = () => {
@@ -203,12 +277,31 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
       }
     };
 
+    const handlePause = () => {
+      // Live webinars cannot be paused by attendees.
+      // If paused, immediately pre-scale to mask YouTube's resume overlay, then resume playing.
+      if (!adapter.ended && adapterRef.current) {
+        setIsScaled(true);
+        if (resetScaleTimerRef.current) clearTimeout(resetScaleTimerRef.current);
+        resetScaleTimerRef.current = setTimeout(() => {
+          setIsScaled(false);
+        }, 4000);
+
+        try {
+          adapterRef.current.play();
+        } catch {
+          // Fallback
+        }
+      }
+    };
+
     adapter.addEventListener('playing', handlePlaying);
     adapter.addEventListener('waiting', handleWaiting);
     adapter.addEventListener('loadedmetadata', disableCaptions);
     adapter.addEventListener('loadcomplete', handleLoadComplete);
     adapter.addEventListener('ended', handleEnded);
     adapter.addEventListener('error', handleError);
+    adapter.addEventListener('pause', handlePause);
 
     // Safety timeout: prevent getting stuck on black screen if network stalls or events are delayed
     safetyTimerRef.current = setTimeout(() => {
@@ -253,6 +346,7 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
       adapter.removeEventListener('loadcomplete', handleLoadComplete);
       adapter.removeEventListener('ended', handleEnded);
       adapter.removeEventListener('error', handleError);
+      adapter.removeEventListener('pause', handlePause);
       try {
         adapter.destroy();
       } catch {
@@ -346,8 +440,11 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
         <iframe
           ref={iframeRef}
           title={title || 'Webinar Broadcast'}
-          className={`w-full h-full border-0 pointer-events-none origin-center transition-transform duration-1000 ease-out ${
-            isScaled ? 'transform scale-[1.28]' : 'transform scale-100'
+          tabIndex={-1}
+          className={`w-full h-full border-0 pointer-events-none origin-center ${
+            isScaled
+              ? 'transform scale-[1.28] transition-transform duration-150 ease-in'
+              : 'transform scale-100 transition-transform duration-1000 ease-out'
           }`}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
@@ -358,6 +455,15 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
       <div
         className="absolute inset-0 z-10 bg-transparent cursor-default select-none"
         onClick={handleShieldClick}
+        onDoubleClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          handleShieldClick();
+        }}
       />
 
       {/* 
