@@ -15,6 +15,7 @@ import { WebinarQa } from '@/components/webinar/webinar-qa';
 import { InRoomChat } from '@/components/in-room-chat';
 import { Whiteboard } from '@/components/whiteboard';
 import { FloatingReactions } from '@/components/reactions/floating-reactions';
+import { WebinarWatchSkeleton } from '@/components/skeleton';
 
 import {
   UsersIcon,
@@ -117,14 +118,7 @@ export default function WebinarWatchPage({ params }: PageProps) {
   }, [webinar?.scheduledAt, webinar?.status]);
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#070709] flex flex-col items-center justify-center text-white gap-3">
-        <div className="w-10 h-10 rounded-full border-3 border-[#FF9933] border-t-transparent animate-spin" />
-        <span className="text-xs font-mono tracking-wider text-zinc-400 uppercase">
-          Loading...
-        </span>
-      </div>
-    );
+    return <WebinarWatchSkeleton />;
   }
 
   if (!webinar) {

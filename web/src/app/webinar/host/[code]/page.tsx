@@ -16,6 +16,7 @@ import { InRoomChat } from '@/components/in-room-chat';
 import { Whiteboard } from '@/components/whiteboard';
 import { FloatingReactions } from '@/components/reactions/floating-reactions';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { WebinarStudioSkeleton } from '@/components/skeleton';
 
 import {
   UsersIcon,
@@ -196,14 +197,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
   };
 
   if (isLoading || isSessionPending) {
-    return (
-      <div className="min-h-screen bg-[#06060a] flex flex-col items-center justify-center text-[#fcfdff] gap-3">
-        <div className="w-10 h-10 rounded-full border-2 border-[#FF9933] border-t-transparent animate-spin" />
-        <span className="text-xs font-mono tracking-wider text-[#888e90] uppercase">
-          Loading...
-        </span>
-      </div>
-    );
+    return <WebinarStudioSkeleton />;
   }
 
   if (!webinar) {

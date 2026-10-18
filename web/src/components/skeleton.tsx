@@ -425,3 +425,173 @@ export function NavbarProfileSkeleton() {
     </div>
   );
 }
+
+/**
+ * Full Webinar Host Studio Skeleton (Zero Layout Shift for /webinar/host/[code])
+ */
+export function WebinarStudioSkeleton() {
+  return (
+    <div className="flex flex-col h-screen bg-black text-[#fcfdff] select-none ambient-glow-webinar">
+      {/* Studio Top Bar */}
+      <header className="relative h-14 border-b border-white/[0.08] px-3 sm:px-6 flex items-center justify-between gap-4 bg-[#060609]/85 backdrop-blur-2xl shrink-0 z-40">
+        <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#FF9933]/30 to-transparent pointer-events-none" />
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <Skeleton className="h-7.5 w-16 rounded-lg bg-white/[0.08]" />
+          <div className="space-y-1.5 min-w-0">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4.5 w-32 sm:w-48 rounded-md bg-white/[0.12]" />
+              <Skeleton className="h-4 w-16 rounded-md bg-amber-500/15" />
+            </div>
+            <Skeleton className="h-3 w-24 rounded-md bg-white/[0.06]" />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <Skeleton className="h-7.5 w-12 rounded-lg bg-white/[0.08]" />
+          <Skeleton className="hidden sm:inline-block h-7.5 w-16 rounded-lg bg-white/[0.08]" />
+          <Skeleton className="hidden sm:inline-block h-7.5 w-20 rounded-lg bg-white/[0.08]" />
+          <Skeleton className="h-7.5 w-16 rounded-lg bg-white/[0.08]" />
+          <Skeleton className="h-8 w-24 rounded-xl bg-gradient-brand-r opacity-50" />
+        </div>
+      </header>
+
+      {/* Main Workspace */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Stage */}
+        <div className="flex-1 flex flex-col p-3 sm:p-5 bg-transparent overflow-y-auto">
+          {/* Top Stage Control Pills */}
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-7.5 w-24 rounded-lg bg-white/[0.08]" />
+              <Skeleton className="h-7.5 w-28 rounded-lg bg-white/[0.08]" />
+            </div>
+          </div>
+
+          {/* Stage Viewport */}
+          <div className="relative flex-1 min-h-[420px] rounded-2xl bg-[#050508] border border-white/[0.14] overflow-hidden shadow-2xl flex flex-col items-center justify-center p-6 sm:p-10">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full blur-3xl opacity-15 bg-gradient-brand pointer-events-none" />
+            <div className="relative z-10 mb-4 flex items-center justify-center">
+              <Skeleton className="w-16 h-16 rounded-2xl bg-white/[0.08]" />
+            </div>
+            <Skeleton className="h-6 w-48 rounded-lg mb-2 bg-white/[0.10]" />
+            <Skeleton className="h-3.5 w-72 rounded-md mb-5 bg-white/[0.06]" />
+            <Skeleton className="h-9 w-36 rounded-xl bg-gradient-brand-r opacity-40" />
+          </div>
+        </div>
+
+        {/* Right Drawer (Desktop) */}
+        <aside className="hidden lg:flex w-80 md:w-96 border-l border-white/[0.08] bg-[#07070a]/95 flex-col shrink-0">
+          <div className="p-2.5 border-b border-white/[0.08] bg-[#08080c]/80 flex items-center justify-between gap-2">
+            <Skeleton className="h-8 w-full rounded-xl bg-white/[0.06]" />
+            <Skeleton className="h-8 w-8 rounded-lg bg-white/[0.06] shrink-0" />
+          </div>
+          <div className="flex-1 p-4 space-y-4">
+            <div className="flex gap-2.5">
+              <Skeleton className="h-6 w-6 rounded-full bg-white/[0.08] shrink-0" />
+              <div className="space-y-1 flex-1">
+                <Skeleton className="h-3 w-20 rounded bg-white/[0.06]" />
+                <Skeleton className="h-10 w-44 rounded-2xl bg-white/[0.06]" />
+              </div>
+            </div>
+            <div className="flex gap-2.5 flex-row-reverse">
+              <div className="space-y-1 flex-1 flex flex-col items-end">
+                <Skeleton className="h-3 w-16 rounded bg-white/[0.06]" />
+                <Skeleton className="h-10 w-48 rounded-2xl bg-[#FF9933]/15" />
+              </div>
+            </div>
+            <div className="flex gap-2.5">
+              <Skeleton className="h-6 w-6 rounded-full bg-white/[0.08] shrink-0" />
+              <div className="space-y-1 flex-1">
+                <Skeleton className="h-3 w-24 rounded bg-white/[0.06]" />
+                <Skeleton className="h-14 w-52 rounded-2xl bg-white/[0.06]" />
+              </div>
+            </div>
+          </div>
+          <div className="p-3 border-t border-white/[0.08] bg-[#07070a]/90 flex items-center gap-2">
+            <Skeleton className="h-8 flex-1 rounded-xl bg-white/[0.06]" />
+            <Skeleton className="h-8 w-8 rounded-xl bg-white/[0.12] shrink-0" />
+          </div>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Full Webinar Watch Stage Skeleton (Zero Layout Shift for /webinar/watch/[code])
+ */
+export function WebinarWatchSkeleton() {
+  return (
+    <div className="flex flex-col h-screen bg-black text-[#fcfdff] select-none ambient-glow-webinar">
+      {/* Top Header Bar */}
+      <header className="relative h-14 border-b border-white/[0.08] px-3 sm:px-6 flex items-center justify-between gap-4 bg-[#060609]/85 backdrop-blur-2xl shrink-0 z-40">
+        <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#FF9933]/30 to-transparent pointer-events-none" />
+        <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+          <Skeleton className="h-7.5 w-16 rounded-lg bg-white/[0.08]" />
+          <div className="space-y-1.5 min-w-0">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4.5 w-32 sm:w-44 rounded-md bg-white/[0.12]" />
+              <Skeleton className="h-4 w-16 rounded-md bg-amber-500/15" />
+            </div>
+            <Skeleton className="h-3 w-20 rounded-md bg-white/[0.06]" />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <Skeleton className="h-7.5 w-12 rounded-lg bg-white/[0.08]" />
+          <Skeleton className="h-7.5 w-16 rounded-lg bg-white/[0.08]" />
+        </div>
+      </header>
+
+      {/* Main Container */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Main Stage Viewport */}
+        <div className="flex-1 flex flex-col p-3 sm:p-5 bg-[#06060a] overflow-y-auto">
+          <div className="relative flex-1 min-h-[380px] rounded-2xl bg-[#050508] border border-white/[0.14] overflow-hidden shadow-2xl flex flex-col items-center justify-center p-8 sm:p-12">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full blur-3xl opacity-15 bg-gradient-brand pointer-events-none" />
+            <div className="relative z-10 mb-4 flex items-center justify-center">
+              <Skeleton className="w-16 h-16 rounded-2xl bg-white/[0.08]" />
+            </div>
+            <Skeleton className="h-6 w-52 rounded-lg mb-2 bg-white/[0.10]" />
+            <Skeleton className="h-3.5 w-64 rounded-md mb-5 bg-white/[0.06]" />
+            <Skeleton className="h-10 w-40 rounded-2xl bg-white/[0.08]" />
+          </div>
+        </div>
+
+        {/* Right Drawer (Desktop) */}
+        <aside className="hidden lg:flex w-80 md:w-96 border-l border-white/[0.08] bg-[#07070a]/95 flex-col shrink-0">
+          <div className="p-2.5 border-b border-white/[0.08] bg-[#08080c]/80 flex items-center justify-between gap-2">
+            <Skeleton className="h-8 w-full rounded-xl bg-white/[0.06]" />
+            <Skeleton className="h-8 w-8 rounded-lg bg-white/[0.06] shrink-0" />
+          </div>
+          <div className="flex-1 p-4 space-y-4">
+            <div className="flex gap-2.5">
+              <Skeleton className="h-6 w-6 rounded-full bg-white/[0.08] shrink-0" />
+              <div className="space-y-1 flex-1">
+                <Skeleton className="h-3 w-20 rounded bg-white/[0.06]" />
+                <Skeleton className="h-10 w-44 rounded-2xl bg-white/[0.06]" />
+              </div>
+            </div>
+            <div className="flex gap-2.5 flex-row-reverse">
+              <div className="space-y-1 flex-1 flex flex-col items-end">
+                <Skeleton className="h-3 w-16 rounded bg-white/[0.06]" />
+                <Skeleton className="h-10 w-48 rounded-2xl bg-[#FF9933]/15" />
+              </div>
+            </div>
+          </div>
+          <div className="p-3 border-t border-white/[0.08] bg-[#07070a]/90 flex items-center gap-2">
+            <Skeleton className="h-8 flex-1 rounded-xl bg-white/[0.06]" />
+            <Skeleton className="h-8 w-8 rounded-xl bg-white/[0.12] shrink-0" />
+          </div>
+        </aside>
+      </div>
+
+      {/* Bottom Controls Dock */}
+      <footer className="h-16 sm:h-20 border-t border-white/[0.08] px-4 flex items-center justify-between bg-black/80 backdrop-blur-2xl shrink-0">
+        <Skeleton className="h-9 w-24 rounded-xl bg-white/[0.08]" />
+        <Skeleton className="h-10 w-48 rounded-2xl bg-white/[0.08]" />
+        <Skeleton className="h-9 w-20 rounded-xl bg-white/[0.08]" />
+      </footer>
+    </div>
+  );
+}
