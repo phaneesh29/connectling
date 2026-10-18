@@ -7,7 +7,6 @@ import {
   RefreshCw,
   AlertCircle,
   Sliders,
-  VolumeX,
 } from 'lucide-react';
 
 interface WebinarPlayerProps {
@@ -31,21 +30,61 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const adapterRef = useRef<YouTubeAdapter | null>(null);
 
-  const [isLoading, setIsLoading] = useState(true);
+  const [isRevealed, setIsRevealed] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [hasError, setHasError] = useState(false);
-  const [isMuted, setIsMuted] = useState(false);
+
+  const isFirstPlayRef = useRef(true);
+  const revealTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const safetyTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Unmute automatically on first user interaction anywhere on the page
+  useEffect(() => {
+    const handleFirstGesture = () => {
+      if (adapterRef.current) {
+        try {
+          adapterRef.current.muted = false;
+          adapterRef.current.play();
+        } catch {
+          // Ignore
+        }
+      }
+    };
+
+    window.addEventListener('click', handleFirstGesture, { once: true, capture: true });
+    window.addEventListener('keydown', handleFirstGesture, { once: true, capture: true });
+    window.addEventListener('touchstart', handleFirstGesture, { once: true, capture: true });
+
+    return () => {
+      window.removeEventListener('click', handleFirstGesture, { capture: true });
+      window.removeEventListener('keydown', handleFirstGesture, { capture: true });
+      window.removeEventListener('touchstart', handleFirstGesture, { capture: true });
+    };
+  }, []);
 
   useEffect(() => {
+    if (revealTimerRef.current) {
+      clearTimeout(revealTimerRef.current);
+      revealTimerRef.current = null;
+    }
+    if (safetyTimerRef.current) {
+      clearTimeout(safetyTimerRef.current);
+      safetyTimerRef.current = null;
+    }
+
     if (!videoId) {
-      setIsLoading(false);
+      setIsRevealed(false);
+      setIsBuffering(false);
       return;
     }
 
     const iframe = iframeRef.current;
     if (!iframe) return;
 
-    setIsLoading(true);
+    setIsRevealed(false);
+    setIsBuffering(false);
     setHasError(false);
+    isFirstPlayRef.current = true;
 
     const adapter = new YouTubeAdapter();
     adapterRef.current = adapter;
@@ -59,6 +98,10 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
       src: videoId,
       engine: {
         youtube: {
+          modestbranding: 1,
+          rel: 0,
+          iv_load_policy: 3,
+          disablekb: 1,
           cc_load_policy: 0 as any,
           cc_lang_pref: '',
         },
@@ -96,8 +139,30 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
     };
 
     const handlePlaying = () => {
-      setIsLoading(false);
+      setIsBuffering(false);
       disableCaptions();
+
+      if (safetyTimerRef.current) {
+        clearTimeout(safetyTimerRef.current);
+        safetyTimerRef.current = null;
+      }
+
+      // YouTube embeds always flash their title banner & logo watermark for the first ~1s of playback.
+      // We keep the 100% opaque Connectling cover up for 1300ms after playing starts so the YouTube
+      // intro branding auto-fades out unseen before we smoothly reveal the live broadcast.
+      if (isFirstPlayRef.current) {
+        isFirstPlayRef.current = false;
+        if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+        revealTimerRef.current = setTimeout(() => {
+          setIsRevealed(true);
+        }, 1300);
+      } else {
+        setIsRevealed(true);
+      }
+    };
+
+    const handleWaiting = () => {
+      setIsBuffering(true);
     };
 
     const handleEnded = () => {
@@ -105,20 +170,36 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
     };
 
     const handleError = () => {
+      if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+      if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
       setHasError(true);
-      setIsLoading(false);
+      setIsRevealed(true);
     };
 
-    const handleVolumeChange = () => {
-      setIsMuted(adapter.muted);
+    const handleLoadComplete = () => {
+      disableCaptions();
+      // If browser autoplay policy blocked unmuted sound on load, fallback to muted autoplay so playback begins
+      if (adapter.paused) {
+        adapter.muted = true;
+        adapter.play();
+      }
     };
 
     adapter.addEventListener('playing', handlePlaying);
+    adapter.addEventListener('waiting', handleWaiting);
     adapter.addEventListener('loadedmetadata', disableCaptions);
-    adapter.addEventListener('loadcomplete', disableCaptions);
+    adapter.addEventListener('loadcomplete', handleLoadComplete);
     adapter.addEventListener('ended', handleEnded);
     adapter.addEventListener('error', handleError);
-    adapter.addEventListener('volumechange', handleVolumeChange);
+
+    // Safety timeout: prevent getting stuck on black screen if network stalls or events are delayed
+    safetyTimerRef.current = setTimeout(() => {
+      if (adapter.paused) {
+        adapter.muted = true;
+        adapter.play();
+      }
+      setIsRevealed(true);
+    }, 4500);
 
     try {
       adapter.textTracks.addEventListener('addtrack', (e: any) => {
@@ -133,12 +214,20 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
     adapter.attach(iframe);
 
     return () => {
+      if (revealTimerRef.current) {
+        clearTimeout(revealTimerRef.current);
+        revealTimerRef.current = null;
+      }
+      if (safetyTimerRef.current) {
+        clearTimeout(safetyTimerRef.current);
+        safetyTimerRef.current = null;
+      }
       adapter.removeEventListener('playing', handlePlaying);
+      adapter.removeEventListener('waiting', handleWaiting);
       adapter.removeEventListener('loadedmetadata', disableCaptions);
-      adapter.removeEventListener('loadcomplete', disableCaptions);
+      adapter.removeEventListener('loadcomplete', handleLoadComplete);
       adapter.removeEventListener('ended', handleEnded);
       adapter.removeEventListener('error', handleError);
-      adapter.removeEventListener('volumechange', handleVolumeChange);
       try {
         adapter.destroy();
       } catch {
@@ -148,21 +237,22 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
     };
   }, [videoId, onEnded]);
 
-  const handleUnmute = useCallback(() => {
+  const handleShieldClick = useCallback(() => {
     if (adapterRef.current) {
       try {
         adapterRef.current.muted = false;
-        adapterRef.current.volume = 1;
+        adapterRef.current.play();
       } catch {
         // Fallback
       }
-      setIsMuted(false);
     }
   }, []);
 
   const handleRetry = useCallback(() => {
     setHasError(false);
-    setIsLoading(true);
+    setIsRevealed(false);
+    setIsBuffering(false);
+    isFirstPlayRef.current = true;
     if (adapterRef.current) {
       try {
         adapterRef.current.load();
@@ -223,43 +313,55 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
       {/* 
         Video.js YouTube Layer:
         IFrame managed by @videojs/youtube-video adapter.
-        pointer-events-none and transform scale-105 clip YouTube watermarks and disable any clicking to pause/interact with YouTube.
+        pointer-events-none and transform scale-[1.28] push YouTube title banner and bottom YouTube branding
+        completely off-screen, cropped cleanly by overflow-hidden.
       */}
       <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none">
         <iframe
           ref={iframeRef}
           title={title || 'Webinar Broadcast'}
-          className="w-full h-full border-0 pointer-events-none transform scale-105 origin-center"
+          className="w-full h-full border-0 pointer-events-none transform scale-[1.28] origin-center"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
         />
       </div>
 
-      {/* Viewing Shield: Prevents any click-to-pause or player interaction */}
+      {/* Viewing Shield: Prevents any click-to-pause or player interaction, auto-plays on click */}
       <div
-        className="absolute inset-0 z-10 bg-transparent"
-        onClick={isMuted ? handleUnmute : undefined}
+        className="absolute inset-0 z-10 bg-transparent cursor-default select-none"
+        onClick={handleShieldClick}
       />
 
-      {/* Unmute Pill if audio is muted by browser autoplay policy */}
-      {isMuted && (
-        <button
-          type="button"
-          onClick={handleUnmute}
-          className="absolute top-4 right-4 z-30 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/80 hover:bg-black text-white text-xs font-mono backdrop-blur-md border border-white/15 shadow-xl cursor-pointer transition-all active:scale-95 animate-pulse"
-          title="Unmute audio"
-        >
-          <VolumeX className="w-3.5 h-3.5 text-[#FF9933]" />
-          <span>Tap to Unmute</span>
-        </button>
-      )}
+      {/* 
+        Opaque Cover & Branded Loader:
+        Keeps a 100% opaque cover during initialization and the first ~1.3s of playback
+        so YouTube's intro branding, title card, and watermark fade out invisibly.
+      */}
+      <div
+        className={`absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#06060a] transition-opacity duration-500 ease-out pointer-events-none ${
+          isRevealed ? 'opacity-0' : 'opacity-100'
+        }`}
+      >
+        <div className="relative flex flex-col items-center justify-center p-6 text-center">
+          {/* Subtle Ambient Glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full blur-3xl opacity-20 bg-gradient-brand pointer-events-none" />
 
-      {/* Buffering / Loading Indicator */}
-      {isLoading && !hasError && (
-        <div className="absolute inset-0 z-20 pointer-events-none flex flex-col items-center justify-center bg-black/60 backdrop-blur-xs">
+          {/* Loader Spinner */}
+          <div className="relative mb-3 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full border-2 border-[#FF9933] border-t-transparent animate-spin shadow-[0_0_20px_rgba(255,153,51,0.5)]" />
+          </div>
+          <span className="text-xs font-mono tracking-wider text-[#888e90] uppercase">
+            Connecting Stream...
+          </span>
+        </div>
+      </div>
+
+      {/* Mid-stream Buffering Indicator (only when already revealed) */}
+      {isBuffering && isRevealed && !hasError && (
+        <div className="absolute inset-0 z-20 pointer-events-none flex flex-col items-center justify-center bg-black/40 backdrop-blur-xs transition-opacity duration-300">
           <div className="w-10 h-10 rounded-full border-2 border-[#FF9933] border-t-transparent animate-spin mb-3 shadow-[0_0_20px_rgba(255,153,51,0.5)]" />
           <span className="text-xs font-mono tracking-wider text-[#888e90] uppercase">
-            Loading...
+            Buffering...
           </span>
         </div>
       )}
