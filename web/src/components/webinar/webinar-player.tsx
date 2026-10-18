@@ -32,10 +32,12 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
 
   const [isRevealed, setIsRevealed] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [isScaled, setIsScaled] = useState(true);
   const [hasError, setHasError] = useState(false);
 
   const isFirstPlayRef = useRef(true);
   const revealTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const resetScaleTimerRef = useRef<NodeJS.Timeout | null>(null);
   const safetyTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Unmute automatically on first user interaction anywhere on the page
@@ -67,6 +69,10 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
       clearTimeout(revealTimerRef.current);
       revealTimerRef.current = null;
     }
+    if (resetScaleTimerRef.current) {
+      clearTimeout(resetScaleTimerRef.current);
+      resetScaleTimerRef.current = null;
+    }
     if (safetyTimerRef.current) {
       clearTimeout(safetyTimerRef.current);
       safetyTimerRef.current = null;
@@ -75,6 +81,7 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
     if (!videoId) {
       setIsRevealed(false);
       setIsBuffering(false);
+      setIsScaled(true);
       return;
     }
 
@@ -83,6 +90,7 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
 
     setIsRevealed(false);
     setIsBuffering(false);
+    setIsScaled(true);
     setHasError(false);
     isFirstPlayRef.current = true;
 
@@ -156,6 +164,13 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
         revealTimerRef.current = setTimeout(() => {
           setIsRevealed(true);
         }, 1300);
+
+        // After YouTube's initial ~1-2s title banner & watermark have auto-faded away,
+        // smoothly reset the zoom/scale back to full uncropped 100% widescreen after 4s.
+        if (resetScaleTimerRef.current) clearTimeout(resetScaleTimerRef.current);
+        resetScaleTimerRef.current = setTimeout(() => {
+          setIsScaled(false);
+        }, 4000);
       } else {
         setIsRevealed(true);
       }
@@ -171,6 +186,7 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
 
     const handleError = () => {
       if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+      if (resetScaleTimerRef.current) clearTimeout(resetScaleTimerRef.current);
       if (safetyTimerRef.current) clearTimeout(safetyTimerRef.current);
       setHasError(true);
       setIsRevealed(true);
@@ -178,10 +194,12 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
 
     const handleLoadComplete = () => {
       disableCaptions();
-      // If browser autoplay policy blocked unmuted sound on load, fallback to muted autoplay so playback begins
-      if (adapter.paused) {
-        adapter.muted = true;
+      // Ensure audio is unmuted and stream starts playing immediately with sound
+      try {
+        adapter.muted = false;
         adapter.play();
+      } catch {
+        // Fallback
       }
     };
 
@@ -195,8 +213,11 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
     // Safety timeout: prevent getting stuck on black screen if network stalls or events are delayed
     safetyTimerRef.current = setTimeout(() => {
       if (adapter.paused) {
-        adapter.muted = true;
-        adapter.play();
+        try {
+          adapter.play();
+        } catch {
+          // Fallback
+        }
       }
       setIsRevealed(true);
     }, 4500);
@@ -217,6 +238,10 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
       if (revealTimerRef.current) {
         clearTimeout(revealTimerRef.current);
         revealTimerRef.current = null;
+      }
+      if (resetScaleTimerRef.current) {
+        clearTimeout(resetScaleTimerRef.current);
+        resetScaleTimerRef.current = null;
       }
       if (safetyTimerRef.current) {
         clearTimeout(safetyTimerRef.current);
@@ -252,6 +277,7 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
     setHasError(false);
     setIsRevealed(false);
     setIsBuffering(false);
+    setIsScaled(true);
     isFirstPlayRef.current = true;
     if (adapterRef.current) {
       try {
@@ -320,7 +346,9 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
         <iframe
           ref={iframeRef}
           title={title || 'Webinar Broadcast'}
-          className="w-full h-full border-0 pointer-events-none transform scale-[1.28] origin-center"
+          className={`w-full h-full border-0 pointer-events-none origin-center transition-transform duration-1000 ease-out ${
+            isScaled ? 'transform scale-[1.28]' : 'transform scale-100'
+          }`}
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
         />
