@@ -117,7 +117,7 @@ export default function WebinarWatchPage({ params }: PageProps) {
       <div className="min-h-screen bg-[#070709] flex flex-col items-center justify-center text-white gap-3">
         <div className="w-10 h-10 rounded-full border-3 border-[#FF9933] border-t-transparent animate-spin" />
         <span className="text-xs font-mono tracking-wider text-zinc-400 uppercase">
-          Tuning into Broadcast...
+          Loading...
         </span>
       </div>
     );
@@ -126,15 +126,15 @@ export default function WebinarWatchPage({ params }: PageProps) {
   if (!webinar) {
     return (
       <div className="min-h-screen bg-[#06060a] flex flex-col items-center justify-center p-6 text-center text-[#fcfdff]">
-        <h2 className="font-serif-headline text-xl font-normal mb-2 text-[#fcfdff]">Webinar Broadcast Not Found</h2>
+        <h2 className="font-serif-headline text-xl font-normal mb-2 text-[#fcfdff]">Webinar not found</h2>
         <p className="text-xs text-[#888e90] mb-6">
-          This webinar does not exist or may have been removed.
+          This webinar does not exist or has ended.
         </p>
         <Link
           href="/?mode=webinar"
           className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer"
         >
-          Browse Other Webinars
+          Return to Hub
         </Link>
       </div>
     );
@@ -177,10 +177,8 @@ export default function WebinarWatchPage({ params }: PageProps) {
               )}
             </div>
 
-            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate flex items-center gap-1.5">
-              <span>ID: {webinar.code}</span>
-              <span aria-hidden="true">·</span>
-              <span className="text-[#FF9933]">Viewer Space</span>
+            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate">
+              #{webinar.code}
             </p>
           </div>
         </div>
@@ -204,10 +202,10 @@ export default function WebinarWatchPage({ params }: PageProps) {
                 ? 'bg-[#FF9933]/15 text-[#FF9933] border-[#FF9933]/40 shadow-sm'
                 : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
             }`}
-            title={isSidebarOpen ? 'Hide Chat & Q&A' : 'Show Chat & Q&A'}
+            title={isSidebarOpen ? 'Hide Chat' : 'Show Chat'}
           >
             <MessageSquare className="w-3.5 h-3.5 text-[#FF9933]" />
-            <span className="hidden sm:inline font-mono text-[11px]">{isSidebarOpen ? 'Hide Chat' : 'Chat & Q&A'}</span>
+            <span className="hidden sm:inline font-mono text-[11px]">Chat</span>
             {questions.length > 0 && !isSidebarOpen && (
               <span className="h-4 min-w-4 px-1 rounded-full bg-[#FF9933] text-black font-mono text-[9px] font-bold flex items-center justify-center animate-pulse">
                 {questions.length}
@@ -231,7 +229,7 @@ export default function WebinarWatchPage({ params }: PageProps) {
 
                 <h2 className="font-serif-headline text-xl sm:text-2xl font-normal text-[#fcfdff] mb-2">{webinar.title}</h2>
                 <p className="text-xs text-[#888e90] mb-5 leading-relaxed">
-                  {webinar.description || 'The broadcast has not started yet. Grab a drink and get ready!'}
+                  {webinar.description || 'The broadcast will begin shortly.'}
                 </p>
 
                 {countdown && (
@@ -241,7 +239,7 @@ export default function WebinarWatchPage({ params }: PageProps) {
                 )}
 
                 <span className="text-[11px] font-mono tracking-wider uppercase text-[#888e90]">
-                  Waiting for host to go live • Stand By
+                  Waiting for broadcast...
                 </span>
               </div>
             )}
@@ -252,15 +250,15 @@ export default function WebinarWatchPage({ params }: PageProps) {
                 <div className="w-16 h-16 rounded-2xl bg-[#101012] border border-white/[0.08] flex items-center justify-center text-[#11ff99] mb-5 shadow-inner">
                   <CheckCircle className="w-7 h-7 text-[#11ff99]" />
                 </div>
-                <h2 className="font-serif-headline text-xl font-normal text-[#fcfdff] mb-2">Webinar Concluded</h2>
+                <h2 className="font-serif-headline text-xl font-normal text-[#fcfdff] mb-2">Webinar Ended</h2>
                 <p className="text-xs text-[#888e90] mb-6">
-                  Thank you for attending {webinar.title}. The live broadcast has wrapped up.
+                  This broadcast has ended.
                 </p>
                 <Link
                   href="/?mode=webinar"
                   className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer"
                 >
-                  Explore More Events
+                  Return to Hub
                 </Link>
               </div>
             )}
@@ -308,16 +306,16 @@ export default function WebinarWatchPage({ params }: PageProps) {
             {/* Floating Reactions Layer */}
             <FloatingReactions />
 
-            {/* Floating Reopen Chat & Q&A button when sidebar is closed */}
+            {/* Floating Reopen Chat button when sidebar is closed */}
             {!isSidebarOpen && (
               <button
                 type="button"
                 onClick={() => setIsSidebarOpen(true)}
                 className="absolute bottom-4 right-4 z-30 inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl bg-[#101012]/95 hover:bg-[#18181c] backdrop-blur-xl border border-white/[0.12] text-xs font-medium text-[#fcfdff] shadow-xl hover:border-[#FF9933]/40 transition-all cursor-pointer group"
-                title="Open Chat & Q&A Sidebar"
+                title="Open Chat & Q&A"
               >
                 <MessageSquare className="w-4 h-4 text-[#FF9933] group-hover:scale-110 transition-transform" />
-                <span className="font-mono text-[11px]">Chat &amp; Q&amp;A</span>
+                <span className="font-mono text-[11px]">Chat</span>
                 {questions.length > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/30">
                     {questions.length}
@@ -364,7 +362,7 @@ export default function WebinarWatchPage({ params }: PageProps) {
                   }`}
                 >
                   <MessageSquare className="w-3.5 h-3.5 text-[#FF9933]" />
-                  Live Chat
+                  Chat
                 </button>
                 <button
                   type="button"

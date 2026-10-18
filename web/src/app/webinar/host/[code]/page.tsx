@@ -197,7 +197,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
       <div className="min-h-screen bg-[#06060a] flex flex-col items-center justify-center text-[#fcfdff] gap-3">
         <div className="w-10 h-10 rounded-full border-2 border-[#FF9933] border-t-transparent animate-spin" />
         <span className="text-xs font-mono tracking-wider text-[#888e90] uppercase">
-          Initializing Host Studio...
+          Loading...
         </span>
       </div>
     );
@@ -206,8 +206,8 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
   if (!webinar) {
     return (
       <div className="min-h-screen bg-[#06060a] flex flex-col items-center justify-center p-6 text-center text-[#fcfdff]">
-        <h2 className="font-serif-headline text-xl font-normal mb-2 text-[#fcfdff]">Webinar Studio Not Found</h2>
-        <p className="text-xs text-[#888e90] mb-6">This webinar code may be invalid or deleted.</p>
+        <h2 className="font-serif-headline text-xl font-normal mb-2 text-[#fcfdff]">Webinar not found</h2>
+        <p className="text-xs text-[#888e90] mb-6">This webinar may be invalid or deleted.</p>
         <Link
           href="/?mode=webinar"
           className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer"
@@ -255,10 +255,8 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
               )}
             </div>
 
-            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate flex items-center gap-1.5">
-              <span>ID: {webinar.code}</span>
-              <span aria-hidden="true">·</span>
-              <span className="text-[#FF9933]">Broadcast Studio</span>
+            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate">
+              #{webinar.code}
             </p>
           </div>
         </div>
@@ -284,12 +282,12 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
             {copiedLink ? (
               <>
                 <Check className="w-3.5 h-3.5 text-[#11ff99]" />
-                <span className="text-[#11ff99] font-mono text-[11px]">Copied!</span>
+                <span className="text-[#11ff99] font-mono text-[11px]">Copied</span>
               </>
             ) : (
               <>
                 <Copy className="w-3.5 h-3.5 text-[#888e90]" />
-                <span className="font-mono text-[11px]">Share Link</span>
+                <span className="font-mono text-[11px]">Share</span>
               </>
             )}
           </button>
@@ -314,10 +312,10 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
                 ? 'bg-[#FF9933]/15 text-[#FF9933] border-[#FF9933]/40 shadow-sm'
                 : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
             }`}
-            title={isSidebarOpen ? 'Hide Chat & Q&A' : 'Show Chat & Q&A'}
+            title={isSidebarOpen ? 'Hide Chat' : 'Show Chat'}
           >
             <MessageSquare className="w-3.5 h-3.5 text-[#FF9933]" />
-            <span className="hidden sm:inline font-mono text-[11px]">{isSidebarOpen ? 'Hide Chat' : 'Chat & Q&A'}</span>
+            <span className="hidden sm:inline font-mono text-[11px]">Chat</span>
             {questions.length > 0 && !isSidebarOpen && (
               <span className="h-4 min-w-4 px-1 rounded-full bg-[#FF9933] text-black font-mono text-[9px] font-bold flex items-center justify-center animate-pulse">
                 {questions.length}
@@ -344,7 +342,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
               className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#240a0f] to-[#1a070b] hover:from-[#2e0e15] hover:to-[#220a0f] text-[#f87171] hover:text-[#fca5a5] border border-red-500/35 hover:border-red-500/50 font-medium text-xs transition-all shadow-[0_0_14px_rgba(220,38,38,0.18)] cursor-pointer"
             >
               <Power className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>End Webinar</span>
+              <span>End</span>
             </button>
           )}
 
@@ -356,7 +354,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
               title="Delete Webinar Permanently"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              <span>Delete Webinar</span>
+              <span>Delete</span>
             </button>
           )}
         </div>
@@ -380,7 +378,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
               >
                 <PenTool className="w-3.5 h-3.5 shrink-0" />
                 <span className="font-mono text-[11px]">
-                  {isWhiteboardActive ? 'Close Live Whiteboard' : 'Broadcast Live Whiteboard'}
+                  {isWhiteboardActive ? 'Close Board' : 'Whiteboard'}
                 </span>
               </button>
 
@@ -392,20 +390,16 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
                     ? 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
                     : 'bg-[#FF9933]/15 hover:bg-[#FF9933]/25 text-[#FF9933] border-[#FF9933]/30 shadow-sm hover:shadow-[0_0_12px_rgba(255,153,51,0.2)]'
                 }`}
-                title="Change or set your YouTube live stream URL / video ID"
+                title="Change or set your YouTube stream URL / video ID"
               >
                 <Sliders className="w-3.5 h-3.5 text-[#FF9933] shrink-0" />
                 <span className="font-mono text-[11px]">
-                  {webinar.youtubeVideoId ? 'Change Stream Link' : 'Connect Stream Link'}
+                  {webinar.youtubeVideoId ? 'Stream Link' : 'Connect Stream'}
                 </span>
                 {webinar.youtubeVideoId && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#11ff99]" title="Stream link connected" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#11ff99]" title="Stream connected" />
                 )}
               </button>
-            </div>
-
-            <div className="text-[11px] font-mono text-[#888e90] flex items-center gap-1.5">
-              <span>Host Broadcast Stage</span>
             </div>
           </div>
 
@@ -431,35 +425,22 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
                   onConfigureStream={openSettingsModal}
                   className="w-full h-full"
                 />
-
-                {/* Quick Change Stream button over player preview */}
-                {webinar.youtubeVideoId && (
-                  <button
-                    type="button"
-                    onClick={openSettingsModal}
-                    className="absolute top-3 right-3 z-30 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0a0a0c]/85 hover:bg-[#101012] backdrop-blur-xl border border-white/[0.14] text-xs font-medium text-[#fcfdff] shadow-xl transition-all cursor-pointer group"
-                    title="Change YouTube Live Stream Link"
-                  >
-                    <Sliders className="w-3.5 h-3.5 text-[#FF9933] group-hover:rotate-45 transition-transform" />
-                    <span className="font-mono text-[11px]">Change Stream Link</span>
-                  </button>
-                )}
               </div>
             )}
 
             {/* Floating Reactions overlay over the stage */}
             <FloatingReactions />
 
-            {/* Floating Reopen Chat & Q&A button when sidebar is closed */}
+            {/* Floating Reopen Chat button when sidebar is closed */}
             {!isSidebarOpen && (
               <button
                 type="button"
                 onClick={() => setIsSidebarOpen(true)}
                 className="absolute bottom-4 right-4 z-30 inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl bg-[#101012]/95 hover:bg-[#18181c] backdrop-blur-xl border border-white/[0.12] text-xs font-medium text-[#fcfdff] shadow-xl hover:border-[#FF9933]/40 transition-all cursor-pointer group"
-                title="Open Chat & Q&A Sidebar"
+                title="Open Chat & Q&A"
               >
                 <MessageSquare className="w-4 h-4 text-[#FF9933] group-hover:scale-110 transition-transform" />
-                <span className="font-mono text-[11px]">Chat &amp; Q&amp;A</span>
+                <span className="font-mono text-[11px]">Chat</span>
                 {questions.length > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/30">
                     {questions.length}
@@ -486,7 +467,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
                   }`}
                 >
                   <MessageSquare className="w-3.5 h-3.5 text-[#FF9933]" />
-                  Live Chat
+                  Chat
                 </button>
                 <button
                   type="button"
@@ -562,10 +543,10 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
                 </div>
                 <div>
                   <h3 className="font-serif-headline text-base font-normal text-[#fcfdff] leading-tight">
-                    Broadcast Settings
+                    Stream Settings
                   </h3>
                   <p className="text-[11px] text-[#888e90]">
-                    Configure stream feed & details
+                    Stream details & video source
                   </p>
                 </div>
               </div>
@@ -583,13 +564,13 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-medium text-[#888e90]">
-                    Webinar Title
+                    Title
                   </label>
                   <button
                     type="button"
                     onClick={() => setEditTitle(generateRandomWebinarTitle(editTitle))}
                     className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[11px] font-mono text-[#FF9933] hover:text-[#ffaa4d] bg-[#FF9933]/10 hover:bg-[#FF9933]/20 border border-[#FF9933]/25 transition-all cursor-pointer select-none active:scale-95"
-                    title="Generate random webinar title"
+                    title="Generate random title"
                   >
                     <Dices size={12} className="shrink-0" />
                     <span>Randomize</span>
@@ -607,14 +588,14 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
               <div className="p-3.5 rounded-xl bg-[#0f0f14]/80 border border-white/[0.06] space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="block text-xs font-medium text-[#fcfdff]">
-                    YouTube Live Stream URL / Video ID
+                    YouTube URL or ID
                   </label>
                   <a
                     href="/webinar/guide"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1 text-[11px] font-mono text-[#FF9933] hover:underline"
-                    title="View setup guide in new tab"
+                    title="Setup guide"
                   >
                     <span>Guide</span>
                     <ExternalLink className="w-3 h-3" />
@@ -625,7 +606,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
                     type="text"
                     value={editVideoId}
                     onChange={(e) => setEditVideoId(e.target.value)}
-                    placeholder="https://youtube.com/live/xxxx or 11-char ID"
+                    placeholder="YouTube URL or Video ID"
                     className="w-full bg-white/[0.04] border border-white/[0.08] rounded-xl px-3.5 py-2 text-xs text-[#fcfdff] placeholder-[#888e90] font-mono focus:outline-none focus:border-[#FF9933]/50 focus:ring-1 focus:ring-[#FF9933]/30 transition-all"
                   />
                   {editVideoId && (
@@ -640,7 +621,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
                   )}
                 </div>
                 <p className="text-[11px] text-[#888e90] leading-relaxed">
-                  💡 Paste your full YouTube live URL (e.g. <span className="text-[#fcfdff] font-mono">youtube.com/live/...</span>) or ID. Syncs live to all attendee screens instantly.
+                  Paste your YouTube live URL or video ID.
                 </p>
               </div>
 
@@ -656,7 +637,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
                   title="Delete Webinar"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>Delete Webinar</span>
+                  <span>Delete</span>
                 </button>
                 <div className="flex items-center gap-2">
                   <button
@@ -670,7 +651,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
                     type="submit"
                     className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer"
                   >
-                    Save Changes
+                    Save
                   </button>
                 </div>
               </div>
@@ -684,9 +665,9 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
         isOpen={confirmGoLiveOpen}
         onCancel={() => setConfirmGoLiveOpen(false)}
         onConfirm={handleGoLive}
-        title="Ready to Go Live?"
-        description="This will start the webinar broadcast. All waiting attendees will instantly tune in to your stream."
-        confirmText="Yes, Go Live!"
+        title="Go Live?"
+        description="Start broadcast for all waiting attendees."
+        confirmText="Go Live"
         variant="warning"
       />
 
@@ -695,9 +676,9 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
         isOpen={confirmEndOpen}
         onCancel={() => setConfirmEndOpen(false)}
         onConfirm={handleEndWebinar}
-        title="End Webinar Broadcast?"
-        description="Are you sure you want to end this webinar? All attendees will be disconnected from the live broadcast."
-        confirmText="End Webinar"
+        title="End Webinar?"
+        description="Disconnect all attendees and finish broadcast."
+        confirmText="End"
         variant="danger"
       />
 
@@ -706,9 +687,9 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
         isOpen={confirmDeleteOpen}
         onCancel={() => setConfirmDeleteOpen(false)}
         onConfirm={handleDeleteWebinar}
-        title="Delete Webinar Permanently?"
-        description="Are you sure you want to delete this webinar? Attendees will be disconnected and this studio will be closed permanently."
-        confirmText="Delete Webinar"
+        title="Delete Webinar?"
+        description="Permanently delete this webinar and close studio."
+        confirmText="Delete"
         variant="danger"
         isLoading={isDeleting}
       />

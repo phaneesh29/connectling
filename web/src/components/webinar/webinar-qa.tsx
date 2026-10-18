@@ -59,7 +59,7 @@ export const WebinarQa = React.memo(function WebinarQa({
             <Sparkles className="w-8 h-8 mb-2 text-[#888e90]/60" />
             <p className="text-xs font-medium text-[#fcfdff]">No questions yet</p>
             <p className="text-[11px] text-[#888e90] mt-0.5">
-              Be the first to ask the host a question!
+              Ask the first question.
             </p>
           </div>
         ) : (

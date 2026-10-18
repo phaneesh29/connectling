@@ -124,25 +124,25 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
       <div
         className={`relative w-full aspect-video bg-[#0a0a0c] border border-white/[0.08] rounded-2xl overflow-hidden flex flex-col items-center justify-center p-6 text-center ${className}`}
       >
-        <div className="w-14 h-14 rounded-2xl bg-[#FF9933]/10 border border-[#FF9933]/25 flex items-center justify-center mb-4 text-[#FF9933] shadow-[0_0_20px_rgba(255,153,51,0.15)]">
-          <Radio className="w-7 h-7 animate-pulse" />
+        <div className="w-12 h-12 rounded-2xl bg-[#FF9933]/10 border border-[#FF9933]/25 flex items-center justify-center mb-3 text-[#FF9933] shadow-[0_0_20px_rgba(255,153,51,0.15)]">
+          <Radio className="w-6 h-6 animate-pulse" />
         </div>
-        <h3 className="font-serif-headline text-lg font-normal text-[#fcfdff] mb-2">
-          {isHost ? 'Stream Configuration Needed' : 'Broadcast Standing By'}
+        <h3 className="font-serif-headline text-base font-normal text-[#fcfdff] mb-1">
+          {isHost ? 'Stream Not Connected' : 'Standing By'}
         </h3>
-        <p className="text-xs text-[#888e90] max-w-md mb-5 leading-relaxed">
+        <p className="text-xs text-[#888e90] max-w-xs mb-4 leading-relaxed">
           {isHost
-            ? 'Connect your YouTube broadcast ID or live stream link to preview your stream and broadcast live to attendees.'
-            : 'The host has not connected the live stream source yet. Stand by, the event will begin shortly.'}
+            ? 'Connect a YouTube stream link to broadcast.'
+            : 'Waiting for stream to begin.'}
         </p>
         {isHost && onConfigureStream && (
           <button
             type="button"
             onClick={onConfigureStream}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs shadow-brand-glow transition-all active:scale-[0.98] cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs shadow-brand-glow transition-all active:scale-[0.98] cursor-pointer"
           >
-            <Sliders className="w-4 h-4" />
-            <span>Connect YouTube Live Stream</span>
+            <Sliders className="w-3.5 h-3.5" />
+            <span>Connect Stream</span>
           </button>
         )}
       </div>
@@ -194,7 +194,7 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
         <div className="absolute inset-0 z-20 pointer-events-none flex flex-col items-center justify-center bg-black/60 backdrop-blur-xs">
           <div className="w-10 h-10 rounded-full border-2 border-[#FF9933] border-t-transparent animate-spin mb-3 shadow-[0_0_20px_rgba(255,153,51,0.5)]" />
           <span className="text-xs font-mono tracking-wider text-[#888e90] uppercase">
-            Buffering Stream...
+            Loading...
           </span>
         </div>
       )}
@@ -202,20 +202,20 @@ export const WebinarPlayer = React.memo(function WebinarPlayer({
       {/* Error State */}
       {hasError && (
         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-[#06060a]/95 p-6 text-center">
-          <AlertCircle className="w-10 h-10 text-rose-500 mb-3" />
-          <h4 className="font-serif-headline text-base font-normal text-[#fcfdff] mb-1">
+          <AlertCircle className="w-8 h-8 text-rose-500 mb-2" />
+          <h4 className="font-serif-headline text-sm font-normal text-[#fcfdff] mb-1">
             Stream Unavailable
           </h4>
-          <p className="text-xs text-[#888e90] max-w-sm mb-4">
-            The YouTube broadcast may be private, ended, or offline. Check that the stream is set to Unlisted or Public.
+          <p className="text-xs text-[#888e90] max-w-xs mb-3">
+            Stream offline or private. Check video ID or link.
           </p>
           <button
             type="button"
             onClick={handleRetry}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] border border-white/[0.08] transition-all cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] border border-white/[0.08] transition-all cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5 text-[#FF9933]" />
-            <span>Retry Stream</span>
+            <span>Retry</span>
           </button>
         </div>
       )}
