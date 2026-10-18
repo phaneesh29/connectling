@@ -66,6 +66,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
   const [confirmEndOpen, setConfirmEndOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isEnding, setIsEnding] = useState(false);
 
   // Settings form state
   const [editTitle, setEditTitle] = useState('');
@@ -142,14 +143,18 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
   };
 
   const handleEndWebinar = async () => {
+    setIsEnding(true);
     try {
       const res = await webinarsApi.updateStatus(code, 'ended');
       if (res.success) {
         setStatus('ended');
         setConfirmEndOpen(false);
+        router.replace('/?mode=webinar');
       }
     } catch (err) {
       console.error('Failed to end broadcast:', err);
+    } finally {
+      setIsEnding(false);
     }
   };
 
@@ -158,9 +163,11 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
     try {
       await webinarsApi.deleteWebinar(code);
       setConfirmDeleteOpen(false);
+      setConfirmEndOpen(false);
       router.replace('/?mode=webinar');
     } catch (err) {
       console.error('Failed to delete webinar:', err);
+    } finally {
       setIsDeleting(false);
     }
   };
@@ -223,27 +230,28 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
       {/* Studio Top Bar */}
       <header className="relative h-14 border-b border-white/[0.08] px-3 sm:px-6 flex items-center justify-between gap-4 bg-[#060609]/85 backdrop-blur-2xl shrink-0 z-40">
         <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#FF9933]/30 to-transparent pointer-events-none" />
-        {/* Left: Leave, Status Dot, Title & Subtitle */}
+        {/* Left: Status Dot, Title & Subtitle */}
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <Link
-            href="/?mode=webinar"
-            className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#888e90] hover:text-[#fcfdff] transition-colors border border-white/[0.08] cursor-pointer"
-            title="Leave Studio"
-          >
-            <LogOutIcon size={13} />
-            <span className="hidden sm:inline font-mono text-[11px]">Leave</span>
-          </Link>
-
-          {isLive && (
+          {isLive ? (
             <span
               className="h-2 w-2 rounded-full shrink-0 bg-[#11ff99] shadow-[0_0_8px_#11ff99]"
               title="Live Broadcast Active"
+            />
+          ) : isEnded ? (
+            <span
+              className="h-2 w-2 rounded-full shrink-0 bg-zinc-500"
+              title="Broadcast Ended"
+            />
+          ) : (
+            <span
+              className="h-2 w-2 rounded-full shrink-0 bg-amber-400 shadow-[0_0_8px_#f59e0b]"
+              title="Studio Standby"
             />
           )}
 
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="font-serif-headline text-xs sm:text-sm font-normal text-[#fcfdff] truncate max-w-[130px] xs:max-w-[200px] sm:max-w-md tracking-tight">
+              <h1 className="font-serif-headline text-xs sm:text-sm font-normal text-[#fcfdff] truncate max-w-[140px] xs:max-w-[220px] sm:max-w-md tracking-tight">
                 {webinar.title}
               </h1>
               {isLive ? (
@@ -273,7 +281,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Right: Attendee count, Share, Settings, Chat Toggle, Go Live Button */}
+        {/* Right: Attendee count, Share, Settings, Chat Toggle, Action Buttons */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Live Viewer Counter */}
           <div
@@ -335,16 +343,27 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
             )}
           </button>
 
-          {/* Broadcast Go Live / End Control */}
+          {/* Broadcast Controls on Right */}
           {!isLive && !isEnded && (
-            <button
-              type="button"
-              onClick={() => setConfirmGoLiveOpen(true)}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-1.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer"
-            >
-              <Radio className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Go Live</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <Link
+                href="/?mode=webinar"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#888e90] hover:text-[#fcfdff] transition-colors border border-white/[0.08] cursor-pointer"
+                title="Leave Studio"
+              >
+                <LogOutIcon size={13} />
+                <span className="hidden sm:inline font-mono text-[11px]">Leave</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => setConfirmGoLiveOpen(true)}
+                className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-1.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer"
+              >
+                <Radio className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Go Live</span>
+              </button>
+            </div>
           )}
 
           {isLive && (
@@ -352,22 +371,34 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
               type="button"
               onClick={() => setConfirmEndOpen(true)}
               className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#240a0f] to-[#1a070b] hover:from-[#2e0e15] hover:to-[#220a0f] text-[#f87171] hover:text-[#fca5a5] border border-red-500/35 hover:border-red-500/50 font-medium text-xs transition-all shadow-[0_0_14px_rgba(220,38,38,0.18)] cursor-pointer"
+              title="End or Leave Broadcast"
             >
               <PhoneCallIcon size={13} className="text-[#f87171]" />
-              <span>End</span>
+              <span className="font-semibold">End & Leave</span>
             </button>
           )}
 
           {isEnded && (
-            <button
-              type="button"
-              onClick={() => setConfirmDeleteOpen(true)}
-              className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-[#f87171] hover:text-[#fca5a5] border border-red-500/30 hover:border-red-500/50 font-medium text-xs transition-all cursor-pointer"
-              title="Delete Webinar Permanently"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Delete</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <Link
+                href="/?mode=webinar"
+                className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#888e90] hover:text-[#fcfdff] transition-colors border border-white/[0.08] cursor-pointer"
+                title="Leave Studio"
+              >
+                <LogOutIcon size={13} />
+                <span className="hidden sm:inline font-mono text-[11px]">Leave</span>
+              </Link>
+
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-[#f87171] hover:text-[#fca5a5] border border-red-500/30 hover:border-red-500/50 font-medium text-xs transition-all cursor-pointer"
+                title="Delete Webinar Permanently"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete</span>
+              </button>
+            </div>
           )}
         </div>
       </header>
@@ -692,16 +723,115 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
         variant="warning"
       />
 
-      {/* Confirmation: End Webinar */}
-      <ConfirmDialog
-        isOpen={confirmEndOpen}
-        onCancel={() => setConfirmEndOpen(false)}
-        onConfirm={handleEndWebinar}
-        title="End Webinar?"
-        description="Disconnect all attendees and finish broadcast."
-        confirmText="End"
-        variant="danger"
-      />
+      {/* End Broadcast Modal with "End & Leave" and "End & Delete" options */}
+      {confirmEndOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={() => !isEnding && !isDeleting && setConfirmEndOpen(false)}
+        >
+          <div
+            className="w-full max-w-md bg-[#0a0a0c] border border-white/[0.12] rounded-2xl overflow-hidden shadow-2xl relative text-[#fcfdff] animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Ambient Radial Glow */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-24 blur-3xl pointer-events-none opacity-25 bg-red-950/40" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] bg-[#06060a]/60 relative z-10">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="h-9 w-9 rounded-lg flex items-center justify-center border border-red-500/25 bg-red-500/10 text-[#f87171] shrink-0">
+                  <PhoneCallIcon size={16} />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-serif-headline text-sm font-normal text-[#fcfdff] truncate">
+                    End Live Broadcast
+                  </h3>
+                  <p className="text-[11px] text-[#888e90] font-mono truncate">
+                    Room: {code}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setConfirmEndOpen(false)}
+                disabled={isEnding || isDeleting}
+                className="p-1 rounded-lg text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.08] transition-all cursor-pointer"
+              >
+                <XIcon size={14} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4 relative z-10">
+              <p className="text-xs text-[#888e90] leading-relaxed">
+                Disconnect all attendees and finish broadcasting. Choose what you want to do with this webinar:
+              </p>
+
+              <div className="space-y-2.5">
+                {/* Option 1: End & Leave */}
+                <button
+                  type="button"
+                  onClick={handleEndWebinar}
+                  disabled={isEnding || isDeleting}
+                  className="w-full p-3.5 rounded-xl border border-white/[0.08] hover:border-red-500/40 bg-white/[0.02] hover:bg-red-500/10 text-left transition-all group cursor-pointer flex items-center justify-between gap-3"
+                >
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-[#fcfdff] group-hover:text-red-400 transition-colors">
+                        End & Leave
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#888e90] leading-relaxed">
+                      Conclude the live stream and return to your dashboard. The record is preserved.
+                    </p>
+                  </div>
+                  {isEnding ? (
+                    <div className="animate-spin h-4 w-4 border border-red-400/30 border-t-red-400 rounded-full shrink-0" />
+                  ) : (
+                    <LogOutIcon size={14} className="text-[#888e90] group-hover:text-red-400 shrink-0" />
+                  )}
+                </button>
+
+                {/* Option 2: End & Delete */}
+                <button
+                  type="button"
+                  onClick={handleDeleteWebinar}
+                  disabled={isEnding || isDeleting}
+                  className="w-full p-3.5 rounded-xl border border-red-500/20 hover:border-red-500/50 bg-red-500/5 hover:bg-red-500/15 text-left transition-all group cursor-pointer flex items-center justify-between gap-3"
+                >
+                  <div className="space-y-0.5 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold text-red-400 group-hover:text-red-300 transition-colors">
+                        End & Delete
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-[#888e90] leading-relaxed">
+                      Conclude the broadcast and permanently delete this webinar from your account.
+                    </p>
+                  </div>
+                  {isDeleting ? (
+                    <div className="animate-spin h-4 w-4 border border-red-400/30 border-t-red-400 rounded-full shrink-0" />
+                  ) : (
+                    <Trash2 className="w-3.5 h-3.5 text-red-400 group-hover:text-red-300 shrink-0" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3 border-t border-white/[0.06] bg-black/40 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setConfirmEndOpen(false)}
+                disabled={isEnding || isDeleting}
+                className="px-4 py-1.5 rounded-lg text-xs font-medium text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.06] transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation: Delete Webinar */}
       <ConfirmDialog

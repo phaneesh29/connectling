@@ -146,26 +146,28 @@ export default function WebinarWatchPage({ params }: PageProps) {
       {/* Top Header Bar */}
       <header className="relative h-14 border-b border-white/[0.08] px-3 sm:px-6 flex items-center justify-between gap-4 bg-[#060609]/85 backdrop-blur-2xl shrink-0 z-40">
         <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#FF9933]/30 to-transparent pointer-events-none" />
+        {/* Left: Status Dot, Title & Subtitle */}
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <Link
-            href="/?mode=webinar"
-            className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#888e90] hover:text-[#fcfdff] transition-colors border border-white/[0.08] cursor-pointer"
-            title="Leave Broadcast"
-          >
-            <LogOutIcon size={13} />
-            <span className="hidden sm:inline font-mono text-[11px]">Leave</span>
-          </Link>
-
-          {isLive && (
+          {isLive ? (
             <span
               className="h-2 w-2 rounded-full shrink-0 bg-[#11ff99] shadow-[0_0_8px_#11ff99]"
               title="Live Broadcast Active"
+            />
+          ) : isEnded ? (
+            <span
+              className="h-2 w-2 rounded-full shrink-0 bg-zinc-500"
+              title="Broadcast Concluded"
+            />
+          ) : (
+            <span
+              className="h-2 w-2 rounded-full shrink-0 bg-amber-400 shadow-[0_0_8px_#f59e0b]"
+              title="Upcoming Broadcast"
             />
           )}
 
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="font-serif-headline text-xs sm:text-sm font-normal text-[#fcfdff] truncate max-w-[130px] xs:max-w-[200px] sm:max-w-md tracking-tight">
+              <h1 className="font-serif-headline text-xs sm:text-sm font-normal text-[#fcfdff] truncate max-w-[140px] xs:max-w-[220px] sm:max-w-md tracking-tight">
                 {webinar.title}
               </h1>
 
@@ -196,7 +198,7 @@ export default function WebinarWatchPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Right Info: Live Viewer count + Sidebar Toggle */}
+        {/* Right Info: Live Viewer count + Sidebar Toggle + Leave */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <div
             className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] border border-white/[0.08] text-xs font-mono text-[#fcfdff]"
@@ -225,6 +227,15 @@ export default function WebinarWatchPage({ params }: PageProps) {
               </span>
             )}
           </button>
+
+          <Link
+            href="/?mode=webinar"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-red-500/10 text-xs font-medium text-[#888e90] hover:text-red-400 transition-colors border border-white/[0.08] hover:border-red-500/30 cursor-pointer"
+            title="Leave Broadcast"
+          >
+            <LogOutIcon size={13} />
+            <span className="hidden sm:inline font-mono text-[11px]">Leave</span>
+          </Link>
         </div>
       </header>
 

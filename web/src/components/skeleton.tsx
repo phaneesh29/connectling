@@ -436,7 +436,7 @@ export function WebinarStudioSkeleton() {
       <header className="relative h-14 border-b border-white/[0.08] px-3 sm:px-6 flex items-center justify-between gap-4 bg-[#060609]/85 backdrop-blur-2xl shrink-0 z-40">
         <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#FF9933]/30 to-transparent pointer-events-none" />
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <Skeleton className="h-7.5 w-16 rounded-lg bg-white/[0.08]" />
+          <Skeleton className="h-2 w-2 rounded-full shrink-0 bg-white/20" />
           <div className="space-y-1.5 min-w-0">
             <div className="flex items-center gap-2">
               <Skeleton className="h-4.5 w-32 sm:w-48 rounded-md bg-white/[0.12]" />
@@ -450,6 +450,7 @@ export function WebinarStudioSkeleton() {
           <Skeleton className="h-7.5 w-12 rounded-lg bg-white/[0.08]" />
           <Skeleton className="hidden sm:inline-block h-7.5 w-16 rounded-lg bg-white/[0.08]" />
           <Skeleton className="hidden sm:inline-block h-7.5 w-20 rounded-lg bg-white/[0.08]" />
+          <Skeleton className="h-7.5 w-16 rounded-lg bg-white/[0.08]" />
           <Skeleton className="h-7.5 w-16 rounded-lg bg-white/[0.08]" />
           <Skeleton className="h-8 w-24 rounded-xl bg-gradient-brand-r opacity-50" />
         </div>
@@ -527,7 +528,7 @@ export function WebinarWatchSkeleton() {
       <header className="relative h-14 border-b border-white/[0.08] px-3 sm:px-6 flex items-center justify-between gap-4 bg-[#060609]/85 backdrop-blur-2xl shrink-0 z-40">
         <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#FF9933]/30 to-transparent pointer-events-none" />
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
-          <Skeleton className="h-7.5 w-16 rounded-lg bg-white/[0.08]" />
+          <Skeleton className="h-2 w-2 rounded-full shrink-0 bg-white/20" />
           <div className="space-y-1.5 min-w-0">
             <div className="flex items-center gap-2">
               <Skeleton className="h-4.5 w-32 sm:w-44 rounded-md bg-white/[0.12]" />
@@ -539,6 +540,7 @@ export function WebinarWatchSkeleton() {
 
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <Skeleton className="h-7.5 w-12 rounded-lg bg-white/[0.08]" />
+          <Skeleton className="h-7.5 w-16 rounded-lg bg-white/[0.08]" />
           <Skeleton className="h-7.5 w-16 rounded-lg bg-white/[0.08]" />
         </div>
       </header>
