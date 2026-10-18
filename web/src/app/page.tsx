@@ -24,14 +24,7 @@ import {
   Trash2Icon,
 } from '@animateicons/react/lucide';
 import {
-  Calendar,
   Clock,
-  Play,
-  Video,
-  MessageSquare,
-  HelpCircle,
-  PenTool,
-  Smile,
   Info,
 } from 'lucide-react';
 
@@ -684,8 +677,7 @@ export default function DashboardPage() {
             </div>
 
             {loadingWebinars && displayedWebinars.length === 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <HostedSpaceCardSkeleton />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <HostedSpaceCardSkeleton />
                 <HostedSpaceCardSkeleton />
               </div>
@@ -713,7 +705,7 @@ export default function DashboardPage() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {displayedWebinars.map((web) => {
                   const isLive = web.status === 'live';
                   const isEnded = web.status === 'ended';
@@ -722,125 +714,119 @@ export default function DashboardPage() {
                   return (
                     <div
                       key={web.id}
-                      className="p-4 sm:p-5 rounded-2xl border border-white/[0.10] bg-[#0a0a0c] hover:border-white/20 transition-all flex flex-col justify-between space-y-3.5 relative group"
+                      className="p-4 sm:p-5 rounded-2xl border border-white/[0.10] bg-[#0a0a0c] hover:border-white/20 transition-all space-y-3.5 sm:space-y-4 relative group"
                     >
-                      <div className="space-y-2">
-                        {/* Status Header */}
-                        <div className="flex items-center justify-between gap-2">
-                          {isLive ? (
-                            <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase bg-red-500/15 border border-red-500/30 text-red-400">
-                              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
-                              LIVE NOW
-                            </span>
-                          ) : isEnded ? (
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wider uppercase bg-zinc-800 text-zinc-400">
-                              ENDED
-                            </span>
-                          ) : (
-                            <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold tracking-wider uppercase bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                              <Clock className="w-3 h-3" /> SCHEDULED
-                            </span>
-                          )}
-
-                          <button
-                            onClick={() => handleCopyWebinarLink(web.code)}
-                            className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.08] text-[10px] font-mono text-[#888e90] hover:text-[#fcfdff] transition-all cursor-pointer"
-                            title="Copy webinar link"
-                          >
-                            <span>#{web.code}</span>
-                            {copiedCode === web.code ? (
-                              <CheckIcon size={10} className="text-[#11ff99]" />
-                            ) : (
-                              <CopyIcon size={10} />
-                            )}
-                          </button>
-                        </div>
-
-                        {/* Title & Description */}
-                        <div>
-                          <h3 className="text-sm font-semibold text-[#fcfdff] truncate group-hover:text-[#FF9933] transition-colors">
-                            {web.title}
-                          </h3>
-                          <p className="text-[11px] text-[#888e90] line-clamp-2 mt-0.5 leading-relaxed">
-                            {web.description || 'No description provided.'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="space-y-3 pt-2 border-t border-white/[0.06]">
-                        {/* Enabled Feature Icons & Scheduled Date */}
-                        <div className="flex items-center justify-between text-zinc-400 text-xs">
+                      <div className="flex items-start justify-between gap-2.5 sm:gap-3">
+                        <div className="space-y-1 min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            {web.allowChat && (
-                              <span title="Chat Enabled">
-                                <MessageSquare className="w-3.5 h-3.5" />
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium font-mono px-2 py-0.5 rounded-md bg-[#ff7a1a]/10 text-[#ff7a1a] border border-[#ff7a1a]/20">
+                              <RadioIcon size={11} />
+                              <span>Webinar</span>
+                            </span>
+
+                            {isLive ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono font-bold uppercase tracking-wider text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded-md">
+                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                                <span>Live</span>
                               </span>
-                            )}
-                            {web.allowQa && (
-                              <span title="Q&A Enabled">
-                                <HelpCircle className="w-3.5 h-3.5" />
+                            ) : isEnded ? (
+                              <span className="inline-flex items-center text-[10px] font-mono uppercase text-zinc-400 bg-zinc-800/80 border border-zinc-700/50 px-1.5 py-0.5 rounded-md">
+                                <span>Ended</span>
                               </span>
-                            )}
-                            {web.allowWhiteboard && (
-                              <span title="Whiteboard Enabled">
-                                <PenTool className="w-3.5 h-3.5" />
-                              </span>
-                            )}
-                            {web.allowReactions && (
-                              <span title="Reactions Enabled">
-                                <Smile className="w-3.5 h-3.5" />
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-md">
+                                <Clock className="w-2.5 h-2.5" />
+                                <span>Scheduled</span>
                               </span>
                             )}
                           </div>
 
-                          {web.scheduledAt && (
-                            <span className="text-[10px] font-mono text-zinc-400 flex items-center gap-1">
-                              <Calendar className="w-3 h-3" />
-                              {new Date(web.scheduledAt).toLocaleDateString([], {
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
-                            </span>
+                          <h3 className="text-sm font-semibold text-[#fcfdff] truncate">
+                            {web.title}
+                          </h3>
+                          {web.description && (
+                            <p className="text-[11px] text-[#888e90] line-clamp-1">
+                              {web.description}
+                            </p>
                           )}
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="flex items-center gap-2">
-                          {isHost ? (
-                            <>
-                              <button
-                                onClick={() => setDeleteConfirmWebinar(web.code)}
-                                disabled={deletingCode === web.code}
-                                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-red-500/10 border border-white/[0.08] hover:border-red-500/30 text-[#888e90] hover:text-[#ff2047] font-medium text-xs transition-all disabled:opacity-50 cursor-pointer"
-                                title="Delete webinar"
-                              >
-                                {deletingCode === web.code ? (
-                                  <div className="animate-spin h-3 w-3 border border-red-400/30 border-t-red-400 rounded-full" />
-                                ) : (
-                                  <>
-                                    <Trash2Icon size={12} />
-                                    <span className="text-[11px]">Delete</span>
-                                  </>
-                                )}
-                              </button>
+                        {/* Webinar Code with Copy */}
+                        <button
+                          onClick={() => handleCopyWebinarLink(web.code)}
+                          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.10] border border-white/[0.08] text-[11px] font-mono text-[#888e90] hover:text-[#fcfdff] transition-all shrink-0 cursor-pointer"
+                          title="Copy webinar link"
+                        >
+                          <span>{web.code}</span>
+                          {copiedCode === web.code ? (
+                            <CheckIcon size={11} className="text-[#11ff99]" />
+                          ) : (
+                            <CopyIcon size={11} />
+                          )}
+                        </button>
+                      </div>
 
-                              <Link
-                                href={`/webinar/host/${web.code}`}
-                                className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs transition-all active:scale-[0.98] shadow-sm"
-                              >
-                                <Video className="w-3.5 h-3.5" />
-                                <span>Enter Studio</span>
-                              </Link>
-                            </>
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-white/[0.06] text-xs">
+                        <div className="flex items-center gap-1.5 text-[11px] font-mono text-[#888e90]">
+                          <span
+                            className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                              isLive
+                                ? 'bg-[#ff2047] animate-pulse'
+                                : isEnded
+                                ? 'bg-zinc-600'
+                                : 'bg-amber-400'
+                            }`}
+                          />
+                          <span>
+                            {isLive
+                              ? 'Live Broadcast'
+                              : isEnded
+                              ? 'Broadcast Concluded'
+                              : web.scheduledAt
+                              ? new Date(web.scheduledAt).toLocaleDateString([], {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })
+                              : 'Scheduled Broadcast'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {isHost && (
+                            <button
+                              onClick={() => setDeleteConfirmWebinar(web.code)}
+                              disabled={deletingCode === web.code}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-red-500/10 border border-white/[0.08] hover:border-red-500/30 text-[#888e90] hover:text-[#ff2047] font-medium text-xs transition-all disabled:opacity-50 cursor-pointer"
+                              title="Delete webinar"
+                            >
+                              {deletingCode === web.code ? (
+                                <div className="animate-spin h-3 w-3 border border-red-400/30 border-t-red-400 rounded-full" />
+                              ) : (
+                                <>
+                                  <Trash2Icon size={12} />
+                                  <span className="text-[11px]">Delete</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+
+                          {isHost ? (
+                            <Link
+                              href={`/webinar/host/${web.code}`}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs transition-all active:scale-[0.98] shadow-sm"
+                            >
+                              <span>Enter Studio</span>
+                              <ArrowRightIcon size={11} />
+                            </Link>
                           ) : (
                             <Link
                               href={`/webinar/watch/${web.code}`}
-                              className="flex-1 inline-flex items-center justify-center gap-1.5 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.14] text-white font-medium text-xs transition-all active:scale-[0.98]"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.08] hover:bg-white/[0.14] text-white font-medium text-xs transition-all active:scale-[0.98]"
                             >
-                              <Play className="w-3.5 h-3.5 fill-current" />
                               <span>Watch Stream</span>
+                              <ArrowRightIcon size={11} />
                             </Link>
                           )}
                         </div>
