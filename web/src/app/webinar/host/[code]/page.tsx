@@ -18,23 +18,26 @@ import { FloatingReactions } from '@/components/reactions/floating-reactions';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 
 import {
-  Users,
-  Copy,
-  Check,
-  Settings,
-  PenTool,
-  HelpCircle,
-  MessageSquare,
-  Power,
-  ArrowLeft,
-  X,
-  Dices,
+  UsersIcon,
+  CopyIcon,
+  CheckIcon,
+  SettingsIcon,
+  MessageSquareIcon,
+  LogOutIcon,
+  PhoneCallIcon,
+  XIcon,
+} from '@animateicons/react/lucide';
+import {
+  Pencil,
+  Radio,
   Sliders,
-  Tv,
+  HelpCircle,
+  Dices,
   ExternalLink,
   Trash2,
 } from 'lucide-react';
 import { generateRandomWebinarTitle } from '@/lib/room-names';
+import { CallDuration } from '@/components/call-duration';
 
 interface PageProps {
   params: Promise<{ code: string }>;
@@ -222,18 +225,27 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
   const isEnded = webinar.status === 'ended';
 
   return (
-    <div className="flex flex-col h-screen bg-[#06060a] text-[#fcfdff] overflow-hidden select-none">
+    <div className="flex flex-col h-screen bg-black text-[#fcfdff] select-none ambient-glow-webinar">
       {/* Studio Top Bar */}
-      <header className="h-14 border-b border-white/[0.06] px-3 sm:px-6 flex items-center justify-between gap-4 bg-black/60 backdrop-blur-xl shrink-0 z-40">
-        {/* Left: Back, Status Dot, Title & Subtitle */}
+      <header className="relative h-14 border-b border-white/[0.08] px-3 sm:px-6 flex items-center justify-between gap-4 bg-[#060609]/85 backdrop-blur-2xl shrink-0 z-40">
+        <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-[#FF9933]/30 to-transparent pointer-events-none" />
+        {/* Left: Leave, Status Dot, Title & Subtitle */}
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
           <Link
             href="/?mode=webinar"
-            className="p-1.5 rounded-lg text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.08] transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 p-1.5 sm:px-2.5 sm:py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#888e90] hover:text-[#fcfdff] transition-colors border border-white/[0.08] cursor-pointer"
             title="Leave Studio"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <LogOutIcon size={13} />
+            <span className="hidden sm:inline font-mono text-[11px]">Leave</span>
           </Link>
+
+          {isLive && (
+            <span
+              className="h-2 w-2 rounded-full shrink-0 bg-[#11ff99] shadow-[0_0_8px_#11ff99]"
+              title="Live Broadcast Active"
+            />
+          )}
 
           <div className="min-w-0">
             <div className="flex items-center gap-2">
@@ -255,8 +267,14 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
               )}
             </div>
 
-            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate">
-              #{webinar.code}
+            <p className="text-[10px] sm:text-[11px] text-[#888e90] font-mono truncate flex items-center gap-1.5">
+              <span>ID: {webinar.code}</span>
+              {isLive && (
+                <>
+                  <span aria-hidden="true">·</span>
+                  <CallDuration key={webinar.code} active={isLive} />
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -266,9 +284,9 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
           {/* Live Viewer Counter */}
           <div
             className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] border border-white/[0.08] text-xs font-mono text-[#fcfdff]"
-            title="Connected attendees"
+            title="Attendees"
           >
-            <Users className="w-3.5 h-3.5 text-[#FF9933]" />
+            <UsersIcon size={13} className="text-[#ff7a1a]" />
             <span>{viewerCount}</span>
           </div>
 
@@ -277,16 +295,16 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
             type="button"
             onClick={handleCopyAttendeeLink}
             className="hidden sm:flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08] cursor-pointer"
-            title="Copy attendee invite URL"
+            title="Share space invite"
           >
             {copiedLink ? (
               <>
-                <Check className="w-3.5 h-3.5 text-[#11ff99]" />
+                <CheckIcon size={13} className="text-[#11ff99]" />
                 <span className="text-[#11ff99] font-mono text-[11px]">Copied</span>
               </>
             ) : (
               <>
-                <Copy className="w-3.5 h-3.5 text-[#888e90]" />
+                <CopyIcon size={13} className="text-[#888e90]" />
                 <span className="font-mono text-[11px]">Share</span>
               </>
             )}
@@ -297,9 +315,9 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
             type="button"
             onClick={openSettingsModal}
             className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-[#101012] hover:bg-[#18181c] text-xs font-medium text-[#fcfdff] transition-colors border border-white/[0.08] cursor-pointer"
-            title="Stream Settings & YouTube Link"
+            title="Stream Settings"
           >
-            <Settings className="w-3.5 h-3.5 text-[#888e90]" />
+            <SettingsIcon size={13} className="text-[#888e90]" />
             <span className="hidden sm:inline font-mono text-[11px]">Settings</span>
           </button>
 
@@ -307,14 +325,14 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
           <button
             type="button"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all border cursor-pointer ${
               isSidebarOpen
-                ? 'bg-[#FF9933]/15 text-[#FF9933] border-[#FF9933]/40 shadow-sm'
-                : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
+                ? 'bg-[#FF9933]/15 text-[#FF9933] border-[#FF9933]/35 shadow-[0_0_12px_rgba(255,153,51,0.15)]'
+                : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08] hover:border-white/[0.14]'
             }`}
-            title={isSidebarOpen ? 'Hide Chat' : 'Show Chat'}
+            title="Chat"
           >
-            <MessageSquare className="w-3.5 h-3.5 text-[#FF9933]" />
+            <MessageSquareIcon size={13} className={isSidebarOpen ? 'text-[#FF9933]' : 'text-[#888e90]'} />
             <span className="hidden sm:inline font-mono text-[11px]">Chat</span>
             {questions.length > 0 && !isSidebarOpen && (
               <span className="h-4 min-w-4 px-1 rounded-full bg-[#FF9933] text-black font-mono text-[9px] font-bold flex items-center justify-center animate-pulse">
@@ -330,7 +348,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
               onClick={() => setConfirmGoLiveOpen(true)}
               className="inline-flex items-center justify-center gap-1.5 px-3.5 sm:px-4 py-1.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer"
             >
-              <Power className="w-3.5 h-3.5 stroke-[2.5]" />
+              <Radio className="w-3.5 h-3.5 stroke-[2.5]" />
               <span>Go Live</span>
             </button>
           )}
@@ -341,7 +359,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
               onClick={() => setConfirmEndOpen(true)}
               className="flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[#240a0f] to-[#1a070b] hover:from-[#2e0e15] hover:to-[#220a0f] text-[#f87171] hover:text-[#fca5a5] border border-red-500/35 hover:border-red-500/50 font-medium text-xs transition-all shadow-[0_0_14px_rgba(220,38,38,0.18)] cursor-pointer"
             >
-              <Power className="w-3.5 h-3.5 stroke-[2.5]" />
+              <PhoneCallIcon size={13} className="text-[#f87171]" />
               <span>End</span>
             </button>
           )}
@@ -363,7 +381,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
       {/* Main Workspace: Left Stage + Right Drawer */}
       <div className="flex-1 flex overflow-hidden">
         {/* Stage Area */}
-        <div className="flex-1 flex flex-col p-3 sm:p-5 bg-[#06060a] overflow-y-auto">
+        <div className="flex-1 flex flex-col p-3 sm:p-5 bg-transparent overflow-y-auto">
           {/* Top Stage Control Pills */}
           <div className="flex items-center justify-between gap-3 mb-3">
             <div className="flex flex-wrap items-center gap-2">
@@ -376,7 +394,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
                     : 'bg-[#101012] hover:bg-[#18181c] text-[#fcfdff] border-white/[0.08]'
                 }`}
               >
-                <PenTool className="w-3.5 h-3.5 shrink-0" />
+                <Pencil className={`w-3.5 h-3.5 shrink-0 ${isWhiteboardActive ? 'text-[#FF9933]' : 'text-zinc-400'}`} />
                 <span className="font-mono text-[11px]">
                   {isWhiteboardActive ? 'Close Board' : 'Whiteboard'}
                 </span>
@@ -404,7 +422,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
           </div>
 
           {/* Stage Viewport */}
-          <div className="relative flex-1 min-h-[420px] rounded-2xl bg-[#0a0a0c] border border-white/[0.08] overflow-hidden shadow-2xl flex items-center justify-center">
+          <div className="relative flex-1 min-h-[420px] rounded-2xl bg-[#050508] border border-white/[0.14] overflow-hidden shadow-2xl flex items-center justify-center">
             {/* If Whiteboard is active, show Excalidraw */}
             {isWhiteboardActive ? (
               <div className="absolute inset-0 z-20">
@@ -437,9 +455,9 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
                 type="button"
                 onClick={() => setIsSidebarOpen(true)}
                 className="absolute bottom-4 right-4 z-30 inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl bg-[#101012]/95 hover:bg-[#18181c] backdrop-blur-xl border border-white/[0.12] text-xs font-medium text-[#fcfdff] shadow-xl hover:border-[#FF9933]/40 transition-all cursor-pointer group"
-                title="Open Chat & Q&A"
+                title="Open Chat"
               >
-                <MessageSquare className="w-4 h-4 text-[#FF9933] group-hover:scale-110 transition-transform" />
+                <MessageSquareIcon size={14} className="text-[#FF9933] group-hover:scale-110 transition-transform" />
                 <span className="font-mono text-[11px]">Chat</span>
                 {questions.length > 0 && (
                   <span className="px-1.5 py-0.2 rounded-full text-[10px] font-mono bg-[#FF9933]/20 text-[#FF9933] border border-[#FF9933]/30">
@@ -453,33 +471,42 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
 
         {/* Right Engagement Sidebar */}
         {isSidebarOpen && (
-          <aside className="w-80 md:w-96 border-l border-white/[0.06] bg-[#0a0a0c] flex flex-col shrink-0 animate-in slide-in-from-right duration-200">
+          <aside className="w-80 md:w-96 border-l border-white/[0.08] bg-[#07070a]/95 backdrop-blur-2xl flex flex-col shrink-0 animate-in slide-in-from-right duration-200 shadow-2xl">
             {/* Tabs Header with Close (X) Button */}
-            <div className="flex items-center justify-between border-b border-white/[0.06] bg-black/40 backdrop-blur-md px-2">
-              <div className="flex flex-1">
+            <div className="p-2.5 border-b border-white/[0.08] bg-[#08080c]/80 backdrop-blur-md flex items-center justify-between gap-2 shrink-0">
+              <div className="flex-1 bg-white/[0.04] p-1 rounded-xl border border-white/[0.06] flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => setActiveTab('chat')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-mono border-b-2 transition-all cursor-pointer ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer ${
                     activeTab === 'chat'
-                      ? 'border-[#FF9933] text-[#fcfdff] font-semibold bg-white/[0.02]'
-                      : 'border-transparent text-[#888e90] hover:text-[#fcfdff] font-medium'
+                      ? 'bg-[#FF9933]/15 text-[#FF9933] font-semibold border border-[#FF9933]/30 shadow-sm'
+                      : 'text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.04] font-medium border border-transparent'
                   }`}
                 >
-                  <MessageSquare className="w-3.5 h-3.5 text-[#FF9933]" />
-                  Chat
+                  <MessageSquareIcon size={13} className={activeTab === 'chat' ? 'text-[#FF9933]' : 'text-[#888e90]'} />
+                  <span>Chat</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab('qa')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 text-xs font-mono border-b-2 transition-all cursor-pointer ${
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-mono transition-all cursor-pointer ${
                     activeTab === 'qa'
-                      ? 'border-[#FF9933] text-[#fcfdff] font-semibold bg-white/[0.02]'
-                      : 'border-transparent text-[#888e90] hover:text-[#fcfdff] font-medium'
+                      ? 'bg-[#FF9933]/15 text-[#FF9933] font-semibold border border-[#FF9933]/30 shadow-sm'
+                      : 'text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.04] font-medium border border-transparent'
                   }`}
                 >
-                  <HelpCircle className="w-3.5 h-3.5 text-[#FF9933]" />
-                  Q&A ({questions.length})
+                  <HelpCircle className={`w-3.5 h-3.5 ${activeTab === 'qa' ? 'text-[#FF9933]' : 'text-[#888e90]'}`} />
+                  <span>Q&A</span>
+                  {questions.length > 0 && (
+                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                      activeTab === 'qa'
+                        ? 'bg-[#FF9933] text-black font-bold'
+                        : 'bg-white/10 text-[#888e90]'
+                    }`}>
+                      {questions.length}
+                    </span>
+                  )}
                 </button>
               </div>
 
@@ -487,10 +514,10 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
               <button
                 type="button"
                 onClick={() => setIsSidebarOpen(false)}
-                className="p-1.5 rounded-lg text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.08] transition-all ml-1 cursor-pointer"
-                title="Close Chat & Q&A Sidebar"
+                className="h-8 w-8 rounded-lg text-[#888e90] hover:text-[#fcfdff] hover:bg-white/[0.08] border border-white/[0.06] flex items-center justify-center transition-all cursor-pointer shrink-0"
+                title="Close Chat"
               >
-                <X className="w-4 h-4" />
+                <XIcon size={14} />
               </button>
             </div>
 
@@ -539,7 +566,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
             <div className="flex items-center justify-between pb-3.5 border-b border-white/[0.08] relative z-10">
               <div className="flex items-center gap-2.5">
                 <div className="h-7 w-7 rounded-lg bg-[#FF9933]/15 border border-[#FF9933]/30 flex items-center justify-center text-[#FF9933] shadow-[0_0_12px_rgba(255,153,51,0.15)]">
-                  <Settings className="w-3.5 h-3.5" />
+                  <SettingsIcon size={14} />
                 </div>
                 <div>
                   <h3 className="font-serif-headline text-base font-normal text-[#fcfdff] leading-tight">
@@ -556,7 +583,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
                 className="text-[#888e90] hover:text-[#fcfdff] p-1.5 rounded-lg hover:bg-white/[0.08] transition-colors cursor-pointer"
                 title="Close"
               >
-                <X className="w-4 h-4" />
+                <XIcon size={14} />
               </button>
             </div>
 

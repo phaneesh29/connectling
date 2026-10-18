@@ -115,10 +115,10 @@ export const InRoomChat = React.memo(function InRoomChat({
                   </div>
 
                   <div
-                    className={`w-fit max-w-full px-3 py-2 rounded-2xl text-xs break-words leading-relaxed text-left ${
+                    className={`w-fit max-w-full px-3.5 py-2 rounded-2xl text-xs break-words leading-relaxed text-left ${
                       isMe
-                        ? 'bg-gradient-to-r from-orange-600/25 to-amber-600/25 text-[#fcfdff] border border-orange-500/35 rounded-tr-sm'
-                        : 'bg-white/[0.06] text-[#fcfdff] border border-white/[0.10] rounded-tl-sm'
+                        ? 'bg-gradient-to-r from-orange-600/30 to-[#FF9933]/30 text-[#fcfdff] border border-[#FF9933]/35 rounded-tr-sm shadow-[0_2px_10px_rgba(255,153,51,0.08)]'
+                        : 'bg-white/[0.05] text-[#fcfdff] border border-white/[0.08] rounded-tl-sm'
                     }`}
                   >
                     {msg.text}
@@ -133,13 +133,13 @@ export const InRoomChat = React.memo(function InRoomChat({
 
       {/* Input Bar */}
       {!isChatAllowed && (
-        <div className="px-3 py-1 bg-amber-500/10 border-t border-amber-500/20 text-[10px] text-[#f59e0b] font-mono text-center">
+        <div className="px-3 py-1.5 bg-amber-500/10 border-t border-amber-500/20 text-[10px] text-amber-300 font-mono text-center">
           {isHost ? 'Chat is disabled for participants' : 'Chat is disabled by the host'}
         </div>
       )}
       <form
         onSubmit={handleSend}
-        className="p-3 border-t border-white/[0.08] bg-[#06060a] flex items-center gap-2 shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]"
+        className="p-3 border-t border-white/[0.08] bg-[#07070a]/90 backdrop-blur-md flex items-center gap-2 shrink-0 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]"
       >
         <input
           ref={inputRef}
@@ -154,13 +154,13 @@ export const InRoomChat = React.memo(function InRoomChat({
           }
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          className="flex-1 px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-base sm:text-xs text-[#fcfdff] placeholder-[#888e90] focus:outline-none focus:border-white/40 transition-all font-sans disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex-1 px-3.5 py-2 rounded-xl bg-white/[0.04] border border-white/[0.10] text-base sm:text-xs text-[#fcfdff] placeholder-[#888e90] focus:outline-none focus:border-[#FF9933]/60 focus:ring-1 focus:ring-[#FF9933]/30 transition-all font-sans disabled:opacity-50 disabled:cursor-not-allowed"
         />
 
         <button
           type="submit"
           disabled={!inputText.trim() || (!isChatAllowed && !isHost)}
-          className="h-8 w-8 rounded-xl bg-[#fcfdff] hover:bg-[#f1f7fe] text-black flex items-center justify-center transition-all disabled:opacity-30 disabled:hover:bg-[#fcfdff] shrink-0"
+          className="h-8 w-8 rounded-xl bg-[#FF9933] hover:bg-[#ffaa4d] text-black font-semibold flex items-center justify-center transition-all disabled:opacity-30 disabled:hover:bg-[#FF9933] shadow-[0_0_12px_rgba(255,153,51,0.25)] shrink-0 active:scale-95 cursor-pointer"
           title="Send"
         >
           <SendIcon size={13} />

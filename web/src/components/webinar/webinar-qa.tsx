@@ -2,7 +2,8 @@
 
 import React, { useState } from 'react';
 import type { WebinarQuestion } from '@/types/realtime';
-import { ThumbsUp, CheckCircle, HelpCircle, Send, Sparkles } from 'lucide-react';
+import { CheckIcon, SendIcon } from '@animateicons/react/lucide';
+import { ThumbsUp, HelpCircle, Sparkles } from 'lucide-react';
 
 interface WebinarQaProps {
   questions: WebinarQuestion[];
@@ -85,7 +86,7 @@ export const WebinarQa = React.memo(function WebinarQa({
 
                   {q.isAnswered && (
                     <span className="flex items-center gap-1 text-[10px] font-mono font-semibold text-[#11ff99] bg-[#11ff99]/10 px-2 py-0.5 rounded-md border border-[#11ff99]/25">
-                      <CheckCircle className="w-3 h-3" /> Answered
+                      <CheckIcon size={12} className="text-[#11ff99]" /> Answered
                     </span>
                   )}
                 </div>
@@ -115,7 +116,7 @@ export const WebinarQa = React.memo(function WebinarQa({
                       onClick={() => onAnswerQuestion(q.id)}
                       className="flex items-center gap-1 text-[11px] font-mono text-[#11ff99] bg-[#11ff99]/10 hover:bg-[#11ff99]/20 border border-[#11ff99]/25 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
                     >
-                      <CheckCircle className="w-3.5 h-3.5" /> Mark Answered
+                      <CheckIcon size={13} className="text-[#11ff99]" /> Mark Answered
                     </button>
                   )}
                 </div>
@@ -126,7 +127,7 @@ export const WebinarQa = React.memo(function WebinarQa({
       </div>
 
       {/* Ask Question Form */}
-      <form onSubmit={handleSubmit} className="p-3 border-t border-white/[0.06] bg-[#06060a]">
+      <form onSubmit={handleSubmit} className="p-3 border-t border-white/[0.08] bg-[#07070a]/90 backdrop-blur-md pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
         <div className="relative flex items-center">
           <input
             type="text"
@@ -142,7 +143,7 @@ export const WebinarQa = React.memo(function WebinarQa({
             className="absolute right-1.5 p-1.5 rounded-lg text-[#888e90] hover:text-[#FF9933] disabled:opacity-30 disabled:hover:text-[#888e90] transition-colors cursor-pointer"
             title="Submit question"
           >
-            <Send className="w-3.5 h-3.5" />
+            <SendIcon size={14} className="text-[#FF9933]" />
           </button>
         </div>
       </form>
