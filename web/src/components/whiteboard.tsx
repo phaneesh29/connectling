@@ -48,6 +48,7 @@ export interface WhiteboardProps {
   initialAppState?: Record<string, unknown>;
   onClose?: () => void;
   className?: string;
+  isWebinar?: boolean;
 }
 
 export function Whiteboard({
@@ -58,6 +59,7 @@ export function Whiteboard({
   initialAppState,
   onClose,
   className = '',
+  isWebinar = false,
 }: WhiteboardProps) {
   const [excalidrawAPI, setExcalidrawAPI] = useState<ExcalidrawAPI | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -129,7 +131,11 @@ export function Whiteboard({
     if (!socket) return;
     const requestSync = () => {
       if (socket.connected) {
-        socket.emit('whiteboard:sync', { roomCode });
+        if (isWebinar) {
+          socket.emit('webinar:whiteboard:sync' as any, { webinarCode: roomCode });
+        } else {
+          socket.emit('whiteboard:sync', { roomCode });
+        }
       }
     };
     socket.on('connect', requestSync);
@@ -137,36 +143,34 @@ export function Whiteboard({
     return () => {
       socket.off('connect', requestSync);
     };
-  }, [socket, roomCode]);
+  }, [socket, roomCode, isWebinar]);
 
   // Sync incoming updates from host to viewer peers
   useEffect(() => {
     if (!socket) return;
 
-    const handleWhiteboardUpdated = (payload: WhiteboardScenePayload) => {
+    const handleRemoteScene = (elements?: readonly unknown[], sceneAppState?: Record<string, unknown>) => {
       if (isHostRef.current) return; // Host does not overwrite own active drawing
-      if (payload.roomCode?.trim().toLowerCase() !== roomCode.trim().toLowerCase()) return;
+      if (!elements) return;
 
-      if (payload.elements) {
-        useWhiteboardStore.getState().syncState({
-          elements: payload.elements,
-          appState: payload.appState,
-        });
-        pendingElementsRef.current = payload.elements;
-        latestElementsRef.current = payload.elements;
-        if (payload.appState) pendingAppStateRef.current = payload.appState;
-      }
+      useWhiteboardStore.getState().syncState({
+        elements,
+        appState: sceneAppState,
+      });
+      pendingElementsRef.current = elements;
+      latestElementsRef.current = elements;
+      if (sceneAppState) pendingAppStateRef.current = sceneAppState;
 
-      if (excalidrawAPI && payload.elements) {
+      if (excalidrawAPI) {
         isReceivingRemoteUpdateRef.current = true;
         try {
           excalidrawAPI.updateScene({
-            elements: payload.elements,
-            appState: payload.appState
+            elements,
+            appState: sceneAppState
               ? {
                   viewBackgroundColor:
-                    typeof payload.appState.viewBackgroundColor === 'string'
-                      ? payload.appState.viewBackgroundColor
+                    typeof sceneAppState.viewBackgroundColor === 'string'
+                      ? sceneAppState.viewBackgroundColor
                       : undefined,
                 }
               : undefined,
@@ -175,11 +179,11 @@ export function Whiteboard({
           });
 
           // Ensure drawings are fitted and visible in viewport on mobile / smaller screens
-          if (!hasCenteredContentRef.current && payload.elements.length > 0 && excalidrawAPI.scrollToContent) {
+          if (!hasCenteredContentRef.current && elements.length > 0 && excalidrawAPI.scrollToContent) {
             hasCenteredContentRef.current = true;
             safeTimeout(() => {
               try {
-                excalidrawAPI.scrollToContent?.(payload.elements, { fitToViewport: true, viewportZoomFactor: 0.85 });
+                excalidrawAPI.scrollToContent?.(elements, { fitToViewport: true, viewportZoomFactor: 0.85 });
               } catch { /* ignore */ }
             }, 100);
           }
@@ -189,6 +193,16 @@ export function Whiteboard({
           }, 50);
         }
       }
+    };
+
+    const handleWhiteboardUpdated = (payload: WhiteboardScenePayload) => {
+      if (payload.roomCode?.trim().toLowerCase() !== roomCode.trim().toLowerCase()) return;
+      handleRemoteScene(payload.elements, payload.appState);
+    };
+
+    const handleWebinarWhiteboardUpdated = (payload: { webinarCode: string; elements: readonly unknown[]; appState?: Record<string, unknown> }) => {
+      if (payload.webinarCode?.trim().toLowerCase() !== roomCode.trim().toLowerCase()) return;
+      handleRemoteScene(payload.elements, payload.appState);
     };
 
     const handleWhiteboardToggled = (payload: WhiteboardTogglePayload) => {
@@ -206,50 +220,54 @@ export function Whiteboard({
       if (isHostRef.current) return;
 
       if (payload.elements) {
-        pendingElementsRef.current = payload.elements;
-        latestElementsRef.current = payload.elements;
-        if (payload.appState) pendingAppStateRef.current = payload.appState;
+        handleRemoteScene(payload.elements, payload.appState);
+      }
+    };
 
-        if (excalidrawAPI) {
-          isReceivingRemoteUpdateRef.current = true;
-          try {
-            excalidrawAPI.updateScene({
-              elements: payload.elements,
-              appState: payload.appState
-                ? {
-                    viewBackgroundColor:
-                      typeof payload.appState.viewBackgroundColor === 'string'
-                        ? payload.appState.viewBackgroundColor
-                        : undefined,
-                  }
-                : undefined,
-              captureUpdate: 'NEVER' as unknown as undefined,
-              commitToHistory: false,
-            });
-            if (!hasCenteredContentRef.current && payload.elements.length > 0 && excalidrawAPI.scrollToContent) {
-              hasCenteredContentRef.current = true;
-              safeTimeout(() => {
-                try {
-                  excalidrawAPI.scrollToContent?.(payload.elements, { fitToViewport: true, viewportZoomFactor: 0.85 });
-                } catch { /* ignore */ }
-              }, 100);
-            }
-          } finally {
-            safeTimeout(() => {
-              isReceivingRemoteUpdateRef.current = false;
-            }, 50);
-          }
-        }
+    const handleWebinarWhiteboardToggled = (payload: { webinarCode: string; isOpen: boolean; elements?: readonly unknown[]; appState?: Record<string, unknown> }) => {
+      if (payload.webinarCode?.trim().toLowerCase() !== roomCode.trim().toLowerCase()) return;
+      useWhiteboardStore.getState().syncState({
+        isOpen: payload.isOpen,
+        elements: payload.elements,
+        appState: payload.appState,
+      });
+
+      if (!payload.isOpen) {
+        onClose?.();
+        return;
+      }
+      if (isHostRef.current) return;
+
+      if (payload.elements) {
+        handleRemoteScene(payload.elements, payload.appState);
       }
     };
 
     socket.on('whiteboard:updated', handleWhiteboardUpdated);
     socket.on('whiteboard:toggled', handleWhiteboardToggled);
+    socket.on('webinar:whiteboard:updated' as any, handleWebinarWhiteboardUpdated);
+    socket.on('webinar:whiteboard:toggled' as any, handleWebinarWhiteboardToggled);
+
     return () => {
       socket.off('whiteboard:updated', handleWhiteboardUpdated);
       socket.off('whiteboard:toggled', handleWhiteboardToggled);
+      socket.off('webinar:whiteboard:updated' as any, handleWebinarWhiteboardUpdated);
+      socket.off('webinar:whiteboard:toggled' as any, handleWebinarWhiteboardToggled);
     };
   }, [socket, roomCode, excalidrawAPI, onClose, safeTimeout]);
+
+  // Keep Excalidraw synchronized if store elements update from external sockets
+  useEffect(() => {
+    if (!excalidrawAPI || isHostRef.current) return;
+    if (storeElements && storeElements.length > 0) {
+      excalidrawAPI.updateScene({
+        elements: storeElements,
+        appState: storeAppState ? { viewBackgroundColor: typeof storeAppState.viewBackgroundColor === 'string' ? storeAppState.viewBackgroundColor : undefined } : undefined,
+        captureUpdate: 'NEVER' as unknown as undefined,
+        commitToHistory: false,
+      });
+    }
+  }, [excalidrawAPI, storeElements, storeAppState]);
 
   useEffect(() => {
     if (!excalidrawAPI || isHostRef.current) return;
@@ -287,16 +305,26 @@ export function Whiteboard({
       syncTimeoutRef.current = setTimeout(() => {
         if (!socket || !socket.connected) return;
         useWhiteboardStore.getState().setElements(latestElementsRef.current);
-        socket.emit('whiteboard:update', {
-          roomCode,
-          elements: latestElementsRef.current,
-          appState: {
-            viewBackgroundColor: appState?.viewBackgroundColor,
-          },
-        });
-      }, 100);
+        if (isWebinar) {
+          socket.emit('webinar:whiteboard:update' as any, {
+            webinarCode: roomCode,
+            elements: latestElementsRef.current,
+            appState: {
+              viewBackgroundColor: appState?.viewBackgroundColor,
+            },
+          });
+        } else {
+          socket.emit('whiteboard:update', {
+            roomCode,
+            elements: latestElementsRef.current,
+            appState: {
+              viewBackgroundColor: appState?.viewBackgroundColor,
+            },
+          });
+        }
+      }, 50);
     },
-    [socket, roomCode]
+    [socket, roomCode, isWebinar]
   );
 
   return (

@@ -52,6 +52,7 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
   const webinar = useWebinarStore((s) => s.webinar);
   const viewerCount = useWebinarStore((s) => s.viewerCount);
   const isWhiteboardActive = useWebinarStore((s) => s.isWhiteboardActive);
+  const setIsWhiteboardActive = useWebinarStore((s) => s.setIsWhiteboardActive);
   const questions = useWebinarStore((s) => s.questions);
   const setWebinar = useWebinarStore((s) => s.setWebinar);
   const setStatus = useWebinarStore((s) => s.setStatus);
@@ -412,7 +413,11 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => toggleWhiteboard(!isWhiteboardActive)}
+                onClick={() => {
+                  const nextState = !isWhiteboardActive;
+                  setIsWhiteboardActive(nextState);
+                  toggleWhiteboard(nextState);
+                }}
                 className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition-all border cursor-pointer ${
                   isWhiteboardActive
                     ? 'bg-[#FF9933]/20 text-[#FF9933] border-[#FF9933]/40 shadow-[0_0_12px_rgba(255,153,51,0.2)]'
@@ -454,8 +459,12 @@ export default function WebinarHostStudioPage({ params }: PageProps) {
                 <Whiteboard
                   roomCode={code}
                   isHost={true}
+                  isWebinar={true}
                   socket={getSocket()}
-                  onClose={() => toggleWhiteboard(false)}
+                  onClose={() => {
+                    setIsWhiteboardActive(false);
+                    toggleWhiteboard(false);
+                  }}
                 />
               </div>
             ) : (

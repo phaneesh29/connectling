@@ -244,8 +244,63 @@ export default function WebinarWatchPage({ params }: PageProps) {
         {/* Main Stage Viewport */}
         <div className="flex-1 flex flex-col p-3 sm:p-5 bg-[#06060a] overflow-y-auto">
           <div className="relative flex-1 min-h-[380px] rounded-2xl bg-[#050508] border border-white/[0.14] overflow-hidden shadow-2xl flex items-center justify-center">
-            {/* STATE 1: Scheduled / Waiting */}
-            {!isLive && !isEnded && (
+            {/* STATE 1: Whiteboard Active (Prioritized above stream / standby) */}
+            {isWhiteboardActive ? (
+              <div className="relative w-full h-full flex flex-col">
+                {/* View-only Excalidraw Canvas */}
+                <div className="flex-1 w-full h-full">
+                  <Whiteboard
+                    roomCode={code}
+                    isHost={false}
+                    isWebinar={true}
+                    socket={getSocket()}
+                    className="w-full h-full"
+                  />
+                </div>
+
+                {/* Picture-in-Picture Mini Player Dock for the Host Video (when live) */}
+                {isLive && webinar.youtubeVideoId && (
+                  <div className="absolute bottom-4 right-4 z-30 w-56 sm:w-72 aspect-video rounded-xl overflow-hidden border-2 border-white/20 shadow-2xl bg-black">
+                    <WebinarPlayer
+                      videoId={webinar.youtubeVideoId}
+                      title={webinar.title}
+                      isHost={false}
+                      className="w-full h-full"
+                    />
+                  </div>
+                )}
+              </div>
+            ) : isEnded ? (
+              /* STATE 2: Ended */
+              <div className="relative flex flex-col items-center justify-center p-8 sm:p-12 text-center max-w-md z-10">
+                <div className="relative mb-5 flex items-center justify-center">
+                  <div className="relative w-16 h-16 rounded-2xl bg-[#11ff99]/10 border border-[#11ff99]/25 flex items-center justify-center text-[#11ff99] shadow-[0_0_24px_rgba(17,255,153,0.2)]">
+                    <CheckIcon size={28} className="text-[#11ff99]" />
+                  </div>
+                </div>
+                <h2 className="font-serif-headline text-xl sm:text-2xl font-normal text-[#fcfdff] mb-2">Webinar Ended</h2>
+                <p className="text-xs text-[#888e90] mb-6 leading-relaxed">
+                  This broadcast has wrapped up. Thank you for tuning in!
+                </p>
+                <Link
+                  href="/?mode=webinar"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer"
+                >
+                  Return to Hub
+                </Link>
+              </div>
+            ) : isLive ? (
+              /* STATE 3: Live Broadcast (Custom Unbranded Player) */
+              <div className="w-full h-full flex items-center justify-center">
+                <WebinarPlayer
+                  videoId={webinar.youtubeVideoId}
+                  title={webinar.title}
+                  isHost={false}
+                  className="w-full h-full"
+                />
+              </div>
+            ) : (
+              /* STATE 4: Scheduled / Standby Waiting */
               <div className="relative flex flex-col items-center justify-center p-8 sm:p-12 text-center max-w-lg z-10">
                 {/* Ambient glow */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full blur-3xl opacity-20 bg-gradient-brand pointer-events-none" />
@@ -281,67 +336,6 @@ export default function WebinarWatchPage({ params }: PageProps) {
               </div>
             )}
 
-            {/* STATE 2: Ended */}
-            {isEnded && (
-              <div className="relative flex flex-col items-center justify-center p-8 sm:p-12 text-center max-w-md z-10">
-                <div className="relative mb-5 flex items-center justify-center">
-                  <div className="relative w-16 h-16 rounded-2xl bg-[#11ff99]/10 border border-[#11ff99]/25 flex items-center justify-center text-[#11ff99] shadow-[0_0_24px_rgba(17,255,153,0.2)]">
-                    <CheckIcon size={28} className="text-[#11ff99]" />
-                  </div>
-                </div>
-                <h2 className="font-serif-headline text-xl sm:text-2xl font-normal text-[#fcfdff] mb-2">Webinar Ended</h2>
-                <p className="text-xs text-[#888e90] mb-6 leading-relaxed">
-                  This broadcast has wrapped up. Thank you for tuning in!
-                </p>
-                <Link
-                  href="/?mode=webinar"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-brand-r hover:brightness-105 text-black font-semibold text-xs rounded-xl shadow-brand-glow transition-all active:scale-95 cursor-pointer"
-                >
-                  Return to Hub
-                </Link>
-              </div>
-            )}
-
-            {/* STATE 3: Live Broadcast (Custom Unbranded Player) */}
-            {isLive && (
-              <>
-                {/* If Whiteboard is toggled by Host */}
-                {isWhiteboardActive ? (
-                  <div className="relative w-full h-full flex flex-col">
-                    {/* View-only Excalidraw Canvas */}
-                    <div className="flex-1 w-full h-full">
-                      <Whiteboard
-                        roomCode={code}
-                        isHost={false}
-                        socket={getSocket()}
-                        className="w-full h-full"
-                      />
-                    </div>
-
-                    {/* Picture-in-Picture Mini Player Dock for the Host Video */}
-                    <div className="absolute bottom-4 right-4 z-30 w-56 sm:w-72 aspect-video rounded-xl overflow-hidden border-2 border-white/20 shadow-2xl bg-black">
-                      <WebinarPlayer
-                        videoId={webinar.youtubeVideoId}
-                        title={webinar.title}
-                        isHost={false}
-                        className="w-full h-full"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  /* Standard Unbranded Custom Player */
-                  <div className="w-full h-full flex items-center justify-center">
-                    <WebinarPlayer
-                      videoId={webinar.youtubeVideoId}
-                      title={webinar.title}
-                      isHost={false}
-                      className="w-full h-full"
-                    />
-                  </div>
-                )}
-              </>
-            )}
-
             {/* Floating Reactions Layer */}
             <FloatingReactions />
 
@@ -350,7 +344,11 @@ export default function WebinarWatchPage({ params }: PageProps) {
               <button
                 type="button"
                 onClick={() => setIsSidebarOpen(true)}
-                className="absolute bottom-4 right-4 z-30 inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl bg-[#101012]/95 hover:bg-[#18181c] backdrop-blur-xl border border-white/[0.12] text-xs font-medium text-[#fcfdff] shadow-xl hover:border-[#FF9933]/40 transition-all cursor-pointer group"
+                className={`absolute z-30 inline-flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-xl bg-[#101012]/95 hover:bg-[#18181c] backdrop-blur-xl border border-white/[0.12] text-xs font-medium text-[#fcfdff] shadow-xl hover:border-[#FF9933]/40 transition-all cursor-pointer group ${
+                  isWhiteboardActive && isLive && webinar.youtubeVideoId
+                    ? 'bottom-4 left-4'
+                    : 'bottom-4 right-4'
+                }`}
                 title="Open Chat"
               >
                 <MessageSquareIcon size={14} className="text-[#FF9933] group-hover:scale-110 transition-transform" />

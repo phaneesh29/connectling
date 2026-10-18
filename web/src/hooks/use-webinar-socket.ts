@@ -72,10 +72,10 @@ export function useWebinarSocket({ webinarCode, enabled = true }: UseWebinarSock
       elements: readonly unknown[];
       appState?: Record<string, unknown>;
     }) => {
-      useWhiteboardStore.getState().setElements(payload.elements);
-      if (payload.appState) {
-        useWhiteboardStore.getState().setAppState(payload.appState);
-      }
+      useWhiteboardStore.getState().syncState({
+        elements: payload.elements,
+        appState: payload.appState,
+      });
     };
 
     const handleQaList = (payload: { questions: WebinarQuestion[] }) => {
